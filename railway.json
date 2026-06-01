@@ -1,11 +1,11 @@
 {
-  "$schema": "https://railway.app/railway.schema.json",
+  "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
+    "builder": "RAILPACK",
     "buildCommand": "composer install --no-dev --optimize-autoloader"
   },
   "deploy": {
-    "startCommand": "php -S 0.0.0.0:\$PORT -t .",
+    "startCommand": "php -S 0.0.0.0:$PORT -t .",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
