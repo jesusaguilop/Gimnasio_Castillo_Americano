@@ -5,6 +5,7 @@ session_start();
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recuperar contraseña | Sistema Académico</title>
 
     <!-- Bootstrap -->
@@ -53,6 +54,16 @@ session_start();
         .form-control {
             border-radius: 12px;
             padding: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .card-reset {
+                padding: 28px 20px;
+                border-radius: 16px;
+            }
+            body {
+                padding: 16px;
+            }
         }
     </style>
 </head>

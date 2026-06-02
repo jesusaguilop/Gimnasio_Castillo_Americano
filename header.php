@@ -2,10 +2,14 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gimnasio Castillo Americano | Portal Institucional</title>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/landing.css">
 
     <style>
@@ -17,7 +21,9 @@
             display: flex;
             flex-direction: column;
             background-color: var(--gca-gray);
-            font-family: "Segoe UI", system-ui, sans-serif;
+            font-family: 'Inter', "Segoe UI", system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         main {
@@ -90,6 +96,50 @@
         .btn-gca:hover {
             background: #b8933f;
             color: #000;
+        }
+
+        /* ─── Mobile Navbar ─── */
+        @media (max-width: 991.98px) {
+            .navbar-collapse {
+                background: #fff;
+                padding: 16px;
+                border-radius: 16px;
+                box-shadow: 0 12px 40px rgba(0,0,0,.12);
+                margin-top: 8px;
+            }
+            .navbar-nav .nav-link {
+                padding: 12px 14px;
+                border-radius: 10px;
+            }
+            .navbar-nav .nav-link:hover {
+                background: #f5f5f5;
+            }
+            .navbar-nav .nav-link::after {
+                display: none;
+            }
+            .navbar .btn-gca {
+                margin-top: 8px;
+                width: 100%;
+                text-align: center;
+            }
+            .navbar-brand img {
+                height: 40px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .top-bar {
+                font-size: 11px;
+            }
+            .top-bar .container {
+                padding: 0 8px;
+            }
+            .navbar-brand {
+                gap: 8px;
+            }
+            .navbar-brand img {
+                height: 36px;
+            }
         }
     </style>
 </head>

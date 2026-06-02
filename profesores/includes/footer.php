@@ -62,6 +62,8 @@
                 localStorage.setItem('gca-dark-mode', next);
                 updateUI();
             });
+        })();
+
     // ── Confirm Modal ──
     function showConfirm(message, callback) {
         const modal = document.getElementById('gcaConfirmModal');

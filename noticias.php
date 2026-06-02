@@ -5,43 +5,6 @@
         font-weight: 800;
         letter-spacing: .5px;
     }
-
-    .news-card {
-        border: none;
-        border-radius: 18px;
-        overflow: hidden;
-        box-shadow: 0 12px 30px rgba(0,0,0,.08);
-        transition: transform .3s ease, box-shadow .3s ease;
-        background: #fff;
-    }
-
-    .news-card:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 18px 40px rgba(0,0,0,.15);
-    }
-
-    .news-card .card-title {
-        font-weight: 700;
-        color: var(--gca-dark);
-    }
-
-    .news-card .card-footer {
-        background: transparent;
-        border-top: 1px solid #eee;
-        font-size: 13px;
-        color: #777;
-    }
-
-    .badge-gca {
-        background: var(--gca-gold);
-        color: #000;
-        font-weight: 600;
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-size: 12px;
-        display: inline-block;
-        margin-bottom: 12px;
-    }
 </style>
 
 <div class="container my-5">
