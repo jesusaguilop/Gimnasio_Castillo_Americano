@@ -25,7 +25,7 @@ if (isset($_GET["id"]) && isset($_GET["confirmar"])) {
 }
 
 $asignaturas = $conexion
-    ->query("SELECT id, nombre FROM asignaturas ORDER BY nombre")
+    ->query("SELECT id, nombre, area, nivel, grado FROM asignaturas ORDER BY FIELD(nivel,'preescolar','primaria','secundaria'), area, nombre")
     ->fetchAll(PDO::FETCH_ASSOC);
 
 $pageTitle = "Gestión de Asignaturas";
@@ -66,14 +66,31 @@ include "includes/header.php";
                     <table class="table gca-table table-hover align-middle">
                         <thead>
                             <tr>
+                                <th>Área</th>
                                 <th>Nombre</th>
+                                <th>Nivel</th>
+                                <th>Grado</th>
                                 <th class="text-end">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($asignaturas as $a): ?>
+                            <?php foreach ($asignaturas as $a):
+                                $nivelColor = match($a["nivel"]) {
+                                    'preescolar' => '#7b1fa2',
+                                    'primaria'   => '#1565c0',
+                                    default      => '#2e7d32',
+                                };
+                                $nivelLabel = match($a["nivel"]) {
+                                    'preescolar' => 'Preescolar',
+                                    'primaria'   => 'Primaria',
+                                    default      => 'Secundaria',
+                                };
+                            ?>
                                 <tr>
+                                    <td><span class="badge fw-normal px-3 py-2" style="background:#c9a24d;font-size:11px;"><?= htmlspecialchars($a["area"]) ?></span></td>
                                     <td><span class="fw-semibold"><?= htmlspecialchars($a["nombre"]) ?></span></td>
+                                    <td><span class="badge fw-normal px-3 py-2" style="background:<?= $nivelColor ?>;font-size:11px;"><?= $nivelLabel ?></span></td>
+                                    <td><span class="text-muted" style="font-size:13px;"><?= $a["grado"] ? htmlspecialchars(ucfirst($a["grado"])) : '—' ?></span></td>
                                     <td class="text-end">
                                         <a href="editar_asignatura.php?id=<?= $a["id"] ?>" class="btn-action btn-edit me-1" title="Editar">
                                             <i class="bi bi-pencil-square"></i>
@@ -87,7 +104,7 @@ include "includes/header.php";
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (count($asignaturas) === 0): ?>
-                                <tr><td colspan="2" class="text-center text-muted py-4">No hay asignaturas registradas.</td></tr>
+                                <tr><td colspan="5" class="text-center text-muted py-4">No hay asignaturas registradas.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>

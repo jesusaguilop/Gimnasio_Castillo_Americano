@@ -7,6 +7,7 @@ if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
 }
 
 require_once "../config/database.php";
+require_once "../lib/rank_helper.php";
 
 $mensaje = "";
 $tipo = "";
@@ -20,10 +21,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $mensaje = "Todos los campos son obligatorios.";
         $tipo = "danger";
     } else {
+        $nivel = obtenerNivelGrado($grado);
         try {
-            $sql = "INSERT INTO cursos (nombre, grado) VALUES (:nombre_curso, :grado)";
+            $sql = "INSERT INTO cursos (nombre, grado, nivel) VALUES (:nombre_curso, :grado, :nivel)";
             $stmt = $conexion->prepare($sql);
-            $stmt->execute([":nombre_curso" => $nombre_curso, ":grado" => $grado]);
+            $stmt->execute([":nombre_curso" => $nombre_curso, ":grado" => $grado, ":nivel" => $nivel]);
 
             $_SESSION["success_msg"] = "Curso creado correctamente.";
             header("Location: ver_cursos.php");
@@ -76,12 +78,27 @@ include "includes/header.php";
                                 <label class="form-label fw-medium">Grado</label>
                                 <select name="grado" class="form-select" required>
                                     <option value="">Seleccione</option>
-                                    <option value="sexto" <?= ($_POST["grado"] ?? "") == "sexto" ? "selected" : "" ?>>Sexto</option>
-                                    <option value="septimo" <?= ($_POST["grado"] ?? "") == "septimo" ? "selected" : "" ?>>Séptimo</option>
-                                    <option value="octavo" <?= ($_POST["grado"] ?? "") == "octavo" ? "selected" : "" ?>>Octavo</option>
-                                    <option value="noveno" <?= ($_POST["grado"] ?? "") == "noveno" ? "selected" : "" ?>>Noveno</option>
-                                    <option value="decimo" <?= ($_POST["grado"] ?? "") == "decimo" ? "selected" : "" ?>>Décimo</option>
-                                    <option value="once" <?= ($_POST["grado"] ?? "") == "once" ? "selected" : "" ?>>Once</option>
+                                    <optgroup label="Preescolar">
+                                        <option value="maternal" <?= ($_POST["grado"] ?? "") == "maternal" ? "selected" : "" ?>>Maternal</option>
+                                        <option value="prejardin" <?= ($_POST["grado"] ?? "") == "prejardin" ? "selected" : "" ?>>Pre-Jardín</option>
+                                        <option value="jardin" <?= ($_POST["grado"] ?? "") == "jardin" ? "selected" : "" ?>>Jardín</option>
+                                        <option value="transicion" <?= ($_POST["grado"] ?? "") == "transicion" ? "selected" : "" ?>>Transición</option>
+                                    </optgroup>
+                                    <optgroup label="Primaria">
+                                        <option value="primero" <?= ($_POST["grado"] ?? "") == "primero" ? "selected" : "" ?>>Primero</option>
+                                        <option value="segundo" <?= ($_POST["grado"] ?? "") == "segundo" ? "selected" : "" ?>>Segundo</option>
+                                        <option value="tercero" <?= ($_POST["grado"] ?? "") == "tercero" ? "selected" : "" ?>>Tercero</option>
+                                        <option value="cuarto" <?= ($_POST["grado"] ?? "") == "cuarto" ? "selected" : "" ?>>Cuarto</option>
+                                        <option value="quinto" <?= ($_POST["grado"] ?? "") == "quinto" ? "selected" : "" ?>>Quinto</option>
+                                    </optgroup>
+                                    <optgroup label="Secundaria">
+                                        <option value="sexto" <?= ($_POST["grado"] ?? "") == "sexto" ? "selected" : "" ?>>Sexto</option>
+                                        <option value="septimo" <?= ($_POST["grado"] ?? "") == "septimo" ? "selected" : "" ?>>Séptimo</option>
+                                        <option value="octavo" <?= ($_POST["grado"] ?? "") == "octavo" ? "selected" : "" ?>>Octavo</option>
+                                        <option value="noveno" <?= ($_POST["grado"] ?? "") == "noveno" ? "selected" : "" ?>>Noveno</option>
+                                        <option value="decimo" <?= ($_POST["grado"] ?? "") == "decimo" ? "selected" : "" ?>>Décimo</option>
+                                        <option value="once" <?= ($_POST["grado"] ?? "") == "once" ? "selected" : "" ?>>Once</option>
+                                    </optgroup>
                                 </select>
                             </div>
 

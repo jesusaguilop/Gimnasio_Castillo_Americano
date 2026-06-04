@@ -131,7 +131,7 @@
             .top-bar {
                 font-size: 11px;
             }
-            .top-bar .container {
+            .top-bar__ribbon-inner {
                 padding: 0 8px;
             }
             .navbar-brand {
@@ -141,15 +141,78 @@
                 height: 36px;
             }
         }
+
+        /* CINTA ROTATIVA (RIBBON) */
+        .top-bar__ribbon {
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .top-bar__ribbon-inner {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            width: max-content;
+            padding: 0 16px;
+            flex-shrink: 0;
+            animation: ribbonScroll 30s linear infinite;
+            will-change: transform;
+        }
+
+        .top-bar__ribbon-inner:hover {
+            animation-play-state: paused;
+        }
+
+        .top-bar__item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            color: #e6e6e6;
+            font-size: 13px;
+        }
+
+        .top-bar__sep {
+            color: var(--gca-gold);
+            opacity: 0.4;
+            font-weight: 300;
+        }
+
+        .top-bar__lema {
+            font-weight: 700;
+            color: var(--gca-gold);
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes ribbonScroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        @media (max-width: 576px) {
+            .top-bar__item { font-size: 11px; }
+            .top-bar__ribbon-inner { gap: 20px; animation-duration: 20s; }
+        }
     </style>
 </head>
 <body>
 
-<!-- BARRA SUPERIOR -->
+<!-- BARRA SUPERIOR - CINTA ROTATIVA -->
 <div class="top-bar py-2">
-    <div class="container d-flex justify-content-between">
-        <span>📞 321 654 8235 | ✉️ gimnasiocastilloamericano@gmail.com</span>
-        <span>Educación con excelencia</span>
+    <div class="top-bar__ribbon">
+        <div class="top-bar__ribbon-inner">
+            <span class="top-bar__item">📞 321 654 8235</span>
+            <span class="top-bar__sep">|</span>
+            <span class="top-bar__item">✉️ gimnasiocastilloamericano@gmail.com</span>
+            <span class="top-bar__sep">|</span>
+            <span class="top-bar__item top-bar__lema">"Educación con excelencia"</span>
+            <span class="top-bar__sep">|</span>
+            <span class="top-bar__item">📞 321 654 8235</span>
+            <span class="top-bar__sep">|</span>
+            <span class="top-bar__item">✉️ gimnasiocastilloamericano@gmail.com</span>
+            <span class="top-bar__sep">|</span>
+            <span class="top-bar__item top-bar__lema">"Educación con excelencia"</span>
+        </div>
     </div>
 </div>
 

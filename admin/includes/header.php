@@ -209,7 +209,7 @@
 
         .admin-info span {
             display: block;
-            color: var(--text-primary);
+            color: var(--text-sidebar);
             font-size: 14px;
             font-weight: 600;
             white-space: nowrap;

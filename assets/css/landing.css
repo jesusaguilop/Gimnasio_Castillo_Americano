@@ -40,14 +40,9 @@ img {
     letter-spacing: .3px;
 }
 @media (max-width: 768px) {
-    .top-bar .container {
-        flex-direction: column;
-        align-items: center !important;
-        gap: 4px;
-        text-align: center;
-    }
-    .top-bar .container span:last-child {
-        display: none;
+    .top-bar__ribbon-inner {
+        gap: 24px;
+        animation-duration: 22s;
     }
 }
 

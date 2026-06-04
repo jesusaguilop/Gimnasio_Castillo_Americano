@@ -16,7 +16,10 @@ $profesores = $conexion->query(
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $cursos = $conexion->query(
-    "SELECT id, grado, nombre, nivel FROM cursos ORDER BY FIELD(nivel,'primaria','secundaria'), grado"
+    "SELECT id, grado, nombre, nivel FROM cursos ORDER BY FIELD(nivel,'preescolar','primaria','secundaria'), FIELD(grado,
+        'maternal','prejardin','jardin','transicion',
+        'primero','segundo','tercero','cuarto','quinto',
+        'sexto','septimo','octavo','noveno','decimo','undecimo'), nombre"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $asignaturas = $conexion->query(
@@ -125,8 +128,15 @@ include "includes/header.php";
                                 <select name="curso" class="form-select" required>
                                     <option value="">-- Seleccionar --</option>
                                     <?php foreach ($cursos as $c): ?>
+                                        <?php
+                                            $nivelLabel = match($c['nivel']) {
+                                                'preescolar' => 'Preescolar',
+                                                'primaria'   => 'Primaria',
+                                                default      => 'Secundaria',
+                                            };
+                                        ?>
                                         <option value="<?= $c["id"] ?>">
-                                            <?= htmlspecialchars(ucfirst($c["grado"]) . ' ' . $c["nombre"] . ' (' . $c["nivel"] . ')') ?>
+                                            <?= htmlspecialchars(ucfirst($c["grado"]) . ' ' . $c["nombre"] . ' (' . $nivelLabel . ')') ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -181,7 +191,11 @@ include "includes/header.php";
                                                 <td>
                                                     <?= htmlspecialchars(ucfirst($a['curso_nombre'])) ?>
                                                     <small class="text-muted d-block" style="font-size:10px;">
-                                                        <?= $a['curso_nivel'] === 'primaria' ? 'Primaria' : 'Secundaria' ?>
+                                                        <?= match($a['curso_nivel']) {
+                                                            'preescolar' => 'Preescolar',
+                                                            'primaria'   => 'Primaria',
+                                                            default      => 'Secundaria',
+                                                        } ?>
                                                     </small>
                                                 </td>
                                                 <td>

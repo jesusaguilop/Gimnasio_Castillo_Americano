@@ -315,12 +315,12 @@ include "includes/header.php";
                                                 ?>
                                                     <td style="text-align:center;vertical-align:middle;padding:4px 2px;">
                                                         <?php if ($es_actual): ?>
-                                                            <input type="number" name="estudiantes[<?= $est['id'] ?>][nota_<?= $p ?>]"
-                                                                class="form-control form-control-sm"
+                                                             <input type="number" name="estudiantes[<?= $est['id'] ?>][nota_<?= $p ?>]"
+                                                                class="form-control form-control-sm grade-input"
                                                                 min="0" max="100"
                                                                 value="<?= $n !== null ? (int)$n : '' ?>"
                                                                 placeholder="–"
-                                                                style="width:48px;text-align:center;font-size:12px;display:inline-block;">
+                                                                style="width:52px;text-align:center;font-size:12px;display:inline-block;padding:4px 2px;">
                                                         <?php elseif ($n !== null): ?>
                                                             <span class="badge rounded-pill px-2 py-1"
                                                                   style="font-size:11px;font-weight:600;background:<?= $n >= 60 ? '#e8f5e9' : ($n >= 40 ? '#fff3e0' : '#ffebee') ?>;color:<?= $n >= 60 ? '#2e7d32' : ($n >= 40 ? '#e65100' : '#c62828') ?>;">

@@ -29,6 +29,7 @@
             --bg-sidebar: #0a0a0a;
             --bg-sidebar-surface: #111111;
             --text-primary: #1a1a1a;
+            --text-sidebar: #f0ede6;
             --text-secondary: #555;
             --text-muted: #888;
             --border-color: #ece8e0;
@@ -52,6 +53,7 @@
             --bg-sidebar: #0a0b10;
             --bg-sidebar-surface: #11131c;
             --text-primary: #e8e6e0;
+            --text-sidebar: #e8e6e0;
             --text-secondary: #aaa;
             --text-muted: #777;
             --border-color: #2a2d3a;
@@ -164,7 +166,7 @@
         .admin-info { min-width: 0; }
         .admin-info span {
             display: block;
-            color: var(--text-primary);
+            color: var(--text-sidebar);
             font-size: 13px;
             font-weight: 600;
             white-space: nowrap;
@@ -401,6 +403,13 @@
             background: var(--bg-input); color: var(--text-primary);
             transition: border-color .2s, box-shadow .2s, background .25s;
         }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .grade-input { background: rgba(212,175,55,0.06) !important; border-color: var(--gold) !important; }
+        .grade-input:focus { background: var(--bg-input) !important; box-shadow: 0 0 0 3px rgba(212,175,55,0.2) !important; }
+        .dark-mode .grade-input { background: rgba(212,175,55,0.1) !important; }
+        .dark-mode .grade-input:focus { background: var(--bg-input) !important; }
         .form-control::placeholder { color: var(--text-muted); }
         .form-control:focus, .form-select:focus {
             border-color: var(--gold);
