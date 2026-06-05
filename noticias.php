@@ -1,106 +1,95 @@
-<?php include "header.php"; ?>
+<?php
+require_once __DIR__ . '/includes/init.php';
+
+$noticias = db()->fetchAll(
+    "SELECT * FROM noticias WHERE activo = 1 ORDER BY fecha_publicacion DESC"
+);
+
+include "header.php";
+?>
 
 <style>
-    .news-title {
-        font-weight: 800;
-        letter-spacing: .5px;
+    .news-page-hero {
+        background: linear-gradient(135deg, #0f0f0f, #1a1a2e);
+        color: #fff;
+        padding: 80px 20px 56px;
+        text-align: center;
+        position: relative;
+        isolation: isolate;
     }
+    .news-page-hero::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, transparent, var(--gca-gold), transparent);
+    }
+    .news-page-hero h1 { font-weight: 900; font-size: 2.4rem; }
+    .news-page-hero h1::after {
+        content: '';
+        display: block;
+        width: 70px; height: 3px;
+        background: var(--gca-gold);
+        margin: 14px auto 0;
+        border-radius: 2px;
+    }
+    .news-page-hero p { color: #aaa; max-width: 560px; margin: 14px auto 0; font-size: 1.05rem; }
 </style>
+
+<div class="news-page-hero" data-aos="fade-down">
+    <h1>Noticias Institucionales</h1>
+    <p>Conoce las actividades, eventos y momentos destacados del Gimnasio Castillo Americano.</p>
+</div>
 
 <div class="container my-5">
 
-    <!-- TÍTULO -->
-    <div class="text-center mb-5">
-        <h1 class="news-title">Noticias Institucionales</h1>
-        <p class="text-muted" style="max-width:700px;margin:auto;">
-            Conoce las actividades, eventos y momentos destacados
-            del Gimnasio Castillo Americano.
-        </p>
+    <?php if (empty($noticias)): ?>
+    <div class="text-center py-5" data-aos="fade-up">
+        <i class="bi bi-newspaper" style="font-size:3rem;color:#ccc;"></i>
+        <p class="text-muted mt-3">No hay noticias publicadas aún.</p>
     </div>
-
-    <!-- NOTICIAS -->
+    <?php else: ?>
     <div class="row g-4">
-
-        <!-- NOTICIA 1 -->
-        <div class="col-md-4">
+        <?php foreach ($noticias as $n): ?>
+        <div class="col-md-4" data-aos="fade-up" data-aos-delay="<?= 100 * ($loop ?? 0) ?>">
             <div class="card news-card h-100">
-
-                <img src="assets/img/colegio.png"
-                     class="card-img-top"
-                     alt="Inicio del año escolar">
-
-                <div class="card-body">
-                    <span class="badge-gca">Institucional</span>
-
-                    <h5 class="card-title">Inicio del Año Escolar</h5>
-                    <p class="card-text text-muted">
-                        Dimos la bienvenida a estudiantes y docentes para el nuevo
-                        año académico, reafirmando nuestro compromiso con la
-                        formación integral y la excelencia educativa.
-                    </p>
+                <div class="news-img-wrap">
+                    <?php if ($n["imagen"]): ?>
+                    <img src="<?= htmlspecialchars($n["imagen"]) ?>"
+                         class="card-img-top noticia-img"
+                         alt="<?= htmlspecialchars($n["titulo"]) ?>"
+                         loading="lazy">
+                    <?php else: ?>
+                    <div class="noticia-img d-flex align-items-center justify-content-center" style="background:#f0f0f0;">
+                        <i class="bi bi-image" style="font-size:2.5rem;color:#ccc;"></i>
+                    </div>
+                    <?php endif; ?>
+                    <span class="badge-gca"><?= htmlspecialchars($n["categoria"]) ?></span>
+                    <span class="news-date">
+                        <i class="bi bi-calendar3"></i>
+                        <?= date("d M Y", strtotime($n["fecha_publicacion"])) ?>
+                    </span>
                 </div>
 
-                <div class="card-footer text-center">
-                    Publicado: 15 de enero de 2026
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title"><?= htmlspecialchars($n["titulo"]) ?></h5>
+                    <?php if ($n["contenido"]): ?>
+                    <p class="card-text flex-grow-1"><?= nl2br(htmlspecialchars($n["contenido"])) ?></p>
+                    <?php endif; ?>
+                </div>
+
+                <div class="card-footer">
+                    <i class="bi bi-clock"></i> Publicado <?= date("d \\d\\e F \\d\\e Y", strtotime($n["fecha_publicacion"])) ?>
                 </div>
             </div>
         </div>
-
-        <!-- NOTICIA 2 (VIDEO) -->
-        <div class="col-md-4">
-            <div class="card news-card h-100">
-
-                <video class="card-img-top" controls muted>
-                    <source src="assets/videos/semanac.mp4" type="video/mp4">
-                    Tu navegador no soporta video HTML5.
-                </video>
-
-                <div class="card-body">
-                    <span class="badge-gca">Evento Cultural</span>
-
-                    <h5 class="card-title">Semana Cultural</h5>
-                    <p class="card-text text-muted">
-                        Jornadas llenas de arte, deporte y cultura que fortalecen
-                        la convivencia, el talento y la identidad institucional
-                        de nuestros estudiantes.
-                    </p>
-                </div>
-
-                <div class="card-footer text-center">
-                    Publicado: 20 de febrero de 2026
-                </div>
-            </div>
-        </div>
-
-        <!-- NOTICIA 3 (EJEMPLO FUTURA) -->
-        <div class="col-md-4">
-            <div class="card news-card h-100">
-
-                <img src="assets/img/imagen9.png"
-                     class="card-img-top"
-                     alt="Actividad académica">
-
-                <div class="card-body">
-                    <span class="badge-gca">Académico</span>
-
-                    <h5 class="card-title">Fortalecimiento Académico</h5>
-                    <p class="card-text text-muted">
-                        Implementamos nuevas estrategias pedagógicas orientadas
-                        al desarrollo del pensamiento crítico y la excelencia académica.
-                    </p>
-                </div>
-
-                <div class="card-footer text-center">
-                    Publicado: 05 de marzo de 2026
-                </div>
-            </div>
-        </div>
-
+        <?php $loop = ($loop ?? 0) + 1; ?>
+        <?php endforeach; ?>
     </div>
+    <?php endif; ?>
 
-    <!-- BOTÓN -->
-    <div class="text-center mt-5">
-        <a href="index.php" class="btn btn-outline-dark px-4">
+    <div class="text-center mt-5" data-aos="fade-up">
+        <a href="index.php" class="btn btn-outline-dark px-4" style="border-radius:40px;">
             Volver al inicio
         </a>
     </div>

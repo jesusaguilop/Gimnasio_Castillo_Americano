@@ -100,6 +100,17 @@ if ($hora < 12) {
             <a href="asignar_director.php" class="nav-sub-item">Director de Grupo</a>
         </div>
 
+        <div class="nav-parent" onclick="toggleMenu(this)">
+            <i class="bi bi-newspaper nav-icon"></i>
+            Contenido Web
+            <i class="bi bi-chevron-right chevron"></i>
+        </div>
+        <div class="nav-submenu">
+            <a href="ver_noticias.php" class="nav-sub-item">Noticias</a>
+            <a href="ver_eventos.php" class="nav-sub-item">Eventos</a>
+            <a href="ver_docentes.php" class="nav-sub-item">Directorio Docentes</a>
+        </div>
+
         <div class="nav-section-label">Herramientas</div>
 
         <a href="plataforma.php"

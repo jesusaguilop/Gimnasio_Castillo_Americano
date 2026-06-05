@@ -39,13 +39,23 @@
                         </a>
                     </li>
                     <li class="mb-2">
-                        <a href="nosotros.php" class="text-decoration-none text-light">
-                            Nosotros
+                        <a href="admisiones.php" class="text-decoration-none text-light">
+                            Admisiones
                         </a>
                     </li>
                     <li class="mb-2">
                         <a href="noticias.php" class="text-decoration-none text-light">
                             Noticias
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="docentes.php" class="text-decoration-none text-light">
+                            Docentes
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a href="calendario.php" class="text-decoration-none text-light">
+                            Calendario
                         </a>
                     </li>
                     <li class="mb-2">
@@ -90,4 +100,39 @@
     </div>
 </footer>
 
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+<script>
+    AOS.init({
+        duration: 800,
+        easing: 'ease-out-cubic',
+        once: true,
+        offset: 60
+    });
+</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- WHATSAPP FLOTANTE -->
+<a href="https://wa.me/573216548235?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20el%20colegio"
+   class="whatsapp-float"
+   target="_blank"
+   rel="noopener"
+   aria-label="WhatsApp">
+    <i class="bi bi-whatsapp"></i>
+</a>
+
+<!-- BACK TO TOP -->
+<button class="back-to-top" id="backToTop" aria-label="Volver arriba">
+    <i class="bi bi-chevron-up"></i>
+</button>
+
+<script>
+    // Back to top
+    const backToTop = document.getElementById('backToTop');
+    window.addEventListener('scroll', () => {
+        backToTop.classList.toggle('show', window.scrollY > 400);
+    });
+    backToTop.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+</script>

@@ -10,7 +10,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/landing.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <style>
         html, body {
@@ -24,6 +26,23 @@
             font-family: 'Inter', "Segoe UI", system-ui, sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+        }
+
+        h1, h2, h3, h4, h5, h6,
+        .display-5, .display-4, .display-3, .display-2, .display-1,
+        .fw-bold, .fw-900, .section-title, .news-title {
+            font-family: 'Playfair Display', 'Inter', serif;
+            letter-spacing: -.02em;
+        }
+
+        .navbar-brand .brand-text {
+            font-family: 'Playfair Display', 'Inter', serif;
+            font-weight: 700;
+        }
+
+        .hero-title {
+            font-family: 'Playfair Display', serif;
+            font-weight: 900;
         }
 
         main {
@@ -59,8 +78,10 @@
         .navbar-nav .nav-link {
             color: #333;
             font-weight: 500;
-            padding: 10px 14px;
+            padding: 10px 10px;
+            font-size: 13.5px;
             position: relative;
+            white-space: nowrap;
         }
 
         .navbar-nav .nav-link:hover {
@@ -232,8 +253,10 @@
             <ul class="navbar-nav mx-auto">
                 <li class="nav-item"><a class="nav-link" href="index.php">Inicio</a></li>
                 <li class="nav-item"><a class="nav-link" href="institucion.php">Institución</a></li>
-                <li class="nav-item"><a class="nav-link" href="nosotros.php">Nosotros</a></li>
+                <li class="nav-item"><a class="nav-link" href="admisiones.php">Admisiones</a></li>
                 <li class="nav-item"><a class="nav-link" href="noticias.php">Noticias</a></li>
+                <li class="nav-item"><a class="nav-link" href="docentes.php">Docentes</a></li>
+                <li class="nav-item"><a class="nav-link" href="calendario.php">Calendario</a></li>
                 <li class="nav-item"><a class="nav-link" href="servicios.php">Servicios</a></li>
                 <li class="nav-item"><a class="nav-link" href="contacto.php">Contacto</a></li>
             </ul>
