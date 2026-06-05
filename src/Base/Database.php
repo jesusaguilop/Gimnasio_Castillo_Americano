@@ -86,13 +86,10 @@ class Database
 
     public function update(string $table, array $data, string $where, array $whereParams = []): int
     {
-        $sets = [];
-        foreach ($data as $col => $val) {
-            $sets[] = "$col = :$col";
-        }
-        $sql = "UPDATE $table SET " . implode(', ', $sets) . " WHERE $where";
+        $cols = implode(', ', array_map(fn($col) => "$col = ?", array_keys($data)));
+        $sql = "UPDATE $table SET $cols WHERE $where";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(array_merge($data, $whereParams));
+        $stmt->execute(array_merge(array_values($data), $whereParams));
         return $stmt->rowCount();
     }
 
