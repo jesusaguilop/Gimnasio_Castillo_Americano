@@ -1,5 +1,67 @@
 </main>
 
+<!-- FOOTER (diseño modernizado, mismos colores) -->
+<footer class="site-footer" role="contentinfo">
+    <style>
+        .site-footer { background: var(--gca-dark); color: var(--gca-footer-text); border-top:4px solid var(--gca-gold); }
+        .site-footer .footer-inner { max-width:1100px; margin:0 auto; padding:48px 20px; }
+        .footer-grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:28px; align-items:start; }
+        .footer-brand { display:flex; gap:16px; align-items:flex-start; }
+        .footer-brand img{ height:64px; width:auto; border-radius:8px; }
+        .footer-brand h5{ margin:0; color:#fff; font-weight:800; font-size:1.05rem; }
+        .footer-tag { color:var(--gca-gold); font-size:0.9rem; }
+        .footer-about { margin-top:12px; color:var(--gca-footer-text); line-height:1.6; font-size:0.95rem; }
+
+        .footer-links h6, .footer-contact h6 { color:var(--gca-gold); font-weight:800; margin-bottom:12px; }
+        .footer-links ul { list-style:none; padding:0; margin:0; display:grid; grid-template-columns:repeat(1, minmax(0,1fr)); gap:8px; }
+        .footer-links a{ color:inherit; text-decoration:none; opacity:0.95; transition:opacity .18s ease, transform .18s ease; }
+        .footer-links a:hover{ opacity:1; transform:translateX(4px); }
+
+        .socials { display:flex; gap:10px; margin-top:12px; }
+        .socials a{ display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:8px; background:rgba(255,255,255,0.03); color:var(--gca-gold); text-decoration:none; }
+
+        .contact-line{ display:flex; gap:12px; align-items:center; font-size:0.95rem; color:var(--gca-footer-text); }
+
+        .footer-bottom{ margin-top:28px; border-top:1px solid rgba(255,255,255,0.04); padding-top:18px; display:flex; justify-content:space-between; align-items:center; font-size:0.9rem; color:#bdbdbd; }
+
+        /* Responsive */
+        @media (max-width:900px){ .footer-grid{ grid-template-columns: 1fr; } .footer-bottom{ flex-direction:column; gap:10px; align-items:flex-start; } }
+    </style>
+
+    <div class="footer-inner">
+        <div class="footer-grid">
+            <div>
+                <div class="footer-brand">
+                    <img src="assets/img/escudo-gca.png" alt="GCA">
+                    <div>
+                        <h5>Gimnasio Castillo Americano</h5>
+                        <div class="footer-tag">“Cultivar para cosechar”</div>
+                    </div>
+                </div>
+                <p class="footer-about">Institución educativa comprometida con la formación integral, el desarrollo humano y la excelencia académica.</p>
+
+                <div class="socials" aria-hidden="false">
+                    <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+                    <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+                    <a href="https://youtube.com" target="_blank" rel="noopener" aria-label="YouTube"><i class="bi bi-youtube"></i></a>
+                </div>
+            </div>
+
+            <div class="footer-links">
+                <h6>Enlaces institucionales</h6>
+                <ul>
+                    <li><a href="institucion.php">Institución</a></li>
+                    <li><a href="admisiones.php">Admisiones</a></li>
+                    <li><a href="noticias.php">Noticias</a></li>
+                    <li><a href="docentes.php">Docentes</a></li>
+                    <li><a href="calendario.php">Calendario</a></li>
+                    <li><a href="servicios.php">Servicios</a></li>
+                    <li><a href="contacto.php">Contacto</a></li>
+                </ul>
+            </div>
+
+</main>
+
 <!-- FOOTER -->
 <footer style="background:var(--gca-dark); color:#dcdcdc; border-top:4px solid var(--gca-gold);">
     <div class="container py-5">
@@ -136,3 +198,5 @@
     });
 
 </script>
+
+

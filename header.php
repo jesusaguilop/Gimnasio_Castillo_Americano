@@ -74,6 +74,7 @@
         .navbar-brand img {
             height: 48px;
         }
+        .mobile-logo { display: none; }
 
         .navbar-nav .nav-link {
             color: #333;
@@ -122,29 +123,127 @@
         /* ─── Mobile Navbar ─── */
         @media (max-width: 991.98px) {
             .navbar-collapse {
-                background: #fff;
-                padding: 16px;
-                border-radius: 16px;
-                box-shadow: 0 12px 40px rgba(0,0,0,.12);
-                margin-top: 8px;
+                position: fixed;
+                top: 0; right: -100%;
+                width: 300px;
+                height: 100vh;
+                height: 100dvh;
+                background: linear-gradient(180deg, #0f0f0f 0%, #1a1a2e 100%);
+                padding: 80px 24px 24px;
+                box-shadow: -10px 0 40px rgba(0,0,0,.3);
+                transition: right .35s cubic-bezier(.22,1,.36,1);
+                z-index: 1050;
+                display: flex;
+                flex-direction: column;
+                overflow-y: auto;
+                margin-top: 0;
+                border-left: 3px solid var(--gca-gold);
+            }
+            .navbar-collapse.show,
+            .navbar-collapse.collapsing {
+                right: 0;
+            }
+            .navbar-nav {
+                flex-direction: column;
+                gap: 4px;
             }
             .navbar-nav .nav-link {
-                padding: 12px 14px;
-                border-radius: 10px;
+                color: #ddd;
+                padding: 14px 18px;
+                border-radius: 12px;
+                font-size: 15px;
+                font-weight: 500;
+                transition: all .25s ease;
             }
             .navbar-nav .nav-link:hover {
-                background: #f5f5f5;
+                background: rgba(201,162,77,.1);
+                color: var(--gca-gold);
+                transform: translateX(6px);
             }
             .navbar-nav .nav-link::after {
                 display: none;
             }
             .navbar .btn-gca {
-                margin-top: 8px;
+                margin-top: 16px;
                 width: 100%;
                 text-align: center;
+                padding: 12px;
+                font-size: 14px;
             }
             .navbar-brand img {
                 height: 40px;
+            }
+            .navbar-toggler {
+                border: none;
+                padding: 8px;
+                z-index: 1060;
+                position: relative;
+            }
+            .navbar-toggler:focus {
+                box-shadow: none;
+            }
+            .navbar-toggler-icon {
+                background-image: none;
+                width: 26px;
+                height: 20px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+            .navbar-toggler-icon::before,
+            .navbar-toggler-icon::after,
+            .navbar-toggler-icon span {
+                content: '';
+                display: block;
+                width: 100%;
+                height: 2.5px;
+                background: #333;
+                border-radius: 4px;
+                transition: all .3s ease;
+            }
+            .navbar-toggler[aria-expanded="true"] .navbar-toggler-icon span {
+                opacity: 0;
+            }
+            .navbar-toggler[aria-expanded="true"] .navbar-toggler-icon::before {
+                transform: translateY(9px) rotate(45deg);
+            }
+            .navbar-toggler[aria-expanded="true"] .navbar-toggler-icon::after {
+                transform: translateY(-9px) rotate(-45deg);
+            }
+            .navbar-collapse .close-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,.4);
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+                z-index: 1040; /* behind the off-canvas panel (1050) */
+                opacity: 0;
+                transition: opacity .35s ease;
+                pointer-events: none;
+            }
+            .navbar-collapse.show .close-overlay,
+            .navbar-collapse.collapsing .close-overlay {
+                opacity: 1;
+                pointer-events: auto;
+                z-index: 1040;
+            }
+            .navbar-collapse .nav-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 28px;
+                padding-bottom: 20px;
+                border-bottom: 1px solid rgba(255,255,255,.06);
+            }
+            .navbar-collapse .nav-header img {
+                height: 40px;
+                width: auto;
+            }
+            .navbar-collapse .nav-header span {
+                color: #fff;
+                font-weight: 700;
+                font-size: 14px;
+                font-family: 'Playfair Display', 'Inter', serif;
             }
         }
 
@@ -157,10 +256,21 @@
             }
             .navbar-brand {
                 gap: 8px;
+                top: 50%;
             }
             .navbar-brand img {
                 height: 36px;
             }
+            /* mobile logo: hide small shield and brand text, show centered wide logo */
+            .mobile-logo { display: block; max-width: 62%; height: auto; }
+            .navbar-brand > img:first-child { display: none; }
+            .navbar-brand .brand-text { display: none; }
+            .navbar .container { position: relative; }
+            .navbar-brand { position: absolute; left: 50%; transform: translate(-50%, -50%); }
+            /* put toggler on the left for easier thumb reach, keep z-index above overlay */
+            .navbar-toggler { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); z-index: 1060; }
+            /* hide desktop login button on small screens (moved into collapse) */
+            .navbar .btn-gca { display: none; }
         }
 
         /* CINTA ROTATIVA (RIBBON) */
@@ -242,15 +352,21 @@
     <div class="container">
         <a class="navbar-brand" href="index.php">
             <img src="assets/img/escudo-gca.png" alt="Gimnasio Castillo Americano">
+            <img src="assets/img/logo-mobile.png" alt="Gimnasio Castillo Americano" class="mobile-logo">
             <span class="brand-text">Gimnasio Castillo Americano</span>
         </a>
 
-        <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#menu">
-            <span class="navbar-toggler-icon"></span>
+        <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#menu" aria-label="Menú">
+            <span class="navbar-toggler-icon"><span></span></span>
         </button>
 
         <div class="collapse navbar-collapse" id="menu">
-            <ul class="navbar-nav mx-auto">
+            <div class="close-overlay" data-bs-dismiss="collapse"></div>
+            <div class="nav-header">
+                <img src="assets/img/escudo-gca.png" alt="GCA">
+                <span>Gimnasio Castillo Americano</span>
+            </div>
+            <ul class="navbar-nav">
                 <li class="nav-item"><a class="nav-link" href="index.php">Inicio</a></li>
                 <li class="nav-item"><a class="nav-link" href="institucion.php">Institución</a></li>
                 <li class="nav-item"><a class="nav-link" href="admisiones.php">Admisiones</a></li>

@@ -192,10 +192,9 @@ include "header.php";
     .cal-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 4px;
+        gap: 3px;
         background: #fff;
         border-radius: 20px;
-        overflow: hidden;
         box-shadow: 0 12px 40px rgba(0,0,0,.05);
         border: 1px solid #f0eee8;
     }
@@ -210,17 +209,17 @@ include "header.php";
         letter-spacing: 1px;
     }
     .cal-grid .day {
-        aspect-ratio: 1;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
-        padding: 8px;
-        font-size: 14px;
+        padding: 6px 4px;
+        font-size: 13px;
         background: #fcfcfc;
         border: 1px solid #f5f5f5;
         position: relative;
         min-height: 80px;
+        overflow: hidden;
         transition: background .2s ease;
     }
     .cal-grid .day:hover {
@@ -300,11 +299,24 @@ include "header.php";
         background-clip: text;
     }
 
-    @media (max-width: 576px) {
-        .cal-grid .day { min-height: 50px; font-size: 12px; padding: 3px; }
-        .cal-grid .day-name { font-size: 11px; padding: 8px 0; }
+    @media (max-width: 992px) {
+        .cal-grid .day { min-height: 70px; font-size: 12px; padding: 4px; }
+        .cal-grid .day .num { font-size: 12px; }
+        .cal-grid .day-name { font-size: 11px; padding: 10px 0; }
         .cal-nav h3 { font-size: 1.1rem; }
+        .cal-col { max-width: 100%; flex: 0 0 100%; }
+    }
+    @media (max-width: 576px) {
+        .cal-grid { gap: 2px; }
+        .cal-grid .day { min-height: 44px; font-size: 10px; padding: 2px; }
+        .cal-grid .day .num { font-size: 10px; margin-bottom: 1px; }
+        .cal-grid .day-name { font-size: 9px; padding: 6px 0; }
+        .cal-nav { flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .cal-nav h3 { font-size: 1rem; order: -1; width: 100%; text-align: center; }
+        .btn-nav-cal { font-size: 12px; padding: 4px 12px; }
         .day.festivo .festivo-label { display: none; }
+        .event-dots { gap: 2px; }
+        .cal-grid .day .event-dot { width: 5px; height: 5px; }
     }
 
     .event-card-glow {
@@ -428,8 +440,8 @@ include "header.php";
 </div>
 
 <div class="container my-5">
-    <div class="row g-5">
-        <div class="col-lg-8" data-aos="fade-up">
+    <div class="row g-4">
+        <div class="col-lg-7 cal-col mx-auto" data-aos="fade-up">
             <div class="cal-nav">
                 <button class="btn btn-nav-cal" data-nav="-1"><i class="bi bi-chevron-left"></i> Anterior</button>
                 <h3 class="cal-month-title"><?= $meses[$mes] ?> <?= $anio ?></h3>
@@ -441,7 +453,7 @@ include "header.php";
             </div>
         </div>
 
-        <div class="col-lg-4" data-aos="fade-left">
+        <div class="col-lg-5" data-aos="fade-left">
             <div class="d-flex align-items-center gap-2 mb-4 pb-2" style="border-bottom:2px solid var(--gca-gold);">
                 <i class="bi bi-calendar-event" style="color:var(--gca-gold);font-size:1.2rem;"></i>
                 <h5 class="fw-bold mb-0">Próximos Eventos</h5>
