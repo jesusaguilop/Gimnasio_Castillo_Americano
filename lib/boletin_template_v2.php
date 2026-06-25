@@ -1,6 +1,6 @@
 <?php
 
-function boletinHTML_v2($estudiante, $curso, $periodo, $notas, $promedio, $logros = [], $directorNombre = '', $puesto = '')
+function boletinHTML_v2($estudiante, $curso, $periodo, $notas, $promedio, $promediosArea = [], $logros = [], $directorNombre = '', $puesto = '')
 {
     $nivel = $curso['nivel'] ?? '';
     $nivelLabel = $nivel === 'primaria' ? 'PRIMARIA' : 'SECUNDARIA';
@@ -22,7 +22,13 @@ function boletinHTML_v2($estudiante, $curso, $periodo, $notas, $promedio, $logro
 
         $rows .= '<tr>';
         if ($firstInArea) {
-            $rows .= '<td rowspan="' . $areaCounts[$n['area']] . '" class="area-cell">' . htmlspecialchars($n['area']) . '</td>';
+            $areaProm = $promediosArea[$n['area']] ?? null;
+            $areaLabel = htmlspecialchars($n['area']);
+            if ($areaProm !== null) {
+                $areaPromColor = $areaProm >= 60 ? '#2e7d32' : ($areaProm >= 40 ? '#e65100' : '#c62828');
+                $areaLabel .= '<br><span style="font-size:9px;font-weight:400;">Prom: <b style="color:' . $areaPromColor . ';">' . number_format($areaProm, 1) . '%</b></span>';
+            }
+            $rows .= '<td rowspan="' . $areaCounts[$n['area']] . '" class="area-cell">' . $areaLabel . '</td>';
         }
         $rows .= '<td class="asignatura">' . htmlspecialchars($n['asignatura']) . '</td>';
         $rows .= '<td class="ih">' . $ih . '</td>';

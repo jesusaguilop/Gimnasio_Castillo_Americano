@@ -90,6 +90,14 @@ if (!function_exists('config')) {
             'db.pass'     => $dbPass,
             'db.charset'  => env('DB_CHARSET', 'utf8mb4'),
             'session.lifetime' => (int) env('SESSION_LIFETIME', 7200),
+            'mail.host'       => env('MAIL_HOST', 'smtp.gmail.com'),
+            'mail.port'       => (int) env('MAIL_PORT', 587),
+            'mail.username'   => env('MAIL_USERNAME', ''),
+            'mail.password'   => env('MAIL_PASSWORD', ''),
+            'mail.encryption' => env('MAIL_ENCRYPTION', 'tls'),
+            'mail.from'       => env('MAIL_FROM_ADDRESS', 'no-reply@gimcaste.com'),
+            'mail.from_name'  => env('MAIL_FROM_NAME', 'Gimnasio Castillo Americano'),
+            'mail.admin'      => env('MAIL_ADMIN', 'admin@gimcaste.com'),
         ];
     }
 

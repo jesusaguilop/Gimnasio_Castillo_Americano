@@ -7,6 +7,7 @@ if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
 }
 
 require_once "../config/database.php";
+require_once "../lib/csrf_helper.php";
 
 $mensaje = "";
 $error = "";
@@ -23,22 +24,34 @@ $cursos = $conexion->query(
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $asignaturas = $conexion->query(
-    "SELECT id, nombre, nivel FROM asignaturas ORDER BY nivel, nombre"
+    "SELECT a.id, a.nombre, a.nivel, ar.nombre AS area,
+            (SELECT GROUP_CONCAT(ag.grado SEPARATOR ',') FROM asignatura_grado ag WHERE ag.asignatura_id = a.id) AS grados
+     FROM asignaturas a
+     LEFT JOIN areas ar ON a.area_id = ar.id
+     ORDER BY FIELD(a.nivel,'preescolar','primaria','secundaria'), ar.nombre, a.nombre"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    if (isset($_POST["eliminar"])) {
-        $stmt = $conexion->prepare("DELETE FROM profesor_curso_asignatura WHERE id = ?");
-        $stmt->execute([$_POST["eliminar"]]);
-        $mensaje = "Asignación eliminada correctamente.";
+    if (!validar_token_csrf($_POST["_csrf_token"] ?? "")) {
+        $error = "Error de seguridad. Intente de nuevo.";
+    } elseif (isset($_POST["eliminar"])) {
+        try {
+            $stmt = $conexion->prepare("DELETE FROM profesor_curso_asignatura WHERE id = ?");
+            $stmt->execute([$_POST["eliminar"]]);
+            $mensaje = "Asignación eliminada correctamente.";
+        } catch (PDOException $e) {
+            error_log("[asignar_profesor] " . $e->getMessage());
+            $error = "Error al eliminar la asignación.";
+        }
     } else {
         $profesor = $_POST["profesor"];
         $curso = $_POST["curso"];
         $asignatura = $_POST["asignatura"];
+        $porcentaje = (int)($_POST["porcentaje"] ?? 100);
 
-        $sql = "INSERT IGNORE INTO profesor_curso_asignatura (profesor_id, curso_id, asignatura_id)
-                VALUES (:profesor, :curso, :asignatura)";
+        $sql = "INSERT IGNORE INTO profesor_curso_asignatura (profesor_id, curso_id, asignatura_id, porcentaje)
+                VALUES (:profesor, :curso, :asignatura, :porcentaje)";
 
         $stmt = $conexion->prepare($sql);
 
@@ -47,6 +60,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ":profesor" => $profesor,
                 ":curso" => $curso,
                 ":asignatura" => $asignatura,
+                ":porcentaje" => $porcentaje,
             ]);
             if ($stmt->rowCount() > 0) {
                 $mensaje = "Asignación creada correctamente.";
@@ -54,13 +68,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $error = "Esta asignación ya existe.";
             }
         } catch (PDOException $e) {
+            error_log("[asignar_profesor] " . $e->getMessage());
             $error = "Error al asignar.";
         }
     }
 }
 
 $asignaciones = $conexion->query("
-    SELECT pca.id, u.nombre AS profesor_nombre, 
+    SELECT pca.id, pca.porcentaje, u.nombre AS profesor_nombre, 
            CONCAT(c.grado, ' ', c.nombre) AS curso_nombre, c.nivel AS curso_nivel,
            a.nombre AS asignatura_nombre, a.nivel AS asignatura_nivel
     FROM profesor_curso_asignatura pca
@@ -113,6 +128,7 @@ include "includes/header.php";
                         <?php endif; ?>
 
                         <form method="POST">
+                            <?= campo_csrf() ?>
                             <div class="mb-3">
                                 <label class="form-label fw-medium">Profesor</label>
                                 <select name="profesor" class="form-select" required>
@@ -125,7 +141,7 @@ include "includes/header.php";
 
                             <div class="mb-3">
                                 <label class="form-label fw-medium">Curso</label>
-                                <select name="curso" class="form-select" required>
+                                <select name="curso" id="selectCurso" class="form-select" required>
                                     <option value="">-- Seleccionar --</option>
                                     <?php foreach ($cursos as $c): ?>
                                         <?php
@@ -135,7 +151,7 @@ include "includes/header.php";
                                                 default      => 'Secundaria',
                                             };
                                         ?>
-                                        <option value="<?= $c["id"] ?>">
+                                        <option value="<?= $c["id"] ?>" data-nivel="<?= $c["nivel"] ?>" data-grado="<?= $c["grado"] ?>">
                                             <?= htmlspecialchars(ucfirst($c["grado"]) . ' ' . $c["nombre"] . ' (' . $nivelLabel . ')') ?>
                                         </option>
                                     <?php endforeach; ?>
@@ -144,14 +160,23 @@ include "includes/header.php";
 
                             <div class="mb-4">
                                 <label class="form-label fw-medium">Asignatura</label>
-                                <select name="asignatura" class="form-select" required>
+                                <select name="asignatura" id="selectAsignatura" class="form-select" required>
                                     <option value="">-- Seleccionar --</option>
-                                    <?php foreach ($asignaturas as $a): ?>
-                                        <option value="<?= $a["id"] ?>" data-nivel="<?= $a["nivel"] ?>">
-                                            <?= htmlspecialchars($a["nombre"]) ?>
+                                    <?php foreach ($asignaturas as $a):
+                                        $gradoLabel = $a["grados"] ? ' (' . $a["grados"] . ')' : '';
+                                    ?>
+                                        <option value="<?= $a["id"] ?>" data-nivel="<?= $a["nivel"] ?>" data-grados="<?= $a["grados"] ?? '' ?>">
+                                            <?= htmlspecialchars($a["nombre"] . ($a["area"] ? ' — ' . ucfirst(mb_strtolower($a["area"])) : '') . $gradoLabel) ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-medium">Peso % en el área</label>
+                                <input type="number" name="porcentaje" class="form-control" value="100" min="1" max="100"
+                                    placeholder="Ej. 100">
+                                <div class="form-text">Porcentaje de aporte de esta asignatura al promedio global del área.</div>
                             </div>
 
                             <button type="submit" class="btn-gca w-100">
@@ -181,6 +206,7 @@ include "includes/header.php";
                                             <th>Profesor</th>
                                             <th>Curso</th>
                                             <th>Materia</th>
+                                            <th style="width:60px;">%</th>
                                             <th style="width:60px;"></th>
                                         </tr>
                                     </thead>
@@ -201,8 +227,10 @@ include "includes/header.php";
                                                 <td>
                                                     <?= htmlspecialchars($a['asignatura_nombre']) ?>
                                                 </td>
+                                                <td class="text-center"><?= (int)$a['porcentaje'] ?>%</td>
                                                 <td>
                                                     <form method="POST" id="deleteForm<?= $a['id'] ?>">
+                                                        <?= campo_csrf() ?>
                                                         <input type="hidden" name="eliminar" value="<?= $a['id'] ?>">
                                                         <button type="button" class="btn btn-sm btn-outline-danger border-0"
                                                                 onclick="showConfirm('¿Eliminar esta asignación?',()=>document.getElementById('deleteForm<?= $a['id'] ?>').submit());"
@@ -222,5 +250,55 @@ include "includes/header.php";
             </div>
         </div>
     </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cursoSelect = document.getElementById('selectCurso');
+    const asignaturaSelect = document.getElementById('selectAsignatura');
+
+    if (!cursoSelect || !asignaturaSelect) return;
+
+    const allOptions = Array.from(asignaturaSelect.options).slice(1);
+
+    function filtrarAsignaturas() {
+        const selectedOption = cursoSelect.options[cursoSelect.selectedIndex];
+        const cursoNivel = selectedOption?.getAttribute('data-nivel') || '';
+        const cursoGrado = selectedOption?.getAttribute('data-grado') || '';
+
+        const ts = asignaturaSelect.tomselect;
+        if (!ts) return;
+
+        const idsAMostrar = [];
+
+        allOptions.forEach(opt => {
+            const optNivel = opt.getAttribute('data-nivel') || '';
+            const optGrados = (opt.getAttribute('data-grados') || '').split(',').map(s => s.trim()).filter(Boolean);
+            const coincide = optNivel === cursoNivel && (optGrados.length === 0 || optGrados.includes(cursoGrado));
+            if (coincide) {
+                idsAMostrar.push(opt.value);
+            }
+        });
+
+        ts.clearOptions();
+        ts.clear();
+
+        allOptions.forEach(opt => {
+            if (idsAMostrar.includes(opt.value)) {
+                ts.addOption({ value: opt.value, text: opt.text });
+            }
+        });
+
+        if (idsAMostrar.length === 0) {
+            ts.addOption({ value: '', text: '-- No hay materias disponibles --' });
+        }
+
+        ts.refreshOptions(false);
+    }
+
+    cursoSelect.addEventListener('change', filtrarAsignaturas);
+
+    setTimeout(filtrarAsignaturas, 300);
+});
+</script>
 
     <?php include "includes/footer.php"; ?>
