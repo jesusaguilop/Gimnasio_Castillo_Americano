@@ -18,59 +18,28 @@ $cursos = db()->fetchAll(
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $nombre = trim($_POST["nombre"] ?? "");
-    $email = trim($_POST["email"] ?? "");
     $documento = trim($_POST["documento"] ?? "");
     $fecha_nacimiento = trim($_POST["fecha_nacimiento"] ?? "");
     $curso_id = $_POST["curso_id"] ?? "";
-    $pass1 = $_POST["password"] ?? "";
-    $pass2 = $_POST["password2"] ?? "";
 
-    if ($nombre === "" || $email === "" || $documento === "" || $curso_id === "" || $pass1 === "" || $pass2 === "") {
+    if ($nombre === "" || $documento === "" || $fecha_nacimiento === "" || $curso_id === "") {
         $mensaje = "Todos los campos obligatorios deben estar diligenciados.";
         $tipo = "danger";
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $mensaje = "El correo electrónico no es válido.";
-        $tipo = "danger";
-    } elseif ($pass1 !== $pass2) {
-        $mensaje = "Las contraseñas no coinciden.";
-        $tipo = "warning";
     } else {
         try {
             $db = db();
-            $db->beginTransaction();
 
-            $existing = $db->fetch("SELECT id FROM usuarios WHERE email = ? LIMIT 1", [$email]);
+            $db->insert('estudiantes', [
+                'nombre' => $nombre,
+                'documento' => $documento,
+                'fecha_nacimiento' => $fecha_nacimiento,
+                'curso_id' => $curso_id,
+            ]);
 
-            if ($existing) {
-                $mensaje = "Este correo ya se encuentra registrado.";
-                $tipo = "warning";
-                $db->rollBack();
-            } else {
-                $hash = password_hash($pass1, PASSWORD_DEFAULT);
-
-                $usuario_id = $db->insert('usuarios', [
-                    'nombre' => $nombre,
-                    'email' => $email,
-                    'password' => $hash,
-                    'rol' => 'estudiante',
-                ]);
-
-                $db->insert('estudiantes', [
-                    'usuario_id' => $usuario_id,
-                    'nombre' => $nombre,
-                    'documento' => $documento ?: null,
-                    'fecha_nacimiento' => $fecha_nacimiento ?: null,
-                    'curso_id' => $curso_id,
-                ]);
-
-                $db->commit();
-
-                Session::setSuccess("Estudiante creado correctamente.");
-                header("Location: ver_estudiantes.php");
-                exit;
-            }
+            Session::setSuccess("Estudiante creado correctamente.");
+            header("Location: ver_estudiantes.php");
+            exit;
         } catch (\PDOException $e) {
-            db()->rollBack();
             $mensaje = "Error al crear el estudiante.";
             $tipo = "danger";
         }
@@ -148,27 +117,10 @@ include "includes/header.php";
                                 </select>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label fw-medium">Fecha de nacimiento <small class="text-muted fw-normal">(opcional)</small></label>
-                                <input type="date" name="fecha_nacimiento" class="form-control"
-                                    value="<?= htmlspecialchars($_POST["fecha_nacimiento"] ?? "") ?>">
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-medium">Correo electrónico</label>
-                                <input type="email" name="email" class="form-control"
-                                    placeholder="estudiante@gca.edu.co"
-                                    value="<?= htmlspecialchars($_POST["email"] ?? "") ?>" required>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-medium">Contraseña</label>
-                                <input type="password" name="password" class="form-control" required>
-                            </div>
-
                             <div class="mb-4">
-                                <label class="form-label fw-medium">Confirmar contraseña</label>
-                                <input type="password" name="password2" class="form-control" required>
+                                <label class="form-label fw-medium">Fecha de nacimiento</label>
+                                <input type="date" name="fecha_nacimiento" class="form-control"
+                                    value="<?= htmlspecialchars($_POST["fecha_nacimiento"] ?? "") ?>" required>
                             </div>
 
                             <button type="submit" class="btn-gca w-100">
