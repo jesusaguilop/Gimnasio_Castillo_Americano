@@ -75,6 +75,7 @@ if ($hora < 12) {
             <a href="crear_asignatura.php" class="nav-sub-item">Crear Asignatura</a>
             <a href="ver_asignaturas.php" class="nav-sub-item">Ver Asignaturas</a>
             <a href="asignar_profesor.php" class="nav-sub-item">Asignar Materias</a>
+            <a href="enviar_boletin.php" class="nav-sub-item">Enviar Boletines</a>
         </div>
 
         <div class="nav-parent" onclick="toggleMenu(this)">

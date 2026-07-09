@@ -350,19 +350,21 @@ include "includes/header.php";
                                                 </td>
                                                 <td style="text-align:center;vertical-align:middle;">
                                                     <div style="display:flex;gap:6px;justify-content:center;">
-                                                        <a href="generar_boletin.php?estudiante=<?= $est['id'] ?>&periodo=<?= $periodo_activo ?>"
-                                                           target="_blank"
-                                                           class="btn-action btn-edit"
+                                                        <a href="#"
+                                                           class="btn-action btn-edit btn-gen-boletin"
                                                            title="Generar boletín PDF (diseño actual)"
-                                                            onclick="event.preventDefault();showConfirm('¿Generar boletín PDF para <?= htmlspecialchars($est['nombre'], ENT_QUOTES) ?>?',()=>window.location.href=this.href)">
+                                                           data-estudiante-id="<?= $est['id'] ?>"
+                                                           data-estudiante-nombre="<?= htmlspecialchars($est['nombre'], ENT_QUOTES) ?>"
+                                                           data-template="">
                                                             <i class="bi bi-filetype-pdf"></i>
                                                         </a>
-                                                        <a href="generar_boletin.php?estudiante=<?= $est['id'] ?>&periodo=<?= $periodo_activo ?>&template=v2"
-                                                           target="_blank"
-                                                           class="btn-action btn-edit"
+                                                        <a href="#"
+                                                           class="btn-action btn-edit btn-gen-boletin"
                                                            title="Generar boletín PDF (nuevo diseño)"
                                                            style="background:#C8A84B;border-color:#b8951f;color:#111;"
-                                                            onclick="event.preventDefault();showConfirm('¿Generar boletín (nuevo diseño) para <?= htmlspecialchars($est['nombre'], ENT_QUOTES) ?>?',()=>window.location.href=this.href)">
+                                                           data-estudiante-id="<?= $est['id'] ?>"
+                                                           data-estudiante-nombre="<?= htmlspecialchars($est['nombre'], ENT_QUOTES) ?>"
+                                                           data-template="v2">
                                                             <i class="bi bi-layout-text-window-reverse"></i>
                                                         </a>
                                                     </div>
@@ -477,5 +479,70 @@ include "includes/header.php";
             <?php endif; ?>
         </div>
     </main>
+
+<!-- ─── Paz y Salvo Modal ─── -->
+<div class="modal fade" id="pazSalvoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content" style="border-radius:16px;border:1px solid var(--border-color);box-shadow:0 20px 60px rgba(0,0,0,.15);">
+            <div class="modal-body text-center py-5 px-4">
+                <div class="mb-3" style="font-size:48px;color:var(--gold);">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <h5 class="mb-2" style="font-weight:700;">¿Está a paz y salvo?</h5>
+                <p id="pazSalvoMsg" class="mb-4" style="font-size:14px;color:var(--text-secondary);line-height:1.5;">
+                    ¿El estudiante está a paz y salvo académica y administrativamente?
+                </p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn px-4 py-2" id="pazSalvoNo" style="border-radius:10px;border:1.5px solid var(--border-color);color:var(--text-secondary);font-weight:500;background:transparent;">
+                        <i class="bi bi-x-circle me-1"></i>No
+                    </button>
+                    <button type="button" class="btn px-4 py-2" id="pazSalvoSi" style="border-radius:10px;border:none;background:#2e7d32;color:#fff;font-weight:600;">
+                        <i class="bi bi-check-circle me-1"></i>Sí, está a paz y salvo
+                    </button>
+                </div>
+                <small class="d-block mt-3 text-muted" style="font-size:11px;">
+                    Si responde <b>Sí</b> se enviará el boletín al padre y al administrador.<br>
+                    Si responde <b>No</b> solo se enviará al administrador.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = new bootstrap.Modal(document.getElementById('pazSalvoModal'), { backdrop: 'static', keyboard: false });
+    let pendingUrl = '';
+
+    document.querySelectorAll('.btn-gen-boletin').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const estudianteId = this.dataset.estudianteId;
+            const estudianteNombre = this.dataset.estudianteNombre;
+            const template = this.dataset.template;
+            const periodo = <?= json_encode($periodo_activo) ?>;
+            const baseUrl = 'generar_boletin.php?estudiante=' + estudianteId + '&periodo=' + periodo;
+            pendingUrl = baseUrl + (template ? '&template=' + template : '');
+            document.getElementById('pazSalvoMsg').textContent =
+                '¿El estudiante <b>' + estudianteNombre + '</b> está a paz y salvo académica y administrativamente?';
+            modal.show();
+        });
+    });
+
+    document.getElementById('pazSalvoSi').addEventListener('click', function() {
+        modal.hide();
+        if (pendingUrl) {
+            window.open(pendingUrl + '&paz_y_salvo=1', '_blank');
+        }
+    });
+
+    document.getElementById('pazSalvoNo').addEventListener('click', function() {
+        modal.hide();
+        if (pendingUrl) {
+            window.open(pendingUrl + '&paz_y_salvo=0', '_blank');
+        }
+    });
+});
+</script>
 
     <?php include "includes/footer.php"; ?>

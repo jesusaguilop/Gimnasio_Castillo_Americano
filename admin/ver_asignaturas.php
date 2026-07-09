@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once "../config/database.php";
+require_once "../lib/csrf_helper.php";
 
 if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
     header("Location: ../login.php");
@@ -13,19 +14,23 @@ if (isset($_SESSION["success_msg"])) {
     unset($_SESSION["success_msg"]);
 }
 
-if (isset($_GET["id"]) && isset($_GET["confirmar"])) {
-    $id = $_GET["id"];
-    try {
-        $stmt = $conexion->prepare("DELETE FROM asignaturas WHERE id = :id");
-        $stmt->execute([":id" => $id]);
-        $mensaje = "Asignatura eliminada correctamente";
-    } catch (PDOException $e) {
-        $mensaje = "No se puede eliminar la asignatura porque tiene dependencias.";
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["eliminar_id"])) {
+    if (!validar_token_csrf($_POST["_csrf_token"] ?? "")) {
+        $mensaje = "Error de seguridad. Intente de nuevo.";
+    } else {
+        try {
+            $stmt = $conexion->prepare("DELETE FROM asignaturas WHERE id = :id");
+            $stmt->execute([":id" => $_POST["eliminar_id"]]);
+            $mensaje = "Asignatura eliminada correctamente";
+        } catch (PDOException $e) {
+            error_log("[ver_asignaturas] " . $e->getMessage());
+            $mensaje = "No se puede eliminar la asignatura porque tiene dependencias.";
+        }
     }
 }
 
 $asignaturas = $conexion
-    ->query("SELECT id, nombre, area, nivel, grado FROM asignaturas ORDER BY CASE nivel WHEN 'preescolar' THEN 1 WHEN 'primaria' THEN 2 WHEN 'secundaria' THEN 3 ELSE 4 END, area, nombre")
+    ->query("SELECT id, nombre, area, nivel, grado FROM asignaturas ORDER BY FIELD(nivel,'preescolar','primaria','secundaria'), area, nombre")
     ->fetchAll(PDO::FETCH_ASSOC);
 
 $pageTitle = "Gestión de Asignaturas";
@@ -69,7 +74,8 @@ include "includes/header.php";
                                 <th>Área</th>
                                 <th>Nombre</th>
                                 <th>Nivel</th>
-                                <th>Grado</th>
+                                <th>Grados</th>
+                                <th style="width:100px;">Int. Horaria</th>
                                 <th class="text-end">Acciones</th>
                             </tr>
                         </thead>
@@ -90,21 +96,25 @@ include "includes/header.php";
                                     <td><span class="badge fw-normal px-3 py-2" style="background:#c9a24d;font-size:11px;"><?= htmlspecialchars($a["area"]) ?></span></td>
                                     <td><span class="fw-semibold"><?= htmlspecialchars($a["nombre"]) ?></span></td>
                                     <td><span class="badge fw-normal px-3 py-2" style="background:<?= $nivelColor ?>;font-size:11px;"><?= $nivelLabel ?></span></td>
-                                    <td><span class="text-muted" style="font-size:13px;"><?= $a["grado"] ? htmlspecialchars(ucfirst($a["grado"])) : '—' ?></span></td>
+                                    <td><span class="text-muted" style="font-size:13px;"><?= $a["grados"] ? htmlspecialchars($a["grados"]) : '—' ?></span></td>
+                                    <td><span class="fw-semibold"><?= (int)$a["intensidad_horaria"] ?> h</span></td>
                                     <td class="text-end">
                                         <a href="editar_asignatura.php?id=<?= $a["id"] ?>" class="btn-action btn-edit me-1" title="Editar">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
-                                        <a href="ver_asignaturas.php?id=<?= $a["id"] ?>&confirmar=1"
-                                            class="btn-action btn-delete" title="Eliminar"
-                                            onclick="event.preventDefault();showConfirm('¿Seguro que deseas eliminar esta asignatura?',()=>window.location.href=this.href);">
-                                            <i class="bi bi-trash"></i>
-                                        </a>
+                                        <form method="POST" style="display:inline" id="deleteForm<?= $a["id"] ?>">
+                                            <?= campo_csrf() ?>
+                                            <input type="hidden" name="eliminar_id" value="<?= $a["id"] ?>">
+                                            <button type="button" class="btn-action btn-delete" title="Eliminar"
+                                                onclick="showConfirm('¿Seguro que deseas eliminar esta asignatura?',()=>document.getElementById('deleteForm<?= $a["id"] ?>').submit());">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (count($asignaturas) === 0): ?>
-                                <tr><td colspan="5" class="text-center text-muted py-4">No hay asignaturas registradas.</td></tr>
+                                <tr><td colspan="6" class="text-center text-muted py-4">No hay asignaturas registradas.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>

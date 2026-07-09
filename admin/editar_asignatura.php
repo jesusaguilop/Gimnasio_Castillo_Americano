@@ -8,6 +8,7 @@ if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
 
 require_once "../config/database.php";
 require_once "../lib/rank_helper.php";
+require_once "../lib/csrf_helper.php";
 
 $mensaje = "";
 $tipo = "";
@@ -19,7 +20,7 @@ if (!isset($_GET["id"])) {
 
 $id = $_GET["id"];
 
-$stmt = $conexion->prepare("SELECT id, nombre, area, nivel, grado FROM asignaturas WHERE id = :id");
+$stmt = $conexion->prepare("SELECT a.id, a.nombre, a.area_id, a.area, a.nivel, a.intensidad_horaria FROM asignaturas a WHERE a.id = :id");
 $stmt->execute([":id" => $id]);
 $asignatura = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -28,29 +29,71 @@ if (!$asignatura) {
     exit;
 }
 
+$gradosAsignadosRaw = $conexion->prepare("SELECT grado, intensidad_horaria FROM asignatura_grado WHERE asignatura_id = :id");
+$gradosAsignadosRaw->execute([":id" => $id]);
+$gradosAsignadosIH = $gradosAsignadosRaw->fetchAll(PDO::FETCH_KEY_PAIR);
+$gradosAsignados = $gradosAsignadosIH ? array_keys($gradosAsignadosIH) : [];
+
+$areas = $conexion->query("SELECT id, nombre FROM areas ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    $nombre = trim($_POST["nombre"] ?? "");
-    $area = trim($_POST["area"] ?? "");
-    $nivel = trim($_POST["nivel"] ?? "");
-    $grado = trim($_POST["grado"] ?? "");
-
-    if ($nombre === "" || $area === "" || $nivel === "") {
-        $mensaje = "Todos los campos son obligatorios.";
+    if (!validar_token_csrf($_POST["_csrf_token"] ?? "")) {
+        $mensaje = "Error de seguridad. Intente de nuevo.";
         $tipo = "danger";
     } else {
-        $grado = $grado ?: null;
-        try {
-            $sql = "UPDATE asignaturas SET nombre = :nombre, area = :area, nivel = :nivel, grado = :grado WHERE id = :id";
-            $stmt = $conexion->prepare($sql);
-            $stmt->execute([":nombre" => $nombre, ":area" => $area, ":nivel" => $nivel, ":grado" => $grado, ":id" => $id]);
+        $nombre = trim($_POST["nombre"] ?? "");
+        $area_id = trim($_POST["area_id"] ?? "");
+        $nivel = trim($_POST["nivel"] ?? "");
+        $grados = $_POST["grados"] ?? [];
+        $ih_por_grado = $_POST["ih"] ?? [];
 
-            $_SESSION["success_msg"] = "Asignatura actualizada correctamente.";
-            header("Location: ver_asignaturas.php");
-            exit;
-        } catch (PDOException $e) {
-            $mensaje = "Error al actualizar la asignatura.";
+        if ($nombre === "" || $area_id === "" || $nivel === "" || empty($grados)) {
+            $mensaje = "Todos los campos son obligatorios y debe seleccionar al menos un grado.";
             $tipo = "danger";
+        } else {
+            try {
+                $stmt = $conexion->prepare("SELECT nombre FROM areas WHERE id = :id");
+                $stmt->execute([":id" => $area_id]);
+                $area_nombre = $stmt->fetchColumn();
+
+                $conexion->beginTransaction();
+
+                $ih_default = (int)($ih_por_grado[$grados[0]] ?? 0);
+                $sql = "UPDATE asignaturas SET nombre = :nombre, area = :area, area_id = :area_id, nivel = :nivel, intensidad_horaria = :intensidad_horaria WHERE id = :id";
+                $stmt = $conexion->prepare($sql);
+                $stmt->execute([
+                    ":nombre" => $nombre,
+                    ":area" => $area_nombre,
+                    ":area_id" => $area_id,
+                    ":nivel" => $nivel,
+                    ":intensidad_horaria" => $ih_default,
+                    ":id" => $id,
+                ]);
+
+                $stmtDel = $conexion->prepare("DELETE FROM asignatura_grado WHERE asignatura_id = :id");
+                $stmtDel->execute([":id" => $id]);
+
+                $stmtGrado = $conexion->prepare("INSERT INTO asignatura_grado (asignatura_id, grado, intensidad_horaria) VALUES (:asignatura_id, :grado, :intensidad_horaria)");
+                foreach ($grados as $g) {
+                    $stmtGrado->execute([
+                        ":asignatura_id" => $id,
+                        ":grado" => $g,
+                        ":intensidad_horaria" => (int)($ih_por_grado[$g] ?? 0),
+                    ]);
+                }
+
+                $conexion->commit();
+
+                $_SESSION["success_msg"] = "Asignatura actualizada correctamente.";
+                header("Location: ver_asignaturas.php");
+                exit;
+            } catch (PDOException $e) {
+                $conexion->rollBack();
+                error_log("[editar_asignatura] " . $e->getMessage());
+                $mensaje = "Error al actualizar la asignatura.";
+                $tipo = "danger";
+            }
         }
     }
 }
@@ -92,16 +135,17 @@ include "includes/header.php";
                         <?php endif; ?>
 
                         <form method="POST" autocomplete="off">
+                            <?= campo_csrf() ?>
+
                             <div class="mb-3">
                                 <label class="form-label fw-medium">Área</label>
-                                <select name="area" class="form-select" required>
+                                <select name="area_id" class="form-select" required>
                                     <option value="">Seleccione el área</option>
-                                    <?php
-                                        $areas = ['MATEMÁTICAS', 'CASTELLANO', 'CIENCIAS SOCIALES', 'CIENCIAS NATURALES', 'LENGUAS EXTRANJERAS', 'ARTISTICA'];
-                                        $currentArea = $_POST["area"] ?? $asignatura["area"];
-                                        foreach ($areas as $a):
-                                    ?>
-                                        <option value="<?= $a ?>" <?= $currentArea === $a ? 'selected' : '' ?>><?= ucfirst(mb_strtolower($a)) ?></option>
+                                    <?php $currentAreaId = $_POST["area_id"] ?? $asignatura["area_id"]; ?>
+                                    <?php foreach ($areas as $a): ?>
+                                        <option value="<?= $a["id"] ?>" <?= $currentAreaId == $a["id"] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars(ucfirst(mb_strtolower($a["nombre"]))) ?>
+                                        </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -118,35 +162,62 @@ include "includes/header.php";
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Grado (opcional)</label>
-                                <select name="grado" class="form-select">
-                                    <?php $currentGrado = $_POST["grado"] ?? $asignatura["grado"] ?? ""; ?>
-                                    <option value="">Todos los grados</option>
-                                    <optgroup label="Preescolar">
-                                        <option value="maternal" <?= $currentGrado === "maternal" ? "selected" : "" ?>>Maternal</option>
-                                        <option value="prejardin" <?= $currentGrado === "prejardin" ? "selected" : "" ?>>Pre-Jardín</option>
-                                        <option value="jardin" <?= $currentGrado === "jardin" ? "selected" : "" ?>>Jardín</option>
-                                        <option value="transicion" <?= $currentGrado === "transicion" ? "selected" : "" ?>>Transición</option>
-                                    </optgroup>
-                                    <optgroup label="Primaria">
-                                        <option value="primero" <?= $currentGrado === "primero" ? "selected" : "" ?>>Primero</option>
-                                        <option value="segundo" <?= $currentGrado === "segundo" ? "selected" : "" ?>>Segundo</option>
-                                        <option value="tercero" <?= $currentGrado === "tercero" ? "selected" : "" ?>>Tercero</option>
-                                        <option value="cuarto" <?= $currentGrado === "cuarto" ? "selected" : "" ?>>Cuarto</option>
-                                        <option value="quinto" <?= $currentGrado === "quinto" ? "selected" : "" ?>>Quinto</option>
-                                    </optgroup>
-                                    <optgroup label="Secundaria">
-                                        <option value="sexto" <?= $currentGrado === "sexto" ? "selected" : "" ?>>Sexto</option>
-                                        <option value="septimo" <?= $currentGrado === "septimo" ? "selected" : "" ?>>Séptimo</option>
-                                        <option value="octavo" <?= $currentGrado === "octavo" ? "selected" : "" ?>>Octavo</option>
-                                        <option value="noveno" <?= $currentGrado === "noveno" ? "selected" : "" ?>>Noveno</option>
-                                        <option value="decimo" <?= $currentGrado === "decimo" ? "selected" : "" ?>>Décimo</option>
-                                        <option value="once" <?= $currentGrado === "once" ? "selected" : "" ?>>Once</option>
-                                    </optgroup>
-                                </select>
+                                <label class="form-label fw-medium">Grados donde se dicta</label>
+                                <div id="gradosContainer">
+                                    <div class="grado-group" data-nivel="preescolar" style="display:none;">
+                                        <label class="form-label text-muted" style="font-size:12px;">Preescolar</label>
+                                        <div class="d-flex flex-wrap gap-2 mb-2">
+                                            <?php $gradosPost = $_POST["grados"] ?? $gradosAsignados; ?>
+                                            <?php foreach (['maternal','prejardin','jardin','transicion'] as $g): ?>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="checkbox" name="grados[]" value="<?= $g ?>" id="eg_<?= $g ?>"
+                                                        <?= in_array($g, $gradosPost) ? 'checked' : '' ?>>
+                                                    <label class="form-check-label" for="eg_<?= $g ?>"><?= ucfirst($g) ?></label>
+                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm d-inline-block ms-1"
+                                                        style="width:70px;" min="0" max="40"
+                                                        value="<?= htmlspecialchars($_POST["ih"][$g] ?? $gradosAsignadosIH[$g] ?? 0) ?>"
+                                                        placeholder="Horas">
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                    <div class="grado-group" data-nivel="primaria" style="display:none;">
+                                        <label class="form-label text-muted" style="font-size:12px;">Primaria</label>
+                                        <div class="d-flex flex-wrap gap-2 mb-2">
+                                            <?php foreach (['primero','segundo','tercero','cuarto','quinto'] as $g): ?>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="checkbox" name="grados[]" value="<?= $g ?>" id="eg_<?= $g ?>"
+                                                        <?= in_array($g, $gradosPost) ? 'checked' : '' ?>>
+                                                    <label class="form-check-label" for="eg_<?= $g ?>"><?= ucfirst($g) ?></label>
+                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm d-inline-block ms-1"
+                                                        style="width:70px;" min="0" max="40"
+                                                        value="<?= htmlspecialchars($_POST["ih"][$g] ?? $gradosAsignadosIH[$g] ?? 0) ?>"
+                                                        placeholder="Horas">
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                    <div class="grado-group" data-nivel="secundaria" style="display:none;">
+                                        <label class="form-label text-muted" style="font-size:12px;">Secundaria</label>
+                                        <div class="d-flex flex-wrap gap-2 mb-2">
+                                            <?php foreach (['sexto','septimo','octavo','noveno','decimo','once'] as $g): ?>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="checkbox" name="grados[]" value="<?= $g ?>" id="eg_<?= $g ?>"
+                                                        <?= in_array($g, $gradosPost) ? 'checked' : '' ?>>
+                                                    <label class="form-check-label" for="eg_<?= $g ?>"><?= ucfirst($g) ?></label>
+                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm d-inline-block ms-1"
+                                                        style="width:70px;" min="0" max="40"
+                                                        value="<?= htmlspecialchars($_POST["ih"][$g] ?? $gradosAsignadosIH[$g] ?? 0) ?>"
+                                                        placeholder="Horas">
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-text">Seleccione los grados en los que se dicta esta asignatura e ingrese la intensidad horaria semanal para cada grado.</div>
                             </div>
 
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <label class="form-label fw-medium">Nombre de la asignatura</label>
                                 <input type="text" name="nombre" class="form-control"
                                     value="<?= htmlspecialchars($_POST["nombre"] ?? $asignatura["nombre"]) ?>" required
@@ -166,5 +237,22 @@ include "includes/header.php";
             </div>
         </div>
     </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const nivelSelect = document.querySelector('select[name="nivel"]');
+    const gradoGroups = document.querySelectorAll('.grado-group');
+
+    function mostrarGrados() {
+        const nivel = nivelSelect.value;
+        gradoGroups.forEach(g => {
+            g.style.display = g.dataset.nivel === nivel ? 'block' : 'none';
+        });
+    }
+
+    nivelSelect.addEventListener('change', mostrarGrados);
+    mostrarGrados();
+});
+</script>
 
     <?php include "includes/footer.php"; ?>

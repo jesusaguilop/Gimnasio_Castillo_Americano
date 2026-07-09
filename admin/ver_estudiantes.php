@@ -31,11 +31,10 @@ if (isset($_GET["id"]) && isset($_GET["confirmar"])) {
 $search = trim($_GET["q"] ?? "");
 $grado_filter = trim($_GET["grado"] ?? "");
 
-$sql = "SELECT e.id, e.nombre, e.documento, e.curso_id, e.usuario_id,
-               u.email, c.grado, c.nombre AS curso_nombre, c.nivel
+$sql = "SELECT e.id, e.nombre, e.documento, e.fecha_nacimiento, e.curso_id,
+               c.grado, c.nombre AS curso_nombre, c.nivel
         FROM estudiantes e
         LEFT JOIN cursos c ON e.curso_id = c.id
-        LEFT JOIN usuarios u ON e.usuario_id = u.id
         WHERE 1=1";
 $params = [];
 
@@ -138,8 +137,8 @@ include "includes/header.php";
                                 <tr>
                                     <th>Nombre</th>
                                     <th>Documento</th>
+                                    <th>Fecha Nac.</th>
                                     <th>Curso</th>
-                                    <th>Email</th>
                                     <th class="text-end">Acciones</th>
                                 </tr>
                             </thead>
@@ -151,8 +150,8 @@ include "includes/header.php";
                                     <tr>
                                         <td><span class="fw-semibold"><?= htmlspecialchars($e["nombre"]) ?></span></td>
                                         <td><?= htmlspecialchars($e["documento"] ?? "—") ?></td>
+                                        <td><?= htmlspecialchars($e["fecha_nacimiento"] ?? "—") ?></td>
                                         <td><?php if ($e["grado"]): ?><span style="background:<?= $nivelColor ?>;font-size:11px;" class="badge fw-normal px-2 py-1"><?= htmlspecialchars($cursoLabel) ?></span><?php else: ?>—<?php endif; ?></td>
-                                        <td><?= htmlspecialchars($e["email"] ?? "—") ?></td>
                                         <td class="text-end">
                                             <a href="editar_estudiante.php?eid=<?= $e["id"] ?>" class="btn-action btn-edit me-1" title="Editar">
                                                 <i class="bi bi-pencil-square"></i>
