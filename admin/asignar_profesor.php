@@ -16,10 +16,14 @@ $profesores = $conexion->query(
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $cursos = $conexion->query(
-    "SELECT id, grado, nombre, nivel FROM cursos ORDER BY FIELD(nivel,'preescolar','primaria','secundaria'), FIELD(grado,
-        'maternal','prejardin','jardin','transicion',
-        'primero','segundo','tercero','cuarto','quinto',
-        'sexto','septimo','octavo','noveno','decimo','undecimo'), nombre"
+    "SELECT id, grado, nombre, nivel FROM cursos ORDER BY
+        CASE nivel WHEN 'preescolar' THEN 1 WHEN 'primaria' THEN 2 WHEN 'secundaria' THEN 3 ELSE 4 END,
+        CASE grado
+            WHEN 'maternal' THEN 1 WHEN 'prejardin' THEN 2 WHEN 'jardin' THEN 3 WHEN 'transicion' THEN 4
+            WHEN 'primero' THEN 5 WHEN 'segundo' THEN 6 WHEN 'tercero' THEN 7 WHEN 'cuarto' THEN 8 WHEN 'quinto' THEN 9
+            WHEN 'sexto' THEN 10 WHEN 'septimo' THEN 11 WHEN 'octavo' THEN 12 WHEN 'noveno' THEN 13 WHEN 'decimo' THEN 14 WHEN 'undecimo' THEN 15
+            ELSE 16
+        END, nombre"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $asignaturas = $conexion->query(
@@ -37,24 +41,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $curso = $_POST["curso"];
         $asignatura = $_POST["asignatura"];
 
-        $sql = "INSERT IGNORE INTO profesor_curso_asignatura (profesor_id, curso_id, asignatura_id)
-                VALUES (:profesor, :curso, :asignatura)";
+        $check = $conexion->prepare("SELECT id FROM profesor_curso_asignatura WHERE profesor_id = ? AND curso_id = ? AND asignatura_id = ?");
+        $check->execute([$profesor, $curso, $asignatura]);
 
-        $stmt = $conexion->prepare($sql);
-
-        try {
-            $stmt->execute([
-                ":profesor" => $profesor,
-                ":curso" => $curso,
-                ":asignatura" => $asignatura,
-            ]);
-            if ($stmt->rowCount() > 0) {
+        if ($check->fetch()) {
+            $error = "Esta asignación ya existe.";
+        } else {
+            $stmt = $conexion->prepare("INSERT INTO profesor_curso_asignatura (profesor_id, curso_id, asignatura_id) VALUES (?, ?, ?)");
+            try {
+                $stmt->execute([$profesor, $curso, $asignatura]);
                 $mensaje = "Asignación creada correctamente.";
-            } else {
-                $error = "Esta asignación ya existe.";
+            } catch (PDOException $e) {
+                $error = "Error al asignar.";
             }
-        } catch (PDOException $e) {
-            $error = "Error al asignar.";
         }
     }
 }

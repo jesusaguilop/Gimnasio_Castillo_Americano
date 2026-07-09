@@ -2,7 +2,7 @@
 require_once __DIR__ . '/includes/init.php';
 
 $docentes = db()->fetchAll(
-    "SELECT * FROM docentes WHERE activo = 1 ORDER BY nombre ASC"
+    "SELECT * FROM docentes WHERE activo = TRUE ORDER BY nombre ASC"
 );
 
 include "header.php";

@@ -29,7 +29,7 @@ if ($hora < 12) {
     <?php
     $num_alertas_admin = 0;
     try {
-        $stmtA = $conexion->query("SELECT COUNT(*) FROM alertas WHERE para_rol = 'admin' AND leido = 0");
+        $stmtA = $conexion->query("SELECT COUNT(*) FROM alertas WHERE para_rol = 'admin' AND leido = FALSE");
         $num_alertas_admin = (int) $stmtA->fetchColumn();
     } catch (Exception $e) {}
     ?>

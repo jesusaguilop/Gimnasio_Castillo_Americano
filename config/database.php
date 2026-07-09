@@ -20,11 +20,10 @@ $port    = config('db.port');
 $dbname  = config('db.name');
 $user    = config('db.user');
 $pass    = config('db.pass');
-$charset = config('db.charset');
 
 try {
     $conexion = new PDO(
-        "mysql:host=$host;port=$port;dbname=$dbname;charset=$charset",
+        "pgsql:host=$host;port=$port;dbname=$dbname",
         $user,
         $pass,
         [

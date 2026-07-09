@@ -13,15 +13,14 @@ class Database
     private function __construct()
     {
         $host    = config('db.host', 'localhost');
-        $port    = config('db.port', '3306');
-        $dbname  = config('db.name', 'colegio_db');
-        $user    = config('db.user', 'root');
+        $port    = config('db.port', '5432');
+        $dbname  = config('db.name', 'postgres');
+        $user    = config('db.user', 'postgres');
         $pass    = config('db.pass', '');
-        $charset = config('db.charset', 'utf8');
 
         try {
             $this->pdo = new PDO(
-                "mysql:host=$host;port=$port;dbname=$dbname;charset=$charset",
+                "pgsql:host=$host;port=$port;dbname=$dbname",
                 $user,
                 $pass,
                 [
@@ -79,9 +78,9 @@ class Database
     {
         $columns = implode(', ', array_keys($data));
         $placeholders = ':' . implode(', :', array_keys($data));
-        $sql = "INSERT INTO $table ($columns) VALUES ($placeholders)";
-        $this->query($sql, $data);
-        return (int) $this->pdo->lastInsertId();
+        $sql = "INSERT INTO $table ($columns) VALUES ($placeholders) RETURNING id";
+        $stmt = $this->query($sql, $data);
+        return (int) $stmt->fetchColumn();
     }
 
     public function update(string $table, array $data, string $where, array $whereParams = []): int

@@ -7,7 +7,12 @@ require_once "../lib/rank_helper.php";
 $periodo_activo = getConfig('periodo_activo') ?? '1';
 
 $periodos_disponibles = $conexion->query("
-    SELECT DISTINCT periodo FROM notas ORDER BY FIELD(periodo, '1','2','3','4','1er Periodo','2do Periodo','3er Periodo','4to Periodo')
+    SELECT DISTINCT periodo FROM notas ORDER BY
+        CASE periodo
+            WHEN '1' THEN 1 WHEN '2' THEN 2 WHEN '3' THEN 3 WHEN '4' THEN 4
+            WHEN '1er Periodo' THEN 1 WHEN '2do Periodo' THEN 2 WHEN '3er Periodo' THEN 3 WHEN '4to Periodo' THEN 4
+            ELSE 5
+        END
 ")->fetchAll(PDO::FETCH_COLUMN);
 
 $selected_periodo = $_GET['periodo'] ?? $periodo_activo;

@@ -9,10 +9,13 @@ $mensaje = "";
 $tipo = "";
 
 $cursos = db()->fetchAll(
-    "SELECT id, nombre, grado, nivel FROM cursos ORDER BY FIELD(grado,
-        'maternal','prejardin','jardin','transicion',
-        'primero','segundo','tercero','cuarto','quinto',
-        'sexto','septimo','octavo','noveno','decimo','undecimo'), nombre"
+    "SELECT id, nombre, grado, nivel FROM cursos ORDER BY
+        CASE grado
+            WHEN 'maternal' THEN 1 WHEN 'prejardin' THEN 2 WHEN 'jardin' THEN 3 WHEN 'transicion' THEN 4
+            WHEN 'primero' THEN 5 WHEN 'segundo' THEN 6 WHEN 'tercero' THEN 7 WHEN 'cuarto' THEN 8 WHEN 'quinto' THEN 9
+            WHEN 'sexto' THEN 10 WHEN 'septimo' THEN 11 WHEN 'octavo' THEN 12 WHEN 'noveno' THEN 13 WHEN 'decimo' THEN 14 WHEN 'undecimo' THEN 15
+            ELSE 16
+        END, nombre"
 );
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {

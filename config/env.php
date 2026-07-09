@@ -71,12 +71,12 @@ if (!function_exists('config')) {
     static $config = [];
 
     if (empty($config)) {
-        // Railway.app MySQL — detecta vars inyectadas automáticamente
-        $dbHost = env('MYSQLHOST') ?: env('DB_HOST', 'localhost');
-        $dbPort = env('MYSQLPORT') ?: env('DB_PORT', '3306');
-        $dbName = env('MYSQLDATABASE') ?: env('DB_NAME', 'colegio_db');
-        $dbUser = env('MYSQLUSER') ?: env('DB_USER', 'root');
-        $dbPass = env('MYSQLPASSWORD') ?: env('DB_PASS', '');
+        // Supabase/PostgreSQL — detecta vars inyectadas automáticamente
+        $dbHost = env('PGHOST') ?: env('DB_HOST', 'localhost');
+        $dbPort = env('PGPORT') ?: env('DB_PORT', '5432');
+        $dbName = env('PGDATABASE') ?: env('DB_NAME', 'postgres');
+        $dbUser = env('PGUSER') ?: env('DB_USER', 'postgres');
+        $dbPass = env('PGPASSWORD') ?: env('DB_PASS', '');
 
         $config = [
             'app.name'    => env('APP_NAME', 'Sistema Académico'),
@@ -88,7 +88,7 @@ if (!function_exists('config')) {
             'db.name'     => $dbName,
             'db.user'     => $dbUser,
             'db.pass'     => $dbPass,
-            'db.charset'  => env('DB_CHARSET', 'utf8mb4'),
+            'db.charset'  => 'utf8',
             'session.lifetime' => (int) env('SESSION_LIFETIME', 7200),
         ];
     }

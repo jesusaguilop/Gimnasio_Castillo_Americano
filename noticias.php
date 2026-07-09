@@ -2,7 +2,7 @@
 require_once __DIR__ . '/includes/init.php';
 
 $noticias = db()->fetchAll(
-    "SELECT * FROM noticias WHERE activo = 1 ORDER BY fecha_publicacion DESC"
+    "SELECT * FROM noticias WHERE activo = TRUE ORDER BY fecha_publicacion DESC"
 );
 
 include "header.php";

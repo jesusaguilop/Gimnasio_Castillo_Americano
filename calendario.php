@@ -59,7 +59,7 @@ if ($mes < 1) { $mes = 1; $anio--; }
 if ($mes > 12) { $mes = 12; $anio++; }
 
 $eventos = db()->fetchAll(
-    "SELECT * FROM eventos WHERE activo = 1 AND YEAR(fecha_evento) = ? AND MONTH(fecha_evento) = ? ORDER BY fecha_evento ASC",
+    "SELECT * FROM eventos WHERE activo = TRUE AND EXTRACT(YEAR FROM fecha_evento) = ? AND EXTRACT(MONTH FROM fecha_evento) = ? ORDER BY fecha_evento ASC",
     [$anio, $mes]
 );
 
@@ -79,7 +79,7 @@ foreach ($festivos as $fecha => $nombre) {
 }
 
 $proximos = db()->fetchAll(
-    "SELECT * FROM eventos WHERE activo = 1 AND fecha_evento >= CURDATE() ORDER BY fecha_evento ASC LIMIT 5"
+    "SELECT * FROM eventos WHERE activo = TRUE AND fecha_evento >= CURRENT_DATE ORDER BY fecha_evento ASC LIMIT 5"
 );
 
 $meses = ["", "Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];

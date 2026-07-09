@@ -29,7 +29,11 @@ $periodos = $conexion->prepare("
     SELECT DISTINCT n.periodo
     FROM notas n
     WHERE n.estudiante_id = ?
-    ORDER BY FIELD(n.periodo, '1er Periodo','2do Periodo','3er Periodo','4to Periodo')
+    ORDER BY
+        CASE n.periodo
+            WHEN '1er Periodo' THEN 1 WHEN '2do Periodo' THEN 2 WHEN '3er Periodo' THEN 3 WHEN '4to Periodo' THEN 4
+            ELSE 5
+        END
 ");
 $periodos->execute([$estudiante_id]);
 $periodos = $periodos->fetchAll(PDO::FETCH_COLUMN);

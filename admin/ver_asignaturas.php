@@ -25,7 +25,7 @@ if (isset($_GET["id"]) && isset($_GET["confirmar"])) {
 }
 
 $asignaturas = $conexion
-    ->query("SELECT id, nombre, area, nivel, grado FROM asignaturas ORDER BY FIELD(nivel,'preescolar','primaria','secundaria'), area, nombre")
+    ->query("SELECT id, nombre, area, nivel, grado FROM asignaturas ORDER BY CASE nivel WHEN 'preescolar' THEN 1 WHEN 'primaria' THEN 2 WHEN 'secundaria' THEN 3 ELSE 4 END, area, nombre")
     ->fetchAll(PDO::FETCH_ASSOC);
 
 $pageTitle = "Gestión de Asignaturas";

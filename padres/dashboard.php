@@ -22,7 +22,7 @@ $hijos = $hijos->fetchAll(PDO::FETCH_ASSOC);
 $alertas_padre = $conexion->prepare("
     SELECT * FROM alertas
     WHERE (para_usuario_id = ? OR (para_rol = 'padre' AND para_usuario_id IS NULL))
-    AND leido = 0
+    AND leido = FALSE
     ORDER BY created_at DESC
     LIMIT 5
 ");

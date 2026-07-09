@@ -49,18 +49,24 @@ if ($grado_filter !== "") {
     $params[] = $grado_filter;
 }
 
-$sql .= " ORDER BY FIELD(c.grado,
-    'maternal','prejardin','jardin','transicion',
-    'primero','segundo','tercero','cuarto','quinto',
-    'sexto','septimo','octavo','noveno','decimo','undecimo'), e.nombre";
+$sql .= " ORDER BY
+    CASE c.grado
+        WHEN 'maternal' THEN 1 WHEN 'prejardin' THEN 2 WHEN 'jardin' THEN 3 WHEN 'transicion' THEN 4
+        WHEN 'primero' THEN 5 WHEN 'segundo' THEN 6 WHEN 'tercero' THEN 7 WHEN 'cuarto' THEN 8 WHEN 'quinto' THEN 9
+        WHEN 'sexto' THEN 10 WHEN 'septimo' THEN 11 WHEN 'octavo' THEN 12 WHEN 'noveno' THEN 13 WHEN 'decimo' THEN 14 WHEN 'undecimo' THEN 15
+        ELSE 16
+    END, e.nombre";
 
 $estudiantes = db()->fetchAll($sql, $params);
 
 $grados = db()->fetchAll(
-    "SELECT DISTINCT grado FROM cursos ORDER BY FIELD(grado,
-        'maternal','prejardin','jardin','transicion',
-        'primero','segundo','tercero','cuarto','quinto',
-        'sexto','septimo','octavo','noveno','decimo','undecimo')"
+    "SELECT DISTINCT grado FROM cursos ORDER BY
+        CASE grado
+            WHEN 'maternal' THEN 1 WHEN 'prejardin' THEN 2 WHEN 'jardin' THEN 3 WHEN 'transicion' THEN 4
+            WHEN 'primero' THEN 5 WHEN 'segundo' THEN 6 WHEN 'tercero' THEN 7 WHEN 'cuarto' THEN 8 WHEN 'quinto' THEN 9
+            WHEN 'sexto' THEN 10 WHEN 'septimo' THEN 11 WHEN 'octavo' THEN 12 WHEN 'noveno' THEN 13 WHEN 'decimo' THEN 14 WHEN 'undecimo' THEN 15
+            ELSE 16
+        END"
 );
 $grados = array_column($grados, 'grado');
 

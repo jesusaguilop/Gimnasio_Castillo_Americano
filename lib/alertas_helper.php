@@ -7,10 +7,10 @@ function crearAlerta($conexion, $tipo, $titulo, $mensaje, $para_rol = null, $par
 {
     $stmt = $conexion->prepare("
         INSERT INTO alertas (tipo, titulo, mensaje, para_rol, para_usuario_id)
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?) RETURNING id
     ");
     $stmt->execute([$tipo, $titulo, $mensaje, $para_rol, $para_usuario_id]);
-    return $conexion->lastInsertId();
+    return (int) $stmt->fetchColumn();
 }
 
 /**
@@ -35,7 +35,7 @@ function contarAlertasNoLeidas($conexion, $usuario_id, $rol)
 {
     $stmt = $conexion->prepare("
         SELECT COUNT(*) FROM alertas
-        WHERE leido = 0
+        WHERE leido = FALSE
         AND (para_usuario_id = ? OR (para_rol = ? AND para_usuario_id IS NULL))
     ");
     $stmt->execute([$usuario_id, $rol]);
@@ -47,7 +47,7 @@ function contarAlertasNoLeidas($conexion, $usuario_id, $rol)
  */
 function marcarAlertaLeida($conexion, $alerta_id)
 {
-    $stmt = $conexion->prepare("UPDATE alertas SET leido = 1 WHERE id = ?");
+    $stmt = $conexion->prepare("UPDATE alertas SET leido = TRUE WHERE id = ?");
     $stmt->execute([$alerta_id]);
 }
 

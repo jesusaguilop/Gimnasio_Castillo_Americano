@@ -41,7 +41,7 @@ $isActive = fn($file) => $currentFile === $file ? 'active' : '';
     <?php
     $num_alertas_prof = 0;
     try {
-        $stmtA = $conexion->prepare("SELECT COUNT(*) FROM alertas WHERE (para_usuario_id = ? OR para_rol = 'profesor') AND leido = 0");
+        $stmtA = $conexion->prepare("SELECT COUNT(*) FROM alertas WHERE (para_usuario_id = ? OR para_rol = 'profesor') AND leido = FALSE");
         $stmtA->execute([$_SESSION['id']]);
         $num_alertas_prof = (int) $stmtA->fetchColumn();
     } catch (Exception $e) {}

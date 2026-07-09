@@ -127,7 +127,7 @@ file_put_contents($filepath, $dompdf->output());
 $stmtRec = $conexion->prepare("
     INSERT INTO boletines_pdf (estudiante_id, periodo, year, ruta_pdf, generado_por)
     VALUES (?, ?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE ruta_pdf = VALUES(ruta_pdf), generado_por = VALUES(generado_por)
+    ON CONFLICT (estudiante_id, periodo, year) DO UPDATE SET ruta_pdf = EXCLUDED.ruta_pdf, generado_por = EXCLUDED.generado_por
 ");
 $ruta_relativa = "assets/boletines/{$year}/{$periodo}/{$filename}";
 $stmtRec->execute([$estudiante_id, $periodo, $year, $ruta_relativa, $profesor_id]);

@@ -18,7 +18,7 @@ if (isset($_GET["id"]) && isset($_GET["confirmar"])) {
 }
 
 $search = trim($_GET["q"] ?? "");
-$sql = "SELECT * FROM eventos WHERE activo = 1";
+$sql = "SELECT * FROM eventos WHERE activo = TRUE";
 $params = [];
 if ($search) {
     $sql .= " AND (titulo LIKE ? OR tipo LIKE ?)";

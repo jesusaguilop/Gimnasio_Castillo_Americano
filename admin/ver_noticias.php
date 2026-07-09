@@ -23,7 +23,7 @@ if (isset($_GET["id"]) && isset($_GET["confirmar"])) {
 }
 
 $search = trim($_GET["q"] ?? "");
-$sql = "SELECT * FROM noticias WHERE activo = 1";
+$sql = "SELECT * FROM noticias WHERE activo = TRUE";
 $params = [];
 if ($search) {
     $sql .= " AND (titulo LIKE ? OR categoria LIKE ?)";
