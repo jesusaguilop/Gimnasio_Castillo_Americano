@@ -742,4 +742,24 @@
             .gca-card:hover, .stat-card:hover, .btn-gca:hover, .btn-outline-gca:hover { transform: none; }
         }
     </style>
+    <!-- ═══ Unificación con el rediseño público (Poppins + oro degradado) ═══ -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap');
+        :root { --gold:#c9a24d; --gold-dark:#a87f2e; --gold-light:#e7c877; --gold-glow:rgba(201,162,77,.10); }
+        .breadcrumb-bar h5, .section-header h4, .header-box h4,
+        .sidebar-logo-text span, .stat-info h3, .quick-card h6 {
+            font-family:'Poppins','Outfit',sans-serif !important; letter-spacing:-.015em; font-weight:800;
+        }
+        .btn-gca {
+            background:linear-gradient(135deg,var(--gold-light),var(--gold) 55%,var(--gold-dark)) !important;
+            color:#1a1400 !important; border:none !important; border-radius:999px !important;
+            font-weight:700 !important; box-shadow:0 10px 24px rgba(201,162,77,.32) !important;
+        }
+        .btn-gca:hover { color:#1a1400 !important; transform:translateY(-2px);
+            box-shadow:0 16px 32px rgba(201,162,77,.48) !important; }
+        .dark-mode .btn-gca, .dark-mode .btn-gca:hover { color:#1a1400 !important; }
+        .gca-card, .card-form, .stat-card, .quick-card { border-radius:20px !important; }
+        .btn-outline-gca { border-radius:999px !important; }
+        .gca-table thead th { font-family:'Poppins',sans-serif; }
+    </style>
 </head>
