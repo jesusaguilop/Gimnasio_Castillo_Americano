@@ -434,10 +434,13 @@ include "header.php";
     }
 </style>
 
-<div class="cal-header" data-aos="fade-down">
-    <h1>Calendario de Eventos</h1>
-    <p>Fechas importantes, actividades y eventos institucionales</p>
-</div>
+<section class="hm-page-hero">
+    <span class="hm-ph-glow"></span>
+    <div class="hm-ph-inner" data-aos="fade-down">
+        <h1 class="hm-ph-title">Calendario de <span class="grad">Eventos</span></h1>
+        <p class="hm-ph-sub">Fechas importantes, actividades y eventos institucionales.</p>
+    </div>
+</section>
 
 <div class="container my-5">
     <div class="row g-4">

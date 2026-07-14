@@ -706,4 +706,40 @@
             background: rgba(212,175,55,.15);
         }
     </style>
+    <!-- ── Glow-up: entradas + hover (todas las páginas del profesor) ── -->
+    <style>
+        @keyframes gcaFadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .content-area { animation: gcaFadeUp .5s cubic-bezier(.22,1,.36,1) both; }
+        .content-area .row > [class*="col-"] { animation: gcaFadeUp .55s cubic-bezier(.22,1,.36,1) both; }
+        .content-area .row > [class*="col-"]:nth-child(1){ animation-delay:.03s; }
+        .content-area .row > [class*="col-"]:nth-child(2){ animation-delay:.07s; }
+        .content-area .row > [class*="col-"]:nth-child(3){ animation-delay:.11s; }
+        .content-area .row > [class*="col-"]:nth-child(4){ animation-delay:.15s; }
+        .content-area .row > [class*="col-"]:nth-child(5){ animation-delay:.19s; }
+        .content-area .row > [class*="col-"]:nth-child(6){ animation-delay:.23s; }
+        .content-area .row > [class*="col-"]:nth-child(7){ animation-delay:.27s; }
+        .content-area .row > [class*="col-"]:nth-child(8){ animation-delay:.31s; }
+
+        .gca-card { transition: box-shadow .25s ease, transform .25s cubic-bezier(.22,1,.36,1), background .25s, border-color .25s; }
+        .gca-card:hover { transform: translateY(-2px); }
+
+        .stat-card { transition: box-shadow .25s, transform .25s cubic-bezier(.22,1,.36,1), border-color .25s; }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,.08); border-color: var(--gold); }
+        .stat-icon { transition: transform .28s cubic-bezier(.22,1,.36,1); }
+        .stat-card:hover .stat-icon { transform: scale(1.1) rotate(-4deg); }
+
+        .quick-card i { transition: transform .28s cubic-bezier(.22,1,.36,1), color .2s; }
+        .quick-card:hover i { transform: scale(1.15) rotate(-5deg); }
+        .quick-card:hover { border-color: var(--gold); }
+
+        .btn-gca:hover, .btn-outline-gca:hover { transform: translateY(-2px); }
+
+        @media (prefers-reduced-motion: reduce) {
+            .content-area, .content-area .row > [class*="col-"] { animation: none !important; }
+            .gca-card:hover, .stat-card:hover, .btn-gca:hover, .btn-outline-gca:hover { transform: none; }
+        }
+    </style>
 </head>

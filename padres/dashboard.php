@@ -75,14 +75,52 @@ include "includes/header.php";
 
 <main class="app-content">
 
-    <div style="margin-bottom:20px;">
-        <h5 class="section-title" style="margin-bottom:2px;">
-            <i class="bi bi-house-fill"></i>Mis Hijos
-        </h5>
-        <p style="color:var(--text-secondary);font-size:13px;margin:0;">
-            <?= $saludo ?>, <?= htmlspecialchars($nombre_padre) ?> — selecciona un hijo para ver su boletín
-        </p>
+    <div class="parent-welcome">
+        <div class="pw-txt">
+            <span class="pw-greet"><?= $saludo ?></span>
+            <h4>Hola, <span><?= htmlspecialchars($nombre_padre) ?></span></h4>
+            <p>Selecciona un hijo para ver su boletín</p>
+        </div>
+        <div class="pw-emoji"><i class="bi bi-house-heart-fill"></i></div>
     </div>
+    <style>
+        .parent-welcome {
+            position: relative; overflow: hidden;
+            background:
+                radial-gradient(400px 160px at 90% -30%, rgba(212,175,55,.28), transparent 70%),
+                linear-gradient(135deg, #0f1117 0%, #1c1f2b 100%);
+            border: 1px solid rgba(212,175,55,.22);
+            border-radius: var(--radius);
+            padding: 20px 22px; margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: space-between; gap: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.14);
+        }
+        .parent-welcome .pw-greet {
+            display:inline-block; font-size:10px; letter-spacing:1.4px; text-transform:uppercase;
+            color:var(--gold); background:rgba(212,175,55,.1); border:1px solid rgba(212,175,55,.22);
+            padding:2px 10px; border-radius:20px; margin-bottom:8px;
+        }
+        .parent-welcome h4 { font-family:'Cormorant Garamond',serif; color:#f0ede6; margin:0 0 2px; font-size:22px; font-weight:700; }
+        .parent-welcome h4 span {
+            background:linear-gradient(90deg,#d4af37 20%,#f6e4a6 50%,#d4af37 80%); background-size:200% auto;
+            -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;
+            animation: pwShine 5s linear infinite;
+        }
+        @keyframes pwShine { to { background-position:200% center; } }
+        .parent-welcome p { color:rgba(240,237,230,.6); margin:0; font-size:12.5px; }
+        .parent-welcome .pw-emoji {
+            width:54px; height:54px; flex-shrink:0; border-radius:16px;
+            display:flex; align-items:center; justify-content:center;
+            background:rgba(212,175,55,.12); border:1px solid rgba(212,175,55,.25);
+        }
+        .parent-welcome .pw-emoji i { font-size:26px; color:var(--gold); animation: floaty 3.5s ease-in-out infinite; }
+        @keyframes floaty { 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-5px);} }
+        @media (prefers-reduced-motion: reduce){ .parent-welcome h4 span, .parent-welcome .pw-emoji i { animation:none; } }
+    </style>
+
+    <h5 class="section-title" style="margin-bottom:12px;">
+        <i class="bi bi-people-fill"></i>Mis Hijos
+    </h5>
 
     <?php if (count($alertas_padre) > 0): ?>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">

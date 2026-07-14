@@ -442,9 +442,17 @@
             letter-spacing: .3px;
         }
 
+        @keyframes gcaFadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .content-area {
             padding: 32px 36px;
             flex: 1;
+            animation: gcaFadeUp .5s cubic-bezier(.22,1,.36,1) both;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .content-area { animation: none; }
         }
 
         #overlay {
@@ -903,6 +911,39 @@
         }
         .dark-mode .ts-wrapper.multi .ts-control > div .remove:hover {
             background: rgba(212,175,55,.15);
+        }
+    </style>
+    <!-- ── Glow-up: entradas + hover (todas las páginas admin) ── -->
+    <style>
+        .content-area .row > [class*="col-"] { animation: gcaFadeUp .55s cubic-bezier(.22,1,.36,1) both; }
+        .content-area .row > [class*="col-"]:nth-child(1){ animation-delay:.03s; }
+        .content-area .row > [class*="col-"]:nth-child(2){ animation-delay:.07s; }
+        .content-area .row > [class*="col-"]:nth-child(3){ animation-delay:.11s; }
+        .content-area .row > [class*="col-"]:nth-child(4){ animation-delay:.15s; }
+        .content-area .row > [class*="col-"]:nth-child(5){ animation-delay:.19s; }
+        .content-area .row > [class*="col-"]:nth-child(6){ animation-delay:.23s; }
+        .content-area .row > [class*="col-"]:nth-child(7){ animation-delay:.27s; }
+        .content-area .row > [class*="col-"]:nth-child(8){ animation-delay:.31s; }
+
+        .gca-card { transition: box-shadow .25s ease, transform .25s cubic-bezier(.22,1,.36,1), background .25s, border-color .25s; }
+        .gca-card:hover { transform: translateY(-2px); }
+
+        .btn-gca, .btn-outline-gca, .btn-action { transition: all .25s cubic-bezier(.22,1,.36,1); }
+        .btn-gca:hover, .btn-outline-gca:hover { transform: translateY(-2px); }
+        .btn-action:hover { transform: translateY(-2px) scale(1.05); }
+
+        /* Realce del título de sección con línea dorada */
+        .section-header h4::after {
+            content:''; display:block; position:absolute; left:34px; bottom:-6px;
+            width:0; height:2px; background:linear-gradient(90deg,var(--gold),transparent);
+            border-radius:2px; transition:width .35s ease;
+        }
+        .section-header:hover h4::after { width:56px; }
+        .section-header h4 { position:relative; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .content-area .row > [class*="col-"] { animation: none !important; }
+            .gca-card:hover, .btn-gca:hover, .btn-outline-gca:hover, .btn-action:hover { transform: none; }
         }
     </style>
 </head>

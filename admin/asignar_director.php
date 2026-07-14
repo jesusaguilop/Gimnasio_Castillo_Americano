@@ -7,9 +7,23 @@ if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
 }
 
 require_once "../config/database.php";
+require_once "../lib/csrf_helper.php";
 
 $mensaje = "";
 $error = "";
+
+/* ── Handle AJAX delete FIRST (antes de imprimir nada) ── */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'eliminar') {
+    if (!validar_token_csrf($_POST["_csrf_token"] ?? "")) {
+        http_response_code(403);
+        echo "csrf";
+        exit;
+    }
+    $stmt = $conexion->prepare("DELETE FROM directores_grupo WHERE profesor_id = ? AND curso_id = ?");
+    $stmt->execute([$_POST['profesor_id'] ?? null, $_POST['curso_id'] ?? null]);
+    echo "ok";
+    exit;
+}
 
 /* ── Get profesores ── */
 $profesores = $conexion->query(
@@ -21,21 +35,27 @@ $cursos = $conexion->query(
     "SELECT id, grado, nombre, nivel FROM cursos ORDER BY nivel, grado, nombre"
 )->fetchAll(PDO::FETCH_ASSOC);
 
-/* ── Handle form ── */
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $profesor_id = $_POST["profesor_id"];
-    $curso_id = $_POST["curso_id"];
+/* ── Handle form (alta de director) ── */
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !isset($_POST['action'])) {
+    if (!validar_token_csrf($_POST["_csrf_token"] ?? "")) {
+        $error = "Error de seguridad. Intente de nuevo.";
+    } else {
+        $profesor_id = $_POST["profesor_id"] ?? null;
+        $curso_id = $_POST["curso_id"] ?? null;
 
-    try {
-        $stmt = $conexion->prepare("
-            INSERT INTO directores_grupo (profesor_id, curso_id) VALUES (?, ?)
-        ");
-        $stmt->execute([$profesor_id, $curso_id]);
-        $mensaje = "Director de grupo asignado correctamente.";
-    } catch (PDOException $e) {
-        if ($e->getCode() == 23000) {
-            $error = "Este profesor ya está asignado como director de ese curso.";
-        } else {
+        try {
+            $stmt = $conexion->prepare("
+                INSERT INTO directores_grupo (profesor_id, curso_id) VALUES (?, ?)
+                ON CONFLICT (profesor_id, curso_id) DO NOTHING
+            ");
+            $stmt->execute([$profesor_id, $curso_id]);
+            if ($stmt->rowCount() > 0) {
+                $mensaje = "Director de grupo asignado correctamente.";
+            } else {
+                $error = "Este profesor ya está asignado como director de ese curso.";
+            }
+        } catch (PDOException $e) {
+            error_log("[asignar_director] " . $e->getMessage());
             $error = "Error al realizar la asignación.";
         }
     }
@@ -85,6 +105,7 @@ include "includes/header.php";
                         <?php endif; ?>
 
                         <form method="POST">
+                            <?= campo_csrf() ?>
                             <div class="mb-3">
                                 <label class="form-label fw-medium">Profesor</label>
                                 <select name="profesor_id" class="form-select" required>
@@ -160,21 +181,12 @@ include "includes/header.php";
                 fd.append('action', 'eliminar');
                 fd.append('profesor_id', profesorId);
                 fd.append('curso_id', cursoId);
+                fd.append('_csrf_token', <?= json_encode(generar_token_csrf()) ?>);
                 fetch('asignar_director.php', { method: 'POST', body: fd })
                     .then(r => r.text())
                     .then(res => { if (res === 'ok') location.reload(); });
             });
         }
     </script>
-
-    <?php
-    /* Handle delete action */
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'eliminar') {
-        $stmt = $conexion->prepare("DELETE FROM directores_grupo WHERE profesor_id = ? AND curso_id = ?");
-        $stmt->execute([$_POST['profesor_id'], $_POST['curso_id']]);
-        echo "ok";
-        exit;
-    }
-    ?>
 
     <?php include "includes/footer.php"; ?>

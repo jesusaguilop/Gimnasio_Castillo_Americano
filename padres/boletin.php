@@ -4,6 +4,7 @@ require_once __DIR__ . '/../includes/init.php';
 checkRole('padre');
 
 $padre_id = userId();
+$anio_activo = (int)(getConfig('anio_activo') ?? date('Y'));
 $estudiante_id = $_GET["estudiante"] ?? null;
 
 /* ── Verify this student belongs to this parent ── */
@@ -28,14 +29,15 @@ if (!$estudiante) {
 $periodos = $conexion->prepare("
     SELECT DISTINCT n.periodo
     FROM notas n
-    WHERE n.estudiante_id = ?
+    WHERE n.estudiante_id = ? AND n.anio = ?
     ORDER BY
         CASE n.periodo
+            WHEN '1' THEN 1 WHEN '2' THEN 2 WHEN '3' THEN 3 WHEN '4' THEN 4
             WHEN '1er Periodo' THEN 1 WHEN '2do Periodo' THEN 2 WHEN '3er Periodo' THEN 3 WHEN '4to Periodo' THEN 4
             ELSE 5
         END
 ");
-$periodos->execute([$estudiante_id]);
+$periodos->execute([$estudiante_id, $anio_activo]);
 $periodos = $periodos->fetchAll(PDO::FETCH_COLUMN);
 
 $selected_periodo = $_GET["periodo"] ?? ($periodos[0] ?? null);
@@ -48,15 +50,17 @@ if ($selected_periodo) {
         SELECT a.nombre AS asignatura, n.nota
         FROM notas n
         JOIN asignaturas a ON n.asignatura_id = a.id
-        WHERE n.estudiante_id = ? AND n.periodo = ?
+        WHERE n.estudiante_id = ? AND n.periodo = ? AND n.anio = ?
         ORDER BY a.nombre
     ");
-    $stmt->execute([$estudiante_id, $selected_periodo]);
+    $stmt->execute([$estudiante_id, $selected_periodo, $anio_activo]);
     $notas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if (count($notas) > 0) {
-        $sum = array_sum(array_column($notas, 'nota'));
-        $promedio = round($sum / count($notas), 1);
+        // Promedio general ponderado (mismo cálculo que el boletín y el puesto)
+        require_once __DIR__ . '/../lib/rank_helper.php';
+        $promedio = calcularPromedioGeneralEstudiante($conexion, $estudiante_id, $selected_periodo, $anio_activo);
+        if ($promedio === null) $promedio = 0;
     }
 }
 
@@ -64,10 +68,10 @@ if ($selected_periodo) {
 $boletines_pdf = $conexion->prepare("
     SELECT periodo, year, ruta_pdf
     FROM boletines_pdf
-    WHERE estudiante_id = ?
+    WHERE estudiante_id = ? AND year = ?
     ORDER BY year, periodo
 ");
-$boletines_pdf->execute([$estudiante_id]);
+$boletines_pdf->execute([$estudiante_id, $anio_activo]);
 $boletines_pdf = $boletines_pdf->fetchAll(PDO::FETCH_ASSOC);
 $boletines_por_periodo = [];
 foreach ($boletines_pdf as $bp) {
@@ -197,7 +201,7 @@ include "includes/header.php";
                 <?php endif; ?>
                 <?php
                 require_once __DIR__ . '/../lib/rank_helper.php';
-                $puesto = calcularPuestoCurso($conexion, $estudiante_id, $selected_periodo);
+                $puesto = calcularPuestoCurso($conexion, $estudiante_id, $selected_periodo, $anio_activo);
                 if ($puesto):
                 ?>
                     <p style="font-size:13px;color:var(--gold-dark);margin-top:10px;margin-bottom:0;font-weight:700;">

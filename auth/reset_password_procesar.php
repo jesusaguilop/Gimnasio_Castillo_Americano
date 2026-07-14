@@ -1,8 +1,19 @@
 <?php
 require_once "../config/database.php";
 
-$token = $_POST["token"];
-$password = password_hash($_POST["password"], PASSWORD_DEFAULT);
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    header("Location: ../login.php");
+    exit;
+}
+
+$token = trim($_POST["token"] ?? "");
+$passwordPlano = $_POST["password"] ?? "";
+
+if ($token === "" || strlen($passwordPlano) < 6) {
+    die("Datos inválidos. La contraseña debe tener al menos 6 caracteres.");
+}
+
+$password = password_hash($passwordPlano, PASSWORD_DEFAULT);
 
 /* Validar token */
 $sql = "
@@ -25,7 +36,7 @@ $sql = "
     UPDATE usuarios 
     SET password = :password,
         reset_token = NULL,
-        reset_expira = NULL
+        reset_expires = NULL
     WHERE id = :id
 ";
 $stmt = $conexion->prepare($sql);

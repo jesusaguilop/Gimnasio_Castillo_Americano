@@ -1,0 +1,263 @@
+/* ════════════════════════════════════════════════════════════
+   GCA · Sistema de diseño público (rediseño moderno / bold)
+   Todas las clases van prefijadas con "hm-" para no chocar con
+   el navbar, el footer ni Bootstrap. El navbar NO se toca.
+   ════════════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&display=swap');
+
+:root{
+    --hm-gold:#c9a24d; --hm-gold2:#e7c877; --hm-gold-deep:#a87f2e;
+    --hm-ink:#15161f; --hm-ink2:#2a2c3a; --hm-muted:#5c5f70;
+    --hm-cream:#faf6ec; --hm-paper:#ffffff;
+}
+
+/* Contexto tipográfico para el contenido de la página (no afecta navbar/footer) */
+.hm-wrap{ font-family:'Inter',system-ui,sans-serif; color:var(--hm-ink); overflow:hidden; }
+.hm-wrap h1,.hm-wrap h2,.hm-wrap h3,.hm-wrap h4{ font-family:'Poppins','Inter',sans-serif; letter-spacing:-.02em; }
+
+/* ── Etiquetas (kickers) ── */
+.hm-kicker{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:'Poppins',sans-serif; font-weight:700; font-size:.74rem;
+    text-transform:uppercase; letter-spacing:2px; color:var(--hm-gold-deep);
+    background:rgba(201,162,77,.12); border:1px solid rgba(201,162,77,.32);
+    padding:6px 14px; border-radius:999px; margin-bottom:18px;
+}
+.hm-kicker-center{ margin-inline:auto; }
+.hm-kicker-light{ color:var(--hm-gold2); background:rgba(231,200,119,.14); border-color:rgba(231,200,119,.4); }
+
+/* ── Títulos y textos ── */
+.hm-h2{ font-size:clamp(1.9rem,3.6vw,2.7rem); font-weight:800; margin:0 0 18px; }
+.hm-p{ color:var(--hm-muted); font-size:1.03rem; line-height:1.8; margin-bottom:14px; }
+.hm-p-center{ text-align:center; margin-inline:auto; max-width:600px; }
+.hm-head{ text-align:center; margin-bottom:52px; }
+
+/* ── Botones ── */
+.hm-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:'Poppins',sans-serif; font-weight:700; font-size:.98rem;
+    padding:14px 28px; border-radius:999px; text-decoration:none;
+    border:2px solid transparent; cursor:pointer; white-space:nowrap;
+    transition:transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease, background .25s ease, color .25s ease;
+}
+.hm-btn i{ font-size:1.35rem; transition:transform .25s ease; }
+.hm-btn-primary{ background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold) 55%,var(--hm-gold-deep)); color:#1a1400; box-shadow:0 12px 30px rgba(201,162,77,.42); }
+.hm-btn-primary:hover{ transform:translateY(-3px); box-shadow:0 18px 40px rgba(201,162,77,.55); color:#1a1400; }
+.hm-btn-primary:hover i{ transform:translateX(4px); }
+.hm-btn-outline{ background:transparent; border-color:rgba(21,22,31,.2); color:var(--hm-ink); }
+.hm-btn-outline:hover{ background:var(--hm-ink); color:#fff; transform:translateY(-3px); }
+.hm-btn-light{ background:#fff; color:var(--hm-ink); }
+.hm-btn-light:hover{ transform:translateY(-3px); box-shadow:0 14px 34px rgba(0,0,0,.3); color:var(--hm-ink); }
+.hm-btn-lg{ padding:16px 36px; font-size:1.05rem; }
+
+.hm-back{
+    display:inline-flex; align-items:center; gap:8px; text-decoration:none;
+    font-family:'Poppins',sans-serif; font-weight:600; color:var(--hm-muted);
+    border:1.5px solid #e6ddc9; padding:11px 24px; border-radius:999px; transition:.25s ease;
+}
+.hm-back:hover{ border-color:var(--hm-gold); color:var(--hm-ink); background:rgba(201,162,77,.06); }
+
+/* ════════ HERO principal (portada) ════════ */
+.hm-hero{ position:relative; background:radial-gradient(120% 120% at 100% 0%, #fff 0%, var(--hm-cream) 55%, #f3ecdb 100%); padding:clamp(48px,8vw,96px) 0 clamp(60px,9vw,110px); }
+.hm-blob{ position:absolute; border-radius:50%; filter:blur(60px); opacity:.5; z-index:0; pointer-events:none; }
+.hm-blob-1{ width:380px; height:380px; background:radial-gradient(circle,#f0d488,transparent 70%); top:-90px; right:-60px; }
+.hm-blob-2{ width:320px; height:320px; background:radial-gradient(circle,#c9a24d,transparent 70%); bottom:-120px; left:-80px; opacity:.28; }
+.hm-hero .container{ position:relative; z-index:1; }
+.hm-eyebrow{
+    display:inline-flex; align-items:center; gap:9px; font-family:'Poppins',sans-serif;
+    font-weight:600; font-size:.86rem; color:var(--hm-ink2); margin-bottom:20px;
+    background:#fff; padding:8px 16px 8px 10px; border-radius:999px;
+    box-shadow:0 6px 18px rgba(0,0,0,.08); border:1px solid rgba(201,162,77,.25);
+}
+.hm-eyebrow img{ height:26px; }
+.hm-title{ font-size:clamp(2.5rem,6vw,4.15rem); font-weight:800; line-height:1.03; margin:0 0 20px; }
+.hm-title-grad{ background:linear-gradient(120deg,var(--hm-gold-deep),var(--hm-gold) 40%,var(--hm-gold2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.hm-sub{ font-size:1.18rem; color:var(--hm-muted); max-width:520px; line-height:1.7; margin:0 0 30px; }
+.hm-actions{ display:flex; flex-wrap:wrap; gap:14px; }
+.hm-hero-media{ position:relative; }
+.hm-frame{ position:relative; border-radius:28px; overflow:hidden; box-shadow:0 30px 70px rgba(21,22,31,.28); border:6px solid #fff; transform:rotate(1.5deg); transition:transform .5s cubic-bezier(.22,1,.36,1); }
+.hm-frame::after{ content:''; position:absolute; inset:0; background:linear-gradient(180deg,transparent 55%,rgba(168,127,46,.35)); }
+.hm-hero-media:hover .hm-frame{ transform:rotate(0deg) scale(1.01); }
+.hm-frame img{ width:100%; height:clamp(300px,42vw,440px); object-fit:cover; display:block; }
+.hm-float-card{ position:absolute; left:-14px; bottom:-22px; z-index:2; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.92); backdrop-filter:blur(8px); padding:12px 20px 12px 14px; border-radius:18px; box-shadow:0 18px 40px rgba(0,0,0,.2); border:1px solid rgba(201,162,77,.3); }
+.hm-float-card img{ height:46px; }
+.hm-float-card strong{ display:block; font-family:'Poppins',sans-serif; font-weight:800; color:var(--hm-ink); font-size:1.05rem; line-height:1; }
+.hm-float-card span{ font-size:.82rem; color:var(--hm-gold-deep); font-style:italic; }
+
+/* ════════ Banner interior (páginas secundarias) ════════ */
+.hm-page-hero{
+    position:relative; overflow:hidden; text-align:center;
+    padding:clamp(60px,8vw,100px) 20px clamp(46px,6vw,70px);
+    background:radial-gradient(120% 150% at 50% 0%, #26262f 0%, #15161f 60%, #0d0e14 100%); color:#fff;
+}
+.hm-page-hero::after{ content:''; position:absolute; left:0; right:0; bottom:0; height:4px; background:linear-gradient(90deg,transparent,var(--hm-gold),transparent); }
+.hm-ph-glow{ position:absolute; width:560px; height:560px; top:-250px; left:50%; transform:translateX(-50%); background:radial-gradient(circle,rgba(201,162,77,.32),transparent 65%); filter:blur(40px); pointer-events:none; }
+.hm-ph-inner{ position:relative; z-index:1; }
+.hm-ph-title{ font-family:'Poppins',sans-serif; font-weight:800; letter-spacing:-.02em; font-size:clamp(2.1rem,5vw,3.1rem); margin:0 0 14px; }
+.hm-ph-title .grad{ background:linear-gradient(120deg,#fff,var(--hm-gold2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.hm-ph-sub{ color:#c9cad6; max-width:640px; margin:0 auto; font-size:1.12rem; line-height:1.7; }
+
+/* ════════ Secciones ════════ */
+.hm-section{ padding:clamp(56px,8vw,96px) 0; background:var(--hm-paper); }
+.hm-section-cream{ background:linear-gradient(180deg,var(--hm-cream),#fff); }
+.hm-img-stack{ position:relative; }
+.hm-img-stack::before{ content:''; position:absolute; inset:18px -18px -18px 18px; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); border-radius:26px; z-index:0; }
+.hm-img-stack img{ position:relative; z-index:1; width:100%; border-radius:24px; box-shadow:0 24px 55px rgba(0,0,0,.22); display:block; }
+
+/* ── Tarjeta con foto (portada · principios) ── */
+.hm-card{ position:relative; background:#fff; border-radius:24px; overflow:hidden; height:100%; box-shadow:0 12px 34px rgba(21,22,31,.08); border:1px solid #efe7d5; transition:transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease; }
+.hm-card:hover{ transform:translateY(-10px); box-shadow:0 28px 60px rgba(168,127,46,.28); }
+.hm-card-media{ position:relative; height:190px; overflow:hidden; }
+.hm-card-media img{ width:100%; height:100%; object-fit:cover; transition:transform .5s ease; }
+.hm-card:hover .hm-card-media img{ transform:scale(1.08); }
+.hm-card-media::after{ content:''; position:absolute; inset:0; background:linear-gradient(180deg,transparent 40%,rgba(21,22,31,.28)); }
+.hm-card-icon{ position:absolute; left:22px; bottom:-26px; z-index:2; width:58px; height:58px; border-radius:16px; display:grid; place-items:center; font-size:1.5rem; color:#1a1400; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); box-shadow:0 10px 24px rgba(201,162,77,.5); }
+.hm-card-body{ padding:40px 26px 30px; }
+.hm-card-title{ font-size:1.28rem; font-weight:800; margin:0 0 10px; font-family:'Poppins',sans-serif; }
+.hm-card-text{ color:var(--hm-muted); font-size:.98rem; line-height:1.7; margin:0; }
+
+/* ── Tarjeta con ícono (misión/visión/valores, niveles, pasos) ── */
+.hm-feature{ position:relative; background:#fff; border-radius:22px; padding:34px 28px; height:100%; border:1px solid #efe7d5; box-shadow:0 12px 34px rgba(21,22,31,.07); transition:transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease; overflow:hidden; }
+.hm-feature::before{ content:''; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--hm-gold2),var(--hm-gold)); transform:scaleX(0); transform-origin:left; transition:transform .4s ease; }
+.hm-feature:hover{ transform:translateY(-8px); box-shadow:0 26px 56px rgba(168,127,46,.22); }
+.hm-feature:hover::before{ transform:scaleX(1); }
+.hm-feature-icon{ width:58px; height:58px; border-radius:16px; display:grid; place-items:center; font-size:1.5rem; color:#1a1400; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); box-shadow:0 10px 24px rgba(201,162,77,.4); margin-bottom:18px; }
+.hm-feature h4{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.2rem; margin:0 0 10px; }
+.hm-feature p{ color:var(--hm-muted); font-size:.97rem; line-height:1.7; margin:0; }
+.hm-feature.center{ text-align:center; }
+.hm-feature.center .hm-feature-icon{ margin-inline:auto; }
+
+/* ── Panel de lista numerada (requisitos) ── */
+.hm-panel{ background:#fff; border-radius:22px; border:1px solid #efe7d5; box-shadow:0 12px 34px rgba(21,22,31,.07); overflow:hidden; }
+.hm-numitem{ display:flex; align-items:center; gap:16px; padding:16px 24px; border-bottom:1px solid #f5f1e8; transition:background .2s ease, transform .2s ease; }
+.hm-numitem:last-child{ border-bottom:none; }
+.hm-numitem:hover{ background:rgba(201,162,77,.05); transform:translateX(4px); }
+.hm-num{ width:36px; height:36px; border-radius:50%; flex-shrink:0; display:grid; place-items:center; font-family:'Poppins',sans-serif; font-weight:800; color:#1a1400; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); box-shadow:0 4px 12px rgba(201,162,77,.35); }
+.hm-numitem .t{ font-weight:500; color:#333; font-size:.98rem; line-height:1.4; }
+
+/* ── Panel lateral con acento ── */
+.hm-infopanel{ position:relative; background:linear-gradient(135deg,var(--hm-cream),#f3ecdb); border-radius:22px; padding:34px; height:100%; border:1px solid #efe7d5; overflow:hidden; }
+.hm-infopanel::before{ content:''; position:absolute; top:0; left:0; width:5px; height:100%; background:linear-gradient(180deg,var(--hm-gold2),var(--hm-gold)); }
+.hm-infopanel h4{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.2rem; margin:0 0 12px; }
+.hm-infopanel p{ color:var(--hm-muted); font-size:.97rem; line-height:1.75; margin:0 0 20px; }
+
+/* ── Formularios ── */
+.hm-input{ width:100%; border-radius:14px; border:1.5px solid #e6ddc9; padding:12px 16px; font-size:.95rem; background:#fff; transition:border-color .2s ease, box-shadow .2s ease; font-family:inherit; color:var(--hm-ink); }
+.hm-input:focus{ outline:none; border-color:var(--hm-gold); box-shadow:0 0 0 3px rgba(201,162,77,.15); }
+.hm-input::placeholder{ color:#b6b0a3; }
+.hm-label{ font-family:'Poppins',sans-serif; font-weight:600; font-size:.86rem; color:var(--hm-ink2); margin-bottom:6px; display:block; }
+
+/* ── Tarjeta de contacto (icono + texto) ── */
+.hm-contact{ display:flex; align-items:flex-start; gap:15px; background:#fff; border-radius:18px; padding:20px 24px; margin-bottom:14px; border:1px solid #efe7d5; box-shadow:0 6px 20px rgba(21,22,31,.05); transition:transform .3s ease, box-shadow .3s ease; }
+.hm-contact:hover{ transform:translateY(-3px); box-shadow:0 14px 34px rgba(201,162,77,.15); }
+.hm-contact .ic{ width:48px; height:48px; border-radius:14px; flex-shrink:0; display:grid; place-items:center; font-size:1.2rem; color:#1a1400; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); box-shadow:0 6px 16px rgba(201,162,77,.3); }
+.hm-contact h6{ font-family:'Poppins',sans-serif; font-weight:700; margin:0 0 3px; font-size:.95rem; color:#222; }
+.hm-contact p{ margin:0; font-size:.9rem; color:#666; line-height:1.6; }
+.hm-contact p a{ color:#666; text-decoration:none; }
+.hm-contact p a:hover{ color:var(--hm-gold-deep); }
+
+/* ════════ CTA / banda oscura ════════ */
+.hm-cta{ position:relative; overflow:hidden; padding:clamp(64px,9vw,110px) 0; text-align:center; background:radial-gradient(120% 140% at 50% 0%, #26262f 0%, #15161f 60%, #0d0e14 100%); color:#fff; }
+.hm-cta-rounded{ border-radius:28px; }
+.hm-cta-glow{ position:absolute; width:600px; height:600px; top:-260px; left:50%; transform:translateX(-50%); background:radial-gradient(circle,rgba(201,162,77,.35),transparent 65%); filter:blur(40px); pointer-events:none; }
+.hm-cta .container{ position:relative; z-index:1; }
+.hm-cta-inner{ position:relative; z-index:1; }
+.hm-cta-title{ font-family:'Poppins',sans-serif; font-weight:800; font-size:clamp(2.1rem,4.5vw,3.2rem); margin:0 0 18px; background:linear-gradient(120deg,#fff,var(--hm-gold2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.hm-cta-sub{ color:#c9cad6; font-size:1.12rem; line-height:1.8; max-width:640px; margin:0 auto 34px; }
+
+/* ── Tarjeta de noticia (extiende hm-card) ── */
+.hm-card-body.tight{ padding-top:24px; }
+.hm-card-badge{ position:absolute; top:14px; left:14px; z-index:2; font-family:'Poppins',sans-serif; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#1a1400; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); padding:5px 12px; border-radius:999px; box-shadow:0 6px 16px rgba(201,162,77,.4); }
+.hm-card-date{ position:absolute; top:14px; right:14px; z-index:2; font-size:.72rem; font-weight:600; color:#fff; background:rgba(0,0,0,.5); backdrop-filter:blur(4px); padding:5px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:5px; }
+.hm-card-ph{ width:100%; height:100%; display:grid; place-items:center; background:linear-gradient(135deg,#f4efe4,#eadfc6); color:var(--hm-gold); font-size:2.5rem; }
+.hm-card-foot{ padding:0 26px 22px; }
+.hm-card-foot small{ display:flex; align-items:center; gap:6px; color:#9a9488; font-size:.78rem; border-top:1px solid #f0ebe0; padding-top:14px; }
+
+/* ── Tarjeta de docente ── */
+.hm-teacher{ position:relative; cursor:pointer; display:flex; flex-direction:column; background:#fff; border-radius:22px; overflow:hidden; height:100%; border:1px solid #efe7d5; box-shadow:0 12px 34px rgba(21,22,31,.07); transition:transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease; text-align:center; }
+.hm-teacher:hover{ transform:translateY(-8px); box-shadow:0 26px 56px rgba(168,127,46,.22); }
+.hm-teacher-top{ padding:28px 20px 0; }
+.hm-teacher-img,.hm-teacher-ph{ width:118px; height:118px; border-radius:50%; object-fit:cover; margin:0 auto; border:4px solid #fff; box-shadow:0 8px 22px rgba(0,0,0,.15); outline:3px solid var(--hm-gold); outline-offset:2px; display:block; }
+.hm-teacher-ph{ display:grid; place-items:center; font-size:2.6rem; color:#fff; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); outline-color:var(--hm-gold2); }
+.hm-teacher-body{ padding:20px 22px 28px; flex:1 1 auto; display:flex; flex-direction:column; }
+.hm-teacher-body h5{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.08rem; margin:0 0 8px; overflow-wrap:anywhere; }
+.hm-teacher .spec{ display:inline-block; font-family:'Poppins',sans-serif; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--hm-gold-deep); background:rgba(201,162,77,.12); border:1px solid rgba(201,162,77,.3); padding:4px 12px; border-radius:999px; margin-bottom:12px; overflow-wrap:anywhere; }
+.hm-teacher-body p{ color:var(--hm-muted); font-size:.9rem; line-height:1.6; margin:0 0 16px; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.hm-teacher-more{ margin-top:auto; display:inline-flex; align-items:center; justify-content:center; gap:6px; font-family:'Poppins',sans-serif; font-weight:700; font-size:.85rem; color:var(--hm-gold-deep); }
+.hm-teacher-more i{ transition:transform .25s ease; }
+.hm-teacher:hover{ transform:translateY(-8px); border-color:rgba(201,162,77,.5); }
+.hm-teacher:hover .hm-teacher-more i{ transform:translateX(4px); }
+/* botón invisible que hace clickeable toda la card (accesible) */
+.hm-teacher-link{ position:absolute; inset:0; z-index:2; border:0; background:transparent; cursor:pointer; border-radius:22px; }
+.hm-teacher-link:focus-visible{ outline:3px solid var(--hm-gold); outline-offset:2px; }
+
+/* ════════ Modal de docente ════════ */
+.hm-dm .modal-content{ border:none; border-radius:26px; overflow:hidden; box-shadow:0 40px 90px rgba(0,0,0,.5); }
+.hm-dm-media{ position:relative; background:radial-gradient(120% 150% at 50% 0%, #26262f 0%, #15161f 70%, #0d0e14 100%); padding:36px 26px 30px; text-align:center; }
+.hm-dm-glow{ position:absolute; width:440px; height:440px; top:-210px; left:50%; transform:translateX(-50%); background:radial-gradient(circle,rgba(201,162,77,.4),transparent 65%); filter:blur(38px); pointer-events:none; }
+.hm-dm-close{ position:absolute; top:14px; right:14px; z-index:5; width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,.15); color:#fff; font-size:1.1rem; display:grid; place-items:center; transition:transform .25s ease, background .25s ease; }
+.hm-dm-close:hover{ background:rgba(255,255,255,.3); transform:rotate(90deg); }
+.hm-dm-mediaHolder{ position:relative; z-index:1; }
+.hm-dm-photo{ width:132px; height:132px; border-radius:50%; object-fit:cover; margin:0 auto; display:block; border:5px solid rgba(255,255,255,.92); outline:3px solid var(--hm-gold); outline-offset:2px; box-shadow:0 16px 40px rgba(0,0,0,.45); }
+.hm-dm-photo.ph{ display:grid; place-items:center; font-size:3rem; color:#fff; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); }
+.hm-dm-video{ position:relative; z-index:1; width:100%; aspect-ratio:16/9; border-radius:16px; overflow:hidden; box-shadow:0 16px 40px rgba(0,0,0,.45); background:#000; }
+.hm-dm-video iframe,.hm-dm-video video{ width:100%; height:100%; border:0; display:block; }
+.hm-dm-name{ position:relative; z-index:1; color:#fff; font-family:'Poppins',sans-serif; font-weight:800; font-size:1.5rem; letter-spacing:-.02em; margin:18px 0 10px; overflow-wrap:anywhere; }
+.hm-dm-spec{ position:relative; z-index:1; display:inline-block; font-family:'Poppins',sans-serif; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#1a1400; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); padding:5px 15px; border-radius:999px; }
+.hm-dm-body{ padding:28px 32px 32px; background:#fff; }
+.hm-dm-body .lbl{ font-family:'Poppins',sans-serif; font-weight:700; font-size:.72rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--hm-gold-deep); margin-bottom:8px; }
+.hm-dm-body .desc{ color:var(--hm-muted); line-height:1.8; font-size:1rem; margin:0 0 22px; overflow-wrap:anywhere; }
+.hm-dm-email{ display:inline-flex; align-items:center; gap:8px; font-family:'Poppins',sans-serif; font-weight:700; font-size:.92rem; color:#1a1400; text-decoration:none; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); padding:11px 22px; border-radius:999px; box-shadow:0 10px 26px rgba(201,162,77,.4); transition:transform .25s ease, box-shadow .25s ease; overflow-wrap:anywhere; }
+.hm-dm-email:hover{ transform:translateY(-2px); box-shadow:0 16px 34px rgba(201,162,77,.55); color:#1a1400; }
+/* entrada animada del modal */
+.hm-dm.fade .modal-dialog{ transform:scale(.94) translateY(14px); transition:transform .32s cubic-bezier(.22,1,.36,1); }
+.hm-dm.show .modal-dialog{ transform:none; }
+@media (prefers-reduced-motion:reduce){ .hm-dm.fade .modal-dialog{ transition:none; transform:none; } .hm-dm-close:hover{ transform:none; } }
+
+/* ── Tarjeta de descarga (PDF) ── */
+.hm-download{ display:flex; align-items:center; gap:16px; background:#fff; border-radius:16px; padding:18px 22px; border:1px solid #efe7d5; box-shadow:0 6px 20px rgba(21,22,31,.05); text-decoration:none; transition:transform .3s ease, box-shadow .3s ease; }
+.hm-download:hover{ transform:translateY(-4px); box-shadow:0 16px 38px rgba(21,22,31,.1); }
+.hm-download .ic{ width:50px; height:50px; border-radius:14px; flex-shrink:0; display:grid; place-items:center; font-size:1.4rem; color:#1a1400; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); }
+.hm-download .info{ flex:1; }
+.hm-download .info h6{ font-family:'Poppins',sans-serif; font-weight:700; margin:0 0 2px; color:#222; font-size:.98rem; }
+.hm-download .info small{ color:#999; font-size:.78rem; }
+.hm-download .go{ background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); color:#1a1400; border-radius:999px; padding:8px 20px; font-family:'Poppins',sans-serif; font-weight:700; font-size:.82rem; white-space:nowrap; }
+
+/* ── WhatsApp directo ── */
+.hm-wa{ display:flex; align-items:center; gap:16px; background:linear-gradient(135deg,#f0faf4,#e8f5ee); border:1px solid #c8e6d0; border-radius:18px; padding:18px 22px; text-decoration:none; transition:transform .3s ease, box-shadow .3s ease; }
+.hm-wa:hover{ transform:translateY(-2px); box-shadow:0 10px 26px rgba(37,211,102,.18); }
+.hm-wa .ic{ width:48px; height:48px; border-radius:14px; background:#25d366; color:#fff; display:grid; place-items:center; font-size:1.4rem; flex-shrink:0; }
+.hm-wa h6{ font-family:'Poppins',sans-serif; font-weight:700; margin:0 0 1px; color:#1a5a2e; font-size:.95rem; }
+.hm-wa p{ margin:0; font-size:.85rem; color:#3a8a5a; }
+.hm-wa .arrow{ margin-left:auto; color:#25d366; font-size:1.3rem; transition:transform .3s ease; }
+.hm-wa:hover .arrow{ transform:translateX(4px); }
+
+/* ── Utilidades de recorte de texto (evitan cards disparejas / desbordes) ── */
+.hm-clamp-2,.hm-clamp-3,.hm-clamp-4{ display:-webkit-box; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; }
+.hm-clamp-2{ -webkit-line-clamp:2; }
+.hm-clamp-3{ -webkit-line-clamp:3; }
+.hm-clamp-4{ -webkit-line-clamp:4; }
+.hm-card-title{ overflow-wrap:anywhere; }
+.hm-card-text{ overflow-wrap:anywhere; }
+
+/* ── Encabezado de sección con línea ── */
+.hm-sechead{ display:flex; align-items:center; gap:14px; margin-bottom:26px; }
+.hm-sechead h3{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.15rem; margin:0; white-space:nowrap; }
+.hm-sechead .line{ flex:1; height:2px; background:linear-gradient(90deg,var(--hm-gold),transparent); border-radius:2px; }
+
+/* ── Mapa ── */
+.hm-map{ border-radius:20px; overflow:hidden; box-shadow:0 12px 34px rgba(21,22,31,.08); border:1px solid #efe7d5; }
+.hm-map iframe{ display:block; width:100%; }
+
+/* ── Responsive ── */
+@media (max-width:991.98px){
+    .hm-sub{ margin-inline:auto; }
+    .hm-actions{ justify-content:center; }
+    .hm-hero .col-lg-6:first-child{ text-align:center; }
+    .hm-eyebrow{ margin-inline:auto; }
+    .hm-hero-media{ margin-top:44px; max-width:520px; margin-left:auto; margin-right:auto; }
+}
+@media (prefers-reduced-motion:reduce){
+    .hm-btn,.hm-frame,.hm-card,.hm-card-media img,.hm-feature,.hm-feature::before,.hm-contact,.hm-numitem{ transition:none !important; }
+    .hm-frame{ transform:none !important; }
+}

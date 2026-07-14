@@ -54,6 +54,13 @@ $recientes = $conexion->prepare("
 $recientes->execute([$profesor_id]);
 $recientes = $recientes->fetchAll(PDO::FETCH_ASSOC);
 
+/* Saludo por hora + fecha en español */
+$hora = (int) date('G');
+$saludo = $hora < 12 ? 'Buenos días' : ($hora < 19 ? 'Buenas tardes' : 'Buenas noches');
+$dias  = ['Sunday'=>'Domingo','Monday'=>'Lunes','Tuesday'=>'Martes','Wednesday'=>'Miércoles','Thursday'=>'Jueves','Friday'=>'Viernes','Saturday'=>'Sábado'];
+$meses = [1=>'enero',2=>'febrero',3=>'marzo',4=>'abril',5=>'mayo',6=>'junio',7=>'julio',8=>'agosto',9=>'septiembre',10=>'octubre',11=>'noviembre',12=>'diciembre'];
+$fechaLarga = $dias[date('l')] . ', ' . (int)date('j') . ' de ' . $meses[(int)date('n')] . ' de ' . date('Y');
+
 $pageTitle = "Dashboard";
 include "includes/header.php";
 ?>
@@ -73,21 +80,57 @@ include "includes/header.php";
 
         <div class="content-area">
             <!-- Welcome banner -->
-            <div class="gca-card p-4 mb-4" style="background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%); border-color: rgba(212,175,55,0.2);">
-                <div class="d-flex align-items-center gap-3 flex-wrap">
-                    <div style="width:56px;height:56px;background:linear-gradient(135deg,var(--gold),var(--gold-dark));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;color:#000;flex-shrink:0;box-shadow:0 4px 16px rgba(212,175,55,0.3);">
-                        <i class="bi bi-person-fill"></i>
-                    </div>
-                    <div style="flex:1;min-width:0;">
-                        <h3 style="font-family:'Cormorant Garamond',serif;color:var(--gold);margin:0;font-size:24px;">
-                            Bienvenido, <?= htmlspecialchars($nombre) ?>
-                        </h3>
-                        <p style="color:var(--text-muted);margin:2px 0 0;font-size:13px;">
-                            Panel de control académico &middot; Gestión de calificaciones y seguimiento
-                        </p>
-                    </div>
+            <div class="prof-welcome mb-4">
+                <div class="pw-left">
+                    <span class="pw-greet"><?= $saludo ?></span>
+                    <h3>Bienvenido, <span><?= htmlspecialchars($nombre) ?></span></h3>
+                    <p><i class="bi bi-calendar3"></i><?= ucfirst($fechaLarga) ?> &middot; Gestión de calificaciones</p>
                 </div>
+                <div class="pw-icon"><i class="bi bi-person-workspace"></i></div>
             </div>
+            <style>
+                .prof-welcome {
+                    position: relative; overflow: hidden;
+                    background:
+                        radial-gradient(560px 200px at 88% -20%, rgba(212,175,55,.22), transparent 70%),
+                        linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+                    border: 1px solid rgba(212,175,55,0.2);
+                    border-radius: 20px; padding: 30px 34px;
+                    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+                    box-shadow: 0 12px 36px rgba(0,0,0,.16);
+                }
+                .prof-welcome::after {
+                    content:''; position:absolute; inset:0;
+                    background-image: radial-gradient(rgba(212,175,55,.10) 1px, transparent 1px);
+                    background-size: 22px 22px; opacity:.5; pointer-events:none;
+                    -webkit-mask-image: linear-gradient(90deg, transparent, #000 60%);
+                    mask-image: linear-gradient(90deg, transparent, #000 60%);
+                }
+                .pw-left { position: relative; z-index: 1; }
+                .pw-greet {
+                    display:inline-block; font-size:11px; letter-spacing:1.5px; text-transform:uppercase;
+                    color:var(--gold); background:rgba(212,175,55,.1); border:1px solid rgba(212,175,55,.22);
+                    padding:3px 11px; border-radius:30px; margin-bottom:10px;
+                }
+                .prof-welcome h3 { font-family:'Cormorant Garamond',serif; color:#f0ede6; margin:0 0 4px; font-size:26px; font-weight:700; }
+                .prof-welcome h3 span {
+                    background:linear-gradient(90deg,#d4af37 20%,#f6e4a6 50%,#d4af37 80%); background-size:200% auto;
+                    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;
+                    animation: wbShine 5s linear infinite;
+                }
+                @keyframes wbShine { to { background-position:200% center; } }
+                .prof-welcome p { color:rgba(240,237,230,.6); margin:0; font-size:13px; }
+                .prof-welcome p i { color:var(--gold); margin-right:6px; }
+                .pw-icon {
+                    position:relative; z-index:1; width:68px; height:68px; flex-shrink:0; border-radius:18px;
+                    display:flex; align-items:center; justify-content:center;
+                    background:rgba(212,175,55,.12); border:1px solid rgba(212,175,55,.25);
+                }
+                .pw-icon i { font-size:32px; color:var(--gold); animation: floaty 3.5s ease-in-out infinite; }
+                @keyframes floaty { 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-6px);} }
+                @media (max-width:768px){ .prof-welcome{ flex-direction:column; text-align:center; padding:24px 20px; } .pw-icon{ display:none; } }
+                @media (prefers-reduced-motion: reduce){ .prof-welcome h3 span, .pw-icon i { animation:none; } }
+            </style>
 
             <!-- Stat cards -->
             <div class="row g-3 mb-4">
@@ -95,7 +138,7 @@ include "includes/header.php";
                     <div class="stat-card">
                         <div class="stat-icon gold"><i class="bi bi-people-fill"></i></div>
                         <div class="stat-info">
-                            <h3><?= $totalEstudiantes ?></h3>
+                            <h3 data-count="<?= (int)$totalEstudiantes ?>">0</h3>
                             <p>Estudiantes</p>
                         </div>
                     </div>
@@ -104,7 +147,7 @@ include "includes/header.php";
                     <div class="stat-card">
                         <div class="stat-icon blue"><i class="bi bi-book-fill"></i></div>
                         <div class="stat-info">
-                            <h3><?= $totalCursos ?></h3>
+                            <h3 data-count="<?= (int)$totalCursos ?>">0</h3>
                             <p>Cursos</p>
                         </div>
                     </div>
@@ -113,7 +156,7 @@ include "includes/header.php";
                     <div class="stat-card">
                         <div class="stat-icon green"><i class="bi bi-journal-text"></i></div>
                         <div class="stat-info">
-                            <h3><?= $totalAsignaturas ?></h3>
+                            <h3 data-count="<?= (int)$totalAsignaturas ?>">0</h3>
                             <p>Asignaturas</p>
                         </div>
                     </div>
@@ -122,7 +165,7 @@ include "includes/header.php";
                     <div class="stat-card">
                         <div class="stat-icon purple"><i class="bi bi-star-fill"></i></div>
                         <div class="stat-info">
-                            <h3><?= $totalNotas ?></h3>
+                            <h3 data-count="<?= (int)$totalNotas ?>">0</h3>
                             <p>Notas Registradas</p>
                         </div>
                     </div>
@@ -194,5 +237,23 @@ include "includes/header.php";
             </div>
         </div>
     </main>
+
+    <script>
+    (function () {
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        document.querySelectorAll('.stat-info h3[data-count]').forEach(function (el) {
+            var target = parseInt(el.getAttribute('data-count'), 10) || 0;
+            if (reduce || target === 0) { el.textContent = target; return; }
+            var dur = 1100, start = null;
+            function step(ts) {
+                if (start === null) start = ts;
+                var p = Math.min((ts - start) / dur, 1);
+                el.textContent = Math.floor(target * (1 - Math.pow(1 - p, 3)));
+                if (p < 1) requestAnimationFrame(step); else el.textContent = target;
+            }
+            requestAnimationFrame(step);
+        });
+    })();
+    </script>
 
     <?php include "includes/footer.php"; ?>

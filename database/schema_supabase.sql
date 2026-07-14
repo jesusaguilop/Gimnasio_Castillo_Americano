@@ -34,15 +34,32 @@ CREATE TABLE IF NOT EXISTS cursos (
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. ASIGNATURAS
+-- 3. AREAS (normalización del campo asignaturas.area)
+CREATE TABLE IF NOT EXISTS areas (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3b. ASIGNATURAS
 CREATE TABLE IF NOT EXISTS asignaturas (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     area VARCHAR(100) NOT NULL DEFAULT '',
+    area_id INTEGER DEFAULT NULL REFERENCES areas(id) ON DELETE RESTRICT,
     nivel VARCHAR(20) NOT NULL DEFAULT 'secundaria',
     intensidad_horaria INTEGER NOT NULL DEFAULT 0,
     grado VARCHAR(20) DEFAULT NULL,
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3c. ASIGNATURA_GRADO (relación asignatura ↔ grado con intensidad horaria)
+CREATE TABLE IF NOT EXISTS asignatura_grado (
+    asignatura_id INTEGER NOT NULL REFERENCES asignaturas(id) ON DELETE CASCADE,
+    grado VARCHAR(20) NOT NULL,
+    intensidad_horaria INTEGER NOT NULL DEFAULT 0,
+    porcentaje INTEGER NOT NULL DEFAULT 100,
+    PRIMARY KEY (asignatura_id, grado)
 );
 
 -- 4. ESTUDIANTES
@@ -51,7 +68,7 @@ CREATE TABLE IF NOT EXISTS estudiantes (
     nombre VARCHAR(100) NOT NULL,
     documento VARCHAR(30) NOT NULL,
     fecha_nacimiento DATE DEFAULT NULL,
-    padre_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    padre_id INTEGER DEFAULT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     curso_id INTEGER DEFAULT NULL REFERENCES cursos(id) ON DELETE SET NULL,
     usuario_id INTEGER DEFAULT NULL REFERENCES usuarios(id) ON DELETE SET NULL
@@ -66,6 +83,7 @@ CREATE TABLE IF NOT EXISTS notas (
     curso_id INTEGER NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
     periodo VARCHAR(20) NOT NULL,
     nota INTEGER NOT NULL,
+    anio INTEGER NOT NULL DEFAULT EXTRACT(YEAR FROM CURRENT_TIMESTAMP),
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -75,7 +93,9 @@ CREATE TABLE IF NOT EXISTS profesor_curso_asignatura (
     profesor_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     curso_id INTEGER NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
     asignatura_id INTEGER NOT NULL REFERENCES asignaturas(id) ON DELETE CASCADE,
-    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    porcentaje INTEGER NOT NULL DEFAULT 100,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (profesor_id, curso_id, asignatura_id)
 );
 
 -- ============================================================
@@ -89,6 +109,7 @@ CREATE TABLE IF NOT EXISTS logros (
     asignatura_id INTEGER NOT NULL REFERENCES asignaturas(id) ON DELETE CASCADE,
     periodo VARCHAR(20) NOT NULL,
     logro TEXT NOT NULL,
+    anio INTEGER NOT NULL DEFAULT EXTRACT(YEAR FROM CURRENT_TIMESTAMP),
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -100,7 +121,7 @@ CREATE TABLE IF NOT EXISTS alertas (
     mensaje TEXT NOT NULL,
     para_rol VARCHAR(20) DEFAULT NULL,
     para_usuario_id INTEGER DEFAULT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
-    leido SMALLINT NOT NULL DEFAULT 0,
+    leido BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -144,7 +165,7 @@ CREATE TABLE IF NOT EXISTS noticias (
     imagen VARCHAR(255) DEFAULT NULL,
     categoria VARCHAR(100) DEFAULT 'General',
     fecha_publicacion DATE DEFAULT NULL,
-    activo SMALLINT DEFAULT 1,
+    activo BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -157,7 +178,7 @@ CREATE TABLE IF NOT EXISTS eventos (
     hora_evento TIME DEFAULT NULL,
     tipo VARCHAR(50) DEFAULT 'General',
     color VARCHAR(7) DEFAULT '#c9a24d',
-    activo SMALLINT DEFAULT 1,
+    activo BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -169,7 +190,7 @@ CREATE TABLE IF NOT EXISTS docentes (
     foto VARCHAR(255) DEFAULT NULL,
     descripcion TEXT,
     email VARCHAR(255) DEFAULT NULL,
-    activo SMALLINT DEFAULT 1,
+    activo BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -217,6 +238,7 @@ CREATE TRIGGER trg_configuraciones_actualizado
 INSERT INTO configuraciones (clave, valor) VALUES
     ('plataforma_activa', '0'),
     ('periodo_activo', '1'),
+    ('anio_activo', EXTRACT(YEAR FROM CURRENT_DATE)::text),
     ('fecha_apertura', ''),
     ('fecha_cierre', '')
 ON CONFLICT (clave) DO NOTHING;
@@ -263,3 +285,43 @@ INSERT INTO asignaturas (nombre, area, nivel, intensidad_horaria) VALUES
     ('Danza',         'EDUCACION FISICA',  'secundaria', 1),
     ('Comportamiento','COMPORTAMIENTO',    'secundaria', 0)
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- POBLAR AREAS / AREA_ID / ASIGNATURA_GRADO
+-- ============================================================
+
+-- Áreas a partir de los valores reales de asignaturas.area
+INSERT INTO areas (nombre)
+SELECT DISTINCT area FROM asignaturas WHERE area IS NOT NULL AND area <> ''
+ON CONFLICT (nombre) DO NOTHING;
+
+-- Enlazar cada asignatura con su área
+UPDATE asignaturas a
+SET area_id = ar.id
+FROM areas ar
+WHERE a.area = ar.nombre AND a.area_id IS DISTINCT FROM ar.id;
+
+-- asignatura_grado: una fila por cada grado del nivel de la asignatura
+INSERT INTO asignatura_grado (asignatura_id, grado, intensidad_horaria)
+SELECT a.id, g.grado, a.intensidad_horaria
+FROM asignaturas a
+CROSS JOIN (VALUES ('maternal'),('prejardin'),('jardin'),('transicion')) AS g(grado)
+WHERE a.nivel = 'preescolar'
+ON CONFLICT (asignatura_id, grado) DO NOTHING;
+
+INSERT INTO asignatura_grado (asignatura_id, grado, intensidad_horaria)
+SELECT a.id, g.grado, a.intensidad_horaria
+FROM asignaturas a
+CROSS JOIN (VALUES ('primero'),('segundo'),('tercero'),('cuarto'),('quinto')) AS g(grado)
+WHERE a.nivel = 'primaria'
+ON CONFLICT (asignatura_id, grado) DO NOTHING;
+
+INSERT INTO asignatura_grado (asignatura_id, grado, intensidad_horaria)
+SELECT a.id, g.grado, a.intensidad_horaria
+FROM asignaturas a
+CROSS JOIN (VALUES ('sexto'),('septimo'),('octavo'),('noveno'),('decimo'),('once')) AS g(grado)
+WHERE a.nivel = 'secundaria'
+ON CONFLICT (asignatura_id, grado) DO NOTHING;
+
+CREATE INDEX IF NOT EXISTS idx_asignatura_grado_grado ON asignatura_grado(grado);
+CREATE INDEX IF NOT EXISTS idx_asignaturas_area_id ON asignaturas(area_id);

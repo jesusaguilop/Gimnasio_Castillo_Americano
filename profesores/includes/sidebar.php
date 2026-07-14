@@ -86,6 +86,10 @@ $isActive = fn($file) => $currentFile === $file ? 'active' : '';
             <i class="nav-icon ti ti-eye"></i>
             Vista Consolidada
         </a>
+        <a href="resultados_anio.php" class="nav-link-item <?= $isActive('resultados_anio.php') ?>">
+            <i class="nav-icon ti ti-award"></i>
+            Resultados del Año
+        </a>
         <?php endif; ?>
     </nav>
 

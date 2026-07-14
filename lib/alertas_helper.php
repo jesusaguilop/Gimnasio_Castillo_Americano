@@ -55,8 +55,9 @@ function marcarAlertaLeida($conexion, $alerta_id)
  * Check and create risk alerts for a student after saving period 3 grades.
  * Returns array of created alert IDs.
  */
-function verificarRiesgoAcademico($conexion, $estudiante_id, $curso_id, $periodo)
+function verificarRiesgoAcademico($conexion, $estudiante_id, $curso_id, $periodo, $anio = null)
 {
+    $anio = $anio ?? (int) date('Y');
     $alertas_creadas = [];
 
     // Only check risk in period 3
@@ -83,10 +84,10 @@ function verificarRiesgoAcademico($conexion, $estudiante_id, $curso_id, $periodo
                AVG(CASE WHEN n.periodo = '3' THEN n.nota END) AS p3
         FROM notas n
         JOIN asignaturas a ON n.asignatura_id = a.id
-        WHERE n.estudiante_id = ? AND n.periodo IN ('1','2','3')
-        GROUP BY n.asignatura_id
+        WHERE n.estudiante_id = ? AND n.periodo IN ('1','2','3') AND n.anio = ?
+        GROUP BY n.asignatura_id, a.nombre, a.area
     ");
-    $notas->execute([$estudiante_id]);
+    $notas->execute([$estudiante_id, $anio]);
     $materias = $notas->fetchAll(PDO::FETCH_ASSOC);
 
     if (count($materias) === 0) return $alertas_creadas;

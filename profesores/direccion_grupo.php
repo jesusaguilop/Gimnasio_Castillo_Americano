@@ -5,8 +5,9 @@ require_once "../lib/rank_helper.php";
 
 $profesor_id = userId();
 
-/* ── Get active period ── */
+/* ── Get active period + year ── */
 $periodo_activo = getConfig('periodo_activo') ?? '1';
+$anio_activo = (int)(getConfig('anio_activo') ?? date('Y'));
 
 /* ── Get courses where this profesor is director ── */
 $cursos_dirigidos = $conexion->prepare("
@@ -73,10 +74,12 @@ include "includes/header.php";
                         $materias_curso->execute([$curso['id']]);
                         $materias_curso = $materias_curso->fetchAll(PDO::FETCH_ASSOC);
 
-                        $ranking = obtenerRankingCurso($conexion, $curso['id'], $periodo_activo);
+                        $ranking = obtenerRankingCurso($conexion, $curso['id'], $periodo_activo, $anio_activo);
                         $ranking_map = [];
+                        $prom_map = [];
                         foreach ($ranking as $i => $r) {
                             $ranking_map[$r['id']] = ['pos' => $i + 1, 'total' => count($ranking)];
+                            $prom_map[$r['id']] = $r['promedio'];
                         }
 
                         // Eager-load all notas + logros for all students in this course (1 query)
@@ -84,7 +87,7 @@ include "includes/header.php";
                         if (count($estudiantes) > 0) {
                             $est_ids = array_column($estudiantes, 'id');
                             $placeholders = implode(',', array_fill(0, count($est_ids), '?'));
-                            $params = array_merge($est_ids, [$periodo_activo]);
+                            $params = array_merge($est_ids, [$periodo_activo, $anio_activo]);
                             $notas_all = $conexion->prepare("
                                 SELECT n.estudiante_id, n.asignatura_id, n.nota, n.profesor_id,
                                        u.nombre AS profesor_nombre, l.logro
@@ -92,8 +95,8 @@ include "includes/header.php";
                                 JOIN usuarios u ON n.profesor_id = u.id
                                 LEFT JOIN logros l ON l.estudiante_id = n.estudiante_id
                                     AND l.asignatura_id = n.asignatura_id
-                                    AND l.periodo = n.periodo
-                                WHERE n.estudiante_id IN ($placeholders) AND n.periodo = ?
+                                    AND l.periodo = n.periodo AND l.anio = n.anio
+                                WHERE n.estudiante_id IN ($placeholders) AND n.periodo = ? AND n.anio = ?
                             ");
                             $notas_all->execute($params);
                             foreach ($notas_all->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -114,6 +117,20 @@ include "includes/header.php";
                             </h2>
                             <div id="collapseDir<?= $curso['id'] ?>" class="accordion-collapse collapse" data-bs-parent="#accordionDirector">
                                 <div class="accordion-body p-0">
+
+                                    <?php if (count($estudiantes) > 0 && count($materias_curso) > 0): ?>
+                                        <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid #f0ede8;background:#fcfbfa;">
+                                            <span class="small text-muted">
+                                                <i class="bi bi-people-fill me-1" style="color:var(--gold-dark);"></i>
+                                                <?= count($estudiantes) ?> estudiantes &middot; <?= count($materias_curso) ?> materias del plan
+                                            </span>
+                                            <a href="generar_boletines_curso.php?curso=<?= $curso['id'] ?>&periodo=<?= urlencode($periodo_activo) ?>&anio=<?= $anio_activo ?>&template=v2"
+                                               class="btn-gca btn-gca-sm"
+                                               onclick="return confirm('¿Generar los boletines de TODOS los estudiantes con notas de este curso?\nSe guardarán con su promedio y puesto.')">
+                                                <i class="bi bi-collection"></i> Generar todos los boletines
+                                            </a>
+                                        </div>
+                                    <?php endif; ?>
 
                                     <?php if (count($estudiantes) === 0): ?>
                                         <div class="p-4 text-center text-muted">No hay estudiantes en este curso.</div>
@@ -136,12 +153,30 @@ include "includes/header.php";
                                                                     #<?= $ranking_map[$est['id']]['pos'] ?>/<?= $ranking_map[$est['id']]['total'] ?>
                                                                 </span>
                                                             <?php endif; ?>
+                                                            <?php
+                                                                $reg = count($notas_map); $tot = count($materias_curso);
+                                                                $completo = ($tot > 0 && $reg >= $tot);
+                                                                $prom = $prom_map[$est['id']] ?? null;
+                                                            ?>
+                                                            <span style="margin-left:8px;font-size:10px;font-weight:700;padding:1px 8px;border-radius:20px;white-space:nowrap;<?= $completo ? 'color:#2e7d32;background:rgba(25,135,84,.12);' : 'color:#e65100;background:rgba(230,81,0,.10);' ?>">
+                                                                <i class="bi bi-journal-check"></i> <?= $reg ?>/<?= $tot ?>
+                                                            </span>
+                                                            <?php if ($prom !== null): ?>
+                                                                <span style="margin-left:6px;font-size:10px;font-weight:700;color:#1a1a1a;background:rgba(212,175,55,.15);padding:1px 8px;border-radius:20px;white-space:nowrap;">Prom <?= $prom ?></span>
+                                                            <?php endif; ?>
                                                             <span style="margin-left:auto;font-size:11px;color:#999;"><?= htmlspecialchars($est['documento']) ?></span>
                                                         </button>
                                                     </h2>
                                                     <div id="collapseEstDir<?= $est['id'] ?>" class="accordion-collapse collapse"
                                                         data-bs-parent="#accordionEstDir<?= $curso['id'] ?>">
                                                         <div class="accordion-body p-0">
+                                                            <div style="padding:10px 14px;display:flex;justify-content:flex-end;border-bottom:1px solid #f5f3ee;">
+                                                                <a href="#" class="btn-gca btn-gca-sm btn-gen-boletin"
+                                                                   data-estudiante-id="<?= $est['id'] ?>"
+                                                                   data-estudiante-nombre="<?= htmlspecialchars($est['nombre'], ENT_QUOTES) ?>">
+                                                                    <i class="bi bi-file-earmark-pdf"></i> Generar boletín
+                                                                </a>
+                                                            </div>
                                                             <div class="table-responsive">
                                                                 <table class="table gca-table mb-0" style="font-size:12px;">
                                                                     <thead>
@@ -198,10 +233,11 @@ include "includes/header.php";
                     <i class="bi bi-info-circle-fill" style="color:var(--gold);font-size:20px;"></i>
                     <div>
                         <p class="mb-0 small">
-                            <strong>Vista de solo lectura.</strong> Como director de grupo puedes visualizar
-                            las notas de <strong>todas las materias</strong> registradas por los docentes de tu curso.
-                            Las notas de tus propias asignaturas se gestionan desde <a href="registrar_notas.php"
-                            style="color:var(--gold-dark);font-weight:500;">Registrar Notas</a>.
+                            Como director de grupo ves las notas de <strong>todas las materias</strong> de tu curso
+                            (el avance <strong>X/Y</strong> indica cuántas materias tienen nota). Cuando estén completas,
+                            genera el boletín de un estudiante con <strong>"Generar boletín"</strong>, o todos de una vez con
+                            <strong>"Generar todos los boletines"</strong> — se guardan con <strong>promedio</strong> y <strong>puesto</strong>.
+                            Tus propias asignaturas se califican en <a href="registrar_notas.php" style="color:var(--gold-dark);font-weight:500;">Registrar Notas</a>.
                         </p>
                     </div>
                 </div>
@@ -209,5 +245,66 @@ include "includes/header.php";
             <?php endif; ?>
         </div>
     </main>
+
+<!-- ─── Modal Paz y Salvo ─── -->
+<div class="modal fade" id="pazSalvoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content" style="border-radius:16px;border:1px solid var(--border-color);box-shadow:0 20px 60px rgba(0,0,0,.15);">
+            <div class="modal-body text-center py-5 px-4">
+                <div class="mb-3" style="font-size:48px;color:var(--gold);">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <h5 class="mb-2" style="font-weight:700;">¿Está a paz y salvo?</h5>
+                <p id="pazSalvoMsg" class="mb-4" style="font-size:14px;color:var(--text-secondary);line-height:1.5;">
+                    ¿El estudiante está a paz y salvo académica y administrativamente?
+                </p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn px-4 py-2" id="pazSalvoNo" style="border-radius:10px;border:1.5px solid var(--border-color);color:var(--text-secondary);font-weight:500;background:transparent;">
+                        <i class="bi bi-x-circle me-1"></i>No
+                    </button>
+                    <button type="button" class="btn px-4 py-2" id="pazSalvoSi" style="border-radius:10px;border:none;background:#2e7d32;color:#fff;font-weight:600;">
+                        <i class="bi bi-check-circle me-1"></i>Sí, está a paz y salvo
+                    </button>
+                </div>
+                <small class="d-block mt-3 text-muted" style="font-size:11px;">
+                    Si responde <b>Sí</b> se envía el boletín al padre y al administrador.<br>
+                    Si responde <b>No</b> solo se envía al administrador.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var el = document.getElementById('pazSalvoModal');
+    if (!el || typeof bootstrap === 'undefined') return;
+    var modal = new bootstrap.Modal(el, { backdrop: 'static', keyboard: false });
+    var periodo = <?= json_encode($periodo_activo) ?>;
+    var anio = <?= json_encode((string)$anio_activo) ?>;
+    var pendingUrl = '';
+
+    document.querySelectorAll('.btn-gen-boletin').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            var id = this.dataset.estudianteId;
+            var nombre = this.dataset.estudianteNombre;
+            pendingUrl = 'generar_boletin.php?estudiante=' + id + '&periodo=' + encodeURIComponent(periodo) + '&anio=' + encodeURIComponent(anio) + '&template=v2';
+            document.getElementById('pazSalvoMsg').innerHTML =
+                '¿El estudiante <b>' + nombre + '</b> está a paz y salvo académica y administrativamente?';
+            modal.show();
+        });
+    });
+
+    document.getElementById('pazSalvoSi').addEventListener('click', function () {
+        modal.hide();
+        if (pendingUrl) window.open(pendingUrl + '&paz_y_salvo=1', '_blank');
+    });
+    document.getElementById('pazSalvoNo').addEventListener('click', function () {
+        modal.hide();
+        if (pendingUrl) window.open(pendingUrl + '&paz_y_salvo=0', '_blank');
+    });
+});
+</script>
 
     <?php include "includes/footer.php"; ?>

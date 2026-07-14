@@ -30,7 +30,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["eliminar_id"])) {
 }
 
 $asignaturas = $conexion
-    ->query("SELECT id, nombre, area, nivel, grado FROM asignaturas ORDER BY FIELD(nivel,'preescolar','primaria','secundaria'), area, nombre")
+    ->query("SELECT a.id, a.nombre, a.area, a.nivel, a.intensidad_horaria,
+                    (SELECT STRING_AGG(ag.grado, ', ' ORDER BY ag.grado)
+                       FROM asignatura_grado ag WHERE ag.asignatura_id = a.id) AS grados
+             FROM asignaturas a
+             ORDER BY
+                CASE a.nivel WHEN 'preescolar' THEN 1 WHEN 'primaria' THEN 2 WHEN 'secundaria' THEN 3 ELSE 4 END,
+                a.area, a.nombre")
     ->fetchAll(PDO::FETCH_ASSOC);
 
 $pageTitle = "Gestión de Asignaturas";

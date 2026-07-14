@@ -22,17 +22,19 @@ $cursos = $conexion->query(
         CASE grado
             WHEN 'maternal' THEN 1 WHEN 'prejardin' THEN 2 WHEN 'jardin' THEN 3 WHEN 'transicion' THEN 4
             WHEN 'primero' THEN 5 WHEN 'segundo' THEN 6 WHEN 'tercero' THEN 7 WHEN 'cuarto' THEN 8 WHEN 'quinto' THEN 9
-            WHEN 'sexto' THEN 10 WHEN 'septimo' THEN 11 WHEN 'octavo' THEN 12 WHEN 'noveno' THEN 13 WHEN 'decimo' THEN 14 WHEN 'undecimo' THEN 15
+            WHEN 'sexto' THEN 10 WHEN 'septimo' THEN 11 WHEN 'octavo' THEN 12 WHEN 'noveno' THEN 13 WHEN 'decimo' THEN 14 WHEN 'once' THEN 15 WHEN 'undecimo' THEN 15
             ELSE 16
         END, nombre"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $asignaturas = $conexion->query(
-    "SELECT a.id, a.nombre, a.nivel, ar.nombre AS area,
-            (SELECT GROUP_CONCAT(ag.grado SEPARATOR ',') FROM asignatura_grado ag WHERE ag.asignatura_id = a.id) AS grados
+    "SELECT a.id, a.nombre, a.nivel, COALESCE(ar.nombre, a.area) AS area,
+            (SELECT STRING_AGG(ag.grado, ',' ORDER BY ag.grado) FROM asignatura_grado ag WHERE ag.asignatura_id = a.id) AS grados
      FROM asignaturas a
      LEFT JOIN areas ar ON a.area_id = ar.id
-     ORDER BY FIELD(a.nivel,'preescolar','primaria','secundaria'), ar.nombre, a.nombre"
+     ORDER BY
+        CASE a.nivel WHEN 'preescolar' THEN 1 WHEN 'primaria' THEN 2 WHEN 'secundaria' THEN 3 ELSE 4 END,
+        COALESCE(ar.nombre, a.area), a.nombre"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -53,9 +55,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $curso = $_POST["curso"];
         $asignatura = $_POST["asignatura"];
         $porcentaje = (int)($_POST["porcentaje"] ?? 100);
+        if ($porcentaje < 1 || $porcentaje > 100) $porcentaje = 100;
 
-        $sql = "INSERT IGNORE INTO profesor_curso_asignatura (profesor_id, curso_id, asignatura_id)
-                VALUES (:profesor, :curso, :asignatura)";
+        $sql = "INSERT INTO profesor_curso_asignatura (profesor_id, curso_id, asignatura_id, porcentaje)
+                VALUES (:profesor, :curso, :asignatura, :porcentaje)
+                ON CONFLICT (profesor_id, curso_id, asignatura_id) DO NOTHING";
 
         $stmt = $conexion->prepare($sql);
 
@@ -64,6 +68,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ":profesor" => $profesor,
                 ":curso" => $curso,
                 ":asignatura" => $asignatura,
+                ":porcentaje" => $porcentaje,
             ]);
             if ($stmt->rowCount() > 0) {
                 $mensaje = "Asignación creada correctamente.";

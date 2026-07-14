@@ -11,9 +11,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $stmt->bindParam(":email", $email, PDO::PARAM_STR);
     $stmt->execute();
 
-    if ($stmt->rowCount() === 1) {
+    $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($usuario) {
 
         // Generar token seguro
         $token = bin2hex(random_bytes(32));

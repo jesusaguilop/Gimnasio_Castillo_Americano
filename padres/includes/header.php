@@ -432,4 +432,33 @@
         .dark-mode .grade-card:hover { background: var(--surface-alt); }
         .dark-mode .empty-state i { color: var(--text-muted); }
     </style>
+    <!-- ── Glow-up: aparición escalonada + realce (panel de padres) ── -->
+    <style>
+        .app-content > * { animation: fadeInUp .45s ease both; }
+        .app-content > *:nth-child(1){ animation-delay:.03s; }
+        .app-content > *:nth-child(2){ animation-delay:.09s; }
+        .app-content > *:nth-child(3){ animation-delay:.15s; }
+        .app-content > *:nth-child(4){ animation-delay:.21s; }
+        .app-content > *:nth-child(5){ animation-delay:.27s; }
+
+        .student-card { animation: fadeInUp .45s ease both; }
+        .student-card:nth-child(1){ animation-delay:.05s; }
+        .student-card:nth-child(2){ animation-delay:.12s; }
+        .student-card:nth-child(3){ animation-delay:.19s; }
+        .student-card:nth-child(4){ animation-delay:.26s; }
+        .student-card:nth-child(5){ animation-delay:.33s; }
+
+        .app-card { transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s, border-color .25s; }
+        .app-card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,.07); }
+
+        .period-tab { transition: all .22s cubic-bezier(.22,1,.36,1); }
+        .period-tab:hover { transform: translateY(-1px); }
+        .grade-badge { transition: transform .2s ease; }
+        .grade-card:hover .grade-badge { transform: scale(1.08); }
+
+        @media (prefers-reduced-motion: reduce) {
+            .app-content > *, .student-card { animation: none !important; }
+            .app-card:hover, .period-tab:hover, .grade-card:hover .grade-badge { transform: none; }
+        }
+    </style>
 </head>

@@ -3,11 +3,13 @@ require_once __DIR__ . '/../includes/init.php';
 checkRole('profesor');
 require_once "../lib/alertas_helper.php";
 require_once "../lib/rank_helper.php";
+require_once "../lib/csrf_helper.php";
 
 $profesor_id = userId();
 
 $plataforma_activa = (getConfig('plataforma_activa') ?? '0') === '1';
 $periodo_activo = getConfig('periodo_activo') ?? '1';
+$anio_activo = (int)(getConfig('anio_activo') ?? date('Y'));
 
 $mensaje = "";
 $error = "";
@@ -42,7 +44,10 @@ if ($asignacion_id) {
 }
 
 /* ── Handle save ── */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $asignacion_seleccionada && isset($_POST['guardar_masivo'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $asignacion_seleccionada && isset($_POST['guardar_masivo'])
+    && !validar_token_csrf($_POST['_csrf_token'] ?? '')) {
+    $error = "Error de seguridad. Recargue la página e intente de nuevo.";
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && $asignacion_seleccionada && isset($_POST['guardar_masivo'])) {
     $curso_id = $asignacion_seleccionada['curso_id'];
     $asignatura_id = $asignacion_seleccionada['asignatura_id'];
 
@@ -61,27 +66,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $asignacion_seleccionada && isset($
         $valid_ids = $checkStmt->fetchAll(PDO::FETCH_COLUMN);
         $valid_set = array_flip($valid_ids);
 
-        // Bulk DELETE existing notas for all students
+        // Bulk DELETE existing notas for all students (del período y año activos)
         $delNotas = $conexion->prepare("
             DELETE FROM notas
-            WHERE estudiante_id IN ($placeholders) AND asignatura_id = ? AND periodo = ? AND curso_id = ?
+            WHERE estudiante_id IN ($placeholders) AND asignatura_id = ? AND periodo = ? AND curso_id = ? AND anio = ?
         ");
-        $delNotas->execute(array_merge($est_ids, [$asignatura_id, $periodo_activo, $curso_id]));
+        $delNotas->execute(array_merge($est_ids, [$asignatura_id, $periodo_activo, $curso_id, $anio_activo]));
 
         // Bulk DELETE existing logros
         $delLogros = $conexion->prepare("
-            DELETE FROM logros WHERE estudiante_id IN ($placeholders) AND asignatura_id = ? AND periodo = ?
+            DELETE FROM logros WHERE estudiante_id IN ($placeholders) AND asignatura_id = ? AND periodo = ? AND anio = ?
         ");
-        $delLogros->execute(array_merge($est_ids, [$asignatura_id, $periodo_activo]));
+        $delLogros->execute(array_merge($est_ids, [$asignatura_id, $periodo_activo, $anio_activo]));
 
         // Batch INSERT notas + logros
         $insNota = $conexion->prepare("
-            INSERT INTO notas (estudiante_id, profesor_id, asignatura_id, curso_id, periodo, nota)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO notas (estudiante_id, profesor_id, asignatura_id, curso_id, periodo, nota, anio)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
         $insLogro = $conexion->prepare("
-            INSERT INTO logros (estudiante_id, asignatura_id, periodo, logro)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO logros (estudiante_id, asignatura_id, periodo, logro, anio)
+            VALUES (?, ?, ?, ?, ?)
         ");
 
         foreach ($estudiantes_post as $est_id => $data) {
@@ -92,11 +97,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $asignacion_seleccionada && isset($
             $logro_texto = $data['logro'] ?? '';
 
             if ($nota_valor !== null && $nota_valor >= 0 && $nota_valor <= 100) {
-                $insNota->execute([$est_id, $profesor_id, $asignatura_id, $curso_id, $periodo_activo, $nota_valor]);
+                $insNota->execute([$est_id, $profesor_id, $asignatura_id, $curso_id, $periodo_activo, $nota_valor, $anio_activo]);
             }
 
             if (trim($logro_texto) !== '') {
-                $insLogro->execute([$est_id, $asignatura_id, $periodo_activo, trim($logro_texto)]);
+                $insLogro->execute([$est_id, $asignatura_id, $periodo_activo, trim($logro_texto), $anio_activo]);
             }
         }
 
@@ -106,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $asignacion_seleccionada && isset($
         $riesgos = 0;
         if ($periodo_activo === '3') {
             foreach ($estudiantes_post as $est_id => $data) {
-                $alertas = verificarRiesgoAcademico($conexion, $est_id, $curso_id, $periodo_activo);
+                $alertas = verificarRiesgoAcademico($conexion, $est_id, $curso_id, $periodo_activo, $anio_activo);
                 $riesgos += count($alertas);
             }
         }
@@ -158,9 +163,9 @@ if ($asignacion_seleccionada) {
 
         $stmtN = $conexion->prepare("
             SELECT estudiante_id, nota, periodo FROM notas
-            WHERE estudiante_id IN ($placeholders) AND asignatura_id = ?
+            WHERE estudiante_id IN ($placeholders) AND asignatura_id = ? AND anio = ?
         ");
-        $stmtN->execute(array_merge($est_ids, [$asignacion_seleccionada['asignatura_id']]));
+        $stmtN->execute(array_merge($est_ids, [$asignacion_seleccionada['asignatura_id'], $anio_activo]));
         foreach ($stmtN->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $notas_por_periodo[$row['estudiante_id']][$row['periodo']] = $row['nota'];
         }
@@ -173,15 +178,15 @@ if ($asignacion_seleccionada) {
 
         $stmtL = $conexion->prepare("
             SELECT estudiante_id, logro FROM logros
-            WHERE estudiante_id IN ($placeholders) AND asignatura_id = ? AND periodo = ?
+            WHERE estudiante_id IN ($placeholders) AND asignatura_id = ? AND periodo = ? AND anio = ?
         ");
-        $stmtL->execute(array_merge($est_ids, [$asignacion_seleccionada['asignatura_id'], $periodo_activo]));
+        $stmtL->execute(array_merge($est_ids, [$asignacion_seleccionada['asignatura_id'], $periodo_activo, $anio_activo]));
         foreach ($stmtL->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $logros_existentes[$row['estudiante_id']] = $row['logro'];
         }
 
-        // Get ranking for the active period
-        $ranking = obtenerRankingCurso($conexion, $asignacion_seleccionada['curso_id'], $periodo_activo);
+        // Get ranking for the active period/year
+        $ranking = obtenerRankingCurso($conexion, $asignacion_seleccionada['curso_id'], $periodo_activo, $anio_activo);
         $ranking_map = [];
         foreach ($ranking as $i => $r) {
             $ranking_map[$r['id']] = ['pos' => $i + 1, 'total' => count($ranking)];
@@ -270,6 +275,7 @@ include "includes/header.php";
                 </div>
 
                 <form method="POST">
+                    <?= campo_csrf() ?>
                     <div class="gca-card">
                         <div class="table-responsive">
                             <table class="table gca-table mb-0">
@@ -283,13 +289,12 @@ include "includes/header.php";
                                         <th style="width:52px;font-size:11px;text-align:center;">P4</th>
                                         <th style="width:60px;font-size:11px;text-align:center;">Prom.</th>
                                         <th style="min-width:140px;">Logro</th>
-                                        <th style="width:40px;"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php if (count($estudiantes) === 0): ?>
                                             <tr>
-                                                <td colspan="9" class="text-center text-muted py-4">No hay estudiantes en este curso.</td>
+                                                <td colspan="8" class="text-center text-muted py-4">No hay estudiantes en este curso.</td>
                                         </tr>
                                     <?php else: ?>
                                         <?php $idx = $offset + 1; ?>
@@ -347,27 +352,6 @@ include "includes/header.php";
                                                         rows="1"
                                                         placeholder="Logro u observación..."
                                                         style="resize:vertical;min-height:36px;"><?= htmlspecialchars($logros_existentes[$est['id']] ?? '') ?></textarea>
-                                                </td>
-                                                <td style="text-align:center;vertical-align:middle;">
-                                                    <div style="display:flex;gap:6px;justify-content:center;">
-                                                        <a href="#"
-                                                           class="btn-action btn-edit btn-gen-boletin"
-                                                           title="Generar boletín PDF (diseño actual)"
-                                                           data-estudiante-id="<?= $est['id'] ?>"
-                                                           data-estudiante-nombre="<?= htmlspecialchars($est['nombre'], ENT_QUOTES) ?>"
-                                                           data-template="">
-                                                            <i class="bi bi-filetype-pdf"></i>
-                                                        </a>
-                                                        <a href="#"
-                                                           class="btn-action btn-edit btn-gen-boletin"
-                                                           title="Generar boletín PDF (nuevo diseño)"
-                                                           style="background:#C8A84B;border-color:#b8951f;color:#111;"
-                                                           data-estudiante-id="<?= $est['id'] ?>"
-                                                           data-estudiante-nombre="<?= htmlspecialchars($est['nombre'], ENT_QUOTES) ?>"
-                                                           data-template="v2">
-                                                            <i class="bi bi-layout-text-window-reverse"></i>
-                                                        </a>
-                                                    </div>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -479,70 +463,5 @@ include "includes/header.php";
             <?php endif; ?>
         </div>
     </main>
-
-<!-- ─── Paz y Salvo Modal ─── -->
-<div class="modal fade" id="pazSalvoModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
-        <div class="modal-content" style="border-radius:16px;border:1px solid var(--border-color);box-shadow:0 20px 60px rgba(0,0,0,.15);">
-            <div class="modal-body text-center py-5 px-4">
-                <div class="mb-3" style="font-size:48px;color:var(--gold);">
-                    <i class="bi bi-shield-check"></i>
-                </div>
-                <h5 class="mb-2" style="font-weight:700;">¿Está a paz y salvo?</h5>
-                <p id="pazSalvoMsg" class="mb-4" style="font-size:14px;color:var(--text-secondary);line-height:1.5;">
-                    ¿El estudiante está a paz y salvo académica y administrativamente?
-                </p>
-                <div class="d-flex gap-2 justify-content-center">
-                    <button type="button" class="btn px-4 py-2" id="pazSalvoNo" style="border-radius:10px;border:1.5px solid var(--border-color);color:var(--text-secondary);font-weight:500;background:transparent;">
-                        <i class="bi bi-x-circle me-1"></i>No
-                    </button>
-                    <button type="button" class="btn px-4 py-2" id="pazSalvoSi" style="border-radius:10px;border:none;background:#2e7d32;color:#fff;font-weight:600;">
-                        <i class="bi bi-check-circle me-1"></i>Sí, está a paz y salvo
-                    </button>
-                </div>
-                <small class="d-block mt-3 text-muted" style="font-size:11px;">
-                    Si responde <b>Sí</b> se enviará el boletín al padre y al administrador.<br>
-                    Si responde <b>No</b> solo se enviará al administrador.
-                </small>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const modal = new bootstrap.Modal(document.getElementById('pazSalvoModal'), { backdrop: 'static', keyboard: false });
-    let pendingUrl = '';
-
-    document.querySelectorAll('.btn-gen-boletin').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const estudianteId = this.dataset.estudianteId;
-            const estudianteNombre = this.dataset.estudianteNombre;
-            const template = this.dataset.template;
-            const periodo = <?= json_encode($periodo_activo) ?>;
-            const baseUrl = 'generar_boletin.php?estudiante=' + estudianteId + '&periodo=' + periodo;
-            pendingUrl = baseUrl + (template ? '&template=' + template : '');
-            document.getElementById('pazSalvoMsg').textContent =
-                '¿El estudiante <b>' + estudianteNombre + '</b> está a paz y salvo académica y administrativamente?';
-            modal.show();
-        });
-    });
-
-    document.getElementById('pazSalvoSi').addEventListener('click', function() {
-        modal.hide();
-        if (pendingUrl) {
-            window.open(pendingUrl + '&paz_y_salvo=1', '_blank');
-        }
-    });
-
-    document.getElementById('pazSalvoNo').addEventListener('click', function() {
-        modal.hide();
-        if (pendingUrl) {
-            window.open(pendingUrl + '&paz_y_salvo=0', '_blank');
-        }
-    });
-});
-</script>
 
     <?php include "includes/footer.php"; ?>

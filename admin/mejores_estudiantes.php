@@ -3,22 +3,25 @@ require_once __DIR__ . '/../includes/init.php';
 checkRole('admin');
 require_once "../lib/rank_helper.php";
 
-/* ── Get active period and available periods ── */
+/* ── Get active period + year and available periods ── */
 $periodo_activo = getConfig('periodo_activo') ?? '1';
+$anio_activo = (int)(getConfig('anio_activo') ?? date('Y'));
 
-$periodos_disponibles = $conexion->query("
-    SELECT DISTINCT periodo FROM notas ORDER BY
+$stmtPd = $conexion->prepare("
+    SELECT DISTINCT periodo FROM notas WHERE anio = ? ORDER BY
         CASE periodo
             WHEN '1' THEN 1 WHEN '2' THEN 2 WHEN '3' THEN 3 WHEN '4' THEN 4
             WHEN '1er Periodo' THEN 1 WHEN '2do Periodo' THEN 2 WHEN '3er Periodo' THEN 3 WHEN '4to Periodo' THEN 4
             ELSE 5
         END
-")->fetchAll(PDO::FETCH_COLUMN);
+");
+$stmtPd->execute([$anio_activo]);
+$periodos_disponibles = $stmtPd->fetchAll(PDO::FETCH_COLUMN);
 
 $selected_periodo = $_GET['periodo'] ?? $periodo_activo;
 $limite = max(1, (int)($_GET['limite'] ?? 5));
 
-$mejores = calcularMejoresPorGrado($conexion, $selected_periodo, $limite);
+$mejores = calcularMejoresPorGrado($conexion, $selected_periodo, $limite, $anio_activo);
 
 $pageTitle = "Mejores Estudiantes por Grado";
 include "includes/header.php";

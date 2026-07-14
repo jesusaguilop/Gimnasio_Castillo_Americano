@@ -1,14 +1,41 @@
 <?php
 session_start();
 require_once "../config/database.php";
-require_once "../lib/vendor/autoload.php";
-require_once "../lib/boletin_template.php";
-require_once "../lib/boletin_template_v2.php";
-require_once "../lib/rank_helper.php";
+require_once "../lib/boletin_generator.php";
 require_once "../lib/mail_helper.php";
 
-use Dompdf\Dompdf;
-use Dompdf\Options;
+/**
+ * Muestra una página de mensaje con estilo (en vez de un die() en texto plano)
+ * y termina la ejecución. El boletín se abre en pestaña nueva, así que ofrece "Volver".
+ */
+function boletinMensaje(string $titulo, string $mensaje, string $icono = 'bi-info-circle'): void
+{
+    echo '<!doctype html><html lang="es"><head><meta charset="utf-8">'
+        . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        . '<title>Boletín · GCA</title>'
+        . '<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">'
+        . '<style>*{margin:0;box-sizing:border-box}'
+        . 'body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;'
+        . 'font-family:system-ui,"Segoe UI",sans-serif;background:linear-gradient(135deg,#0b1622,#1b2a45)}'
+        . '.card{position:relative;overflow:hidden;background:#fff;border-radius:20px;max-width:430px;width:100%;padding:40px 32px;text-align:center;'
+        . 'box-shadow:0 30px 80px rgba(0,0,0,.4);animation:in .5s cubic-bezier(.22,1,.36,1)}'
+        . '.card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:#c9a24d}'
+        . '@keyframes in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}'
+        . '.ic{width:72px;height:72px;border-radius:50%;background:rgba(201,162,77,.12);color:#b8860b;'
+        . 'display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 18px}'
+        . 'h1{font-size:20px;color:#1a2233;margin-bottom:10px;font-weight:700}'
+        . 'p{color:#5a6472;font-size:14px;line-height:1.65;margin-bottom:24px}'
+        . '.btn{display:inline-flex;align-items:center;gap:8px;border:none;cursor:pointer;'
+        . 'background:linear-gradient(135deg,#c9a24d,#b8922e);color:#0d1b2a;font-weight:700;'
+        . 'padding:12px 24px;border-radius:12px;text-decoration:none;font-size:14px;transition:transform .15s}'
+        . '.btn:hover{transform:translateY(-1px)}</style></head><body><div class="card">'
+        . '<div class="ic"><i class="bi ' . htmlspecialchars($icono) . '"></i></div>'
+        . '<h1>' . htmlspecialchars($titulo) . '</h1>'
+        . '<p>' . htmlspecialchars($mensaje) . '</p>'
+        . '<button class="btn" onclick="window.close(); history.back();"><i class="bi bi-arrow-left"></i> Volver</button>'
+        . '</div></body></html>';
+    exit;
+}
 
 if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "profesor") {
     header("Location: ../login.php");
@@ -20,156 +47,47 @@ $estudiante_id = $_GET['estudiante'] ?? null;
 $periodo = $_GET['periodo'] ?? null;
 
 if (!$estudiante_id || !$periodo) {
-    die("Faltan parámetros.");
+    boletinMensaje('Faltan datos', 'No se recibió el estudiante o el período. Vuelve a intentarlo desde la lista de estudiantes.', 'bi-exclamation-triangle');
 }
 
-// Verify the teacher has access to this student (through their asignaciones)
+// Solo el DIRECTOR DE GRUPO del curso del estudiante puede generar boletines.
 $check = $conexion->prepare("
-    SELECT e.id, e.nombre, e.documento, e.curso_id,
-           c.grado, c.nombre AS curso_nombre, c.nivel
+    SELECT e.id, e.nombre
     FROM estudiantes e
-    JOIN cursos c ON e.curso_id = c.id
-    JOIN profesor_curso_asignatura pca ON c.id = pca.curso_id
-    WHERE e.id = ? AND pca.profesor_id = ?
-    GROUP BY e.id
+    JOIN directores_grupo dg ON dg.curso_id = e.curso_id
+    WHERE e.id = ? AND dg.profesor_id = ?
 ");
 $check->execute([$estudiante_id, $profesor_id]);
 $estudiante = $check->fetch(PDO::FETCH_ASSOC);
 
 if (!$estudiante) {
-    die("No tienes acceso a este estudiante.");
+    boletinMensaje('Solo dirección de grupo', 'Los boletines los genera el director de grupo del curso, desde la sección "Dirección de Grupo".', 'bi-shield-lock');
 }
 
-// Get notas for this student in this period
-$notas = $conexion->prepare("
-    SELECT a.nombre AS asignatura, a.area, a.id AS asignatura_id,
-           COALESCE(ag.intensidad_horaria, a.intensidad_horaria, 0) AS intensidad_horaria,
-           n.nota,
-           COALESCE(pca.porcentaje, 100) AS porcentaje
-    FROM notas n
-    JOIN asignaturas a ON n.asignatura_id = a.id
-    JOIN estudiantes e ON n.estudiante_id = e.id
-    LEFT JOIN asignatura_grado ag ON ag.asignatura_id = a.id AND ag.grado = ?
-    LEFT JOIN (
-        SELECT DISTINCT curso_id, asignatura_id, porcentaje FROM profesor_curso_asignatura
-    ) pca ON pca.curso_id = e.curso_id AND pca.asignatura_id = a.id
-    WHERE n.estudiante_id = ? AND n.periodo = ?
-    ORDER BY a.area, a.nombre
-");
-$notas->execute([$estudiante['grado'], $estudiante_id, $periodo]);
-$notas = $notas->fetchAll(PDO::FETCH_ASSOC);
+// Generar el boletín (lógica compartida: guarda en disco + registra + calcula promedio/puesto)
+$template = ($_GET['template'] ?? '') === 'v2' ? 'v2' : 'v1';
+$anio = (int)($_GET['anio'] ?? date('Y'));
+$res = generarBoletinEstudiante($conexion, (int)$estudiante_id, $periodo, (int)$profesor_id, $template, $anio);
 
-if (count($notas) === 0) {
-    die("No hay notas registradas para este estudiante en el período seleccionado.");
-}
-
-// Get logros
-$logros = [];
-$stmtLog = $conexion->prepare("
-    SELECT asignatura_id, logro FROM logros WHERE estudiante_id = ? AND periodo = ?
-");
-$stmtLog->execute([$estudiante_id, $periodo]);
-foreach ($stmtLog->fetchAll(PDO::FETCH_ASSOC) as $l) {
-    $logros[$l['asignatura_id']] = $l['logro'];
-}
-
-// Calculate weighted per-area averages
-$areaData = [];
-foreach ($notas as $n) {
-    $area = $n['area'];
-    $peso = (int)($n['porcentaje'] ?? 100);
-    $nota = (int)$n['nota'];
-    if (!isset($areaData[$area])) {
-        $areaData[$area] = ['sum' => 0, 'weight' => 0];
+if (!$res['ok']) {
+    if (($res['motivo'] ?? '') === 'Sin notas') {
+        boletinMensaje(
+            'Aún no hay notas',
+            'Este estudiante no tiene calificaciones registradas en este período. Registra y guarda sus notas primero, y luego genera el boletín.',
+            'bi-journal-x'
+        );
     }
-    $areaData[$area]['sum'] += $nota * $peso;
-    $areaData[$area]['weight'] += $peso;
-}
-$promediosArea = [];
-foreach ($areaData as $area => $data) {
-    $promediosArea[$area] = $data['weight'] > 0 ? round($data['sum'] / $data['weight'], 1) : 0;
+    boletinMensaje('No se pudo generar', $res['motivo'] ?? 'Ocurrió un error inesperado.', 'bi-exclamation-triangle');
 }
 
-// Calculate overall average (simple average of notas)
-$sum = array_sum(array_column($notas, 'nota'));
-$promedio = round($sum / count($notas), 1);
-
-$curso = [
-    'nivel' => $estudiante['nivel'],
-    'grado' => $estudiante['grado'],
-    'curso_nombre' => $estudiante['curso_nombre'],
-];
-
-// Calculate student's position in course
-$puesto = calcularPuestoCurso($conexion, $estudiante_id, $periodo);
-
-// Look up director de grupo
-$directorNombre = '';
-$stmtDir = $conexion->prepare("
-    SELECT u.nombre FROM directores_grupo dg
-    JOIN usuarios u ON dg.profesor_id = u.id
-    WHERE dg.curso_id = ?
-");
-$stmtDir->execute([$estudiante['curso_id']]);
-$dirRow = $stmtDir->fetch(PDO::FETCH_ASSOC);
-if ($dirRow) {
-    $directorNombre = htmlspecialchars(strtoupper($dirRow['nombre']));
-} else {
-    $directorNombre = '___________________________________________';
-}
-
-// Generate HTML
-$template = $_GET['template'] ?? '';
-if ($template === 'v2') {
-    $html = boletinHTML_v2($estudiante, $curso, $periodo, $notas, $promedio, $promediosArea, $logros, $directorNombre, $puesto);
-    $enableRemote = true;
-} else {
-    $html = boletinHTML($estudiante, $curso, $periodo, $notas, $promedio, $promediosArea, $logros, $directorNombre, $puesto);
-    $enableRemote = false;
-}
-
-// PDF options
-$options = new Options();
-$options->set('isRemoteEnabled', $enableRemote);
-$options->set('isHtml5ParserEnabled', true);
-
-$dompdf = new Dompdf($options);
-$dompdf->loadHtml($html);
-$dompdf->setPaper('A4', 'portrait');
-$dompdf->render();
-
-// Save to disk
-$year = date('Y');
-$dir = "../assets/boletines/{$year}/{$periodo}";
-if (!is_dir($dir)) {
-    mkdir($dir, 0777, true);
-}
-
-$filename = "boletin_{$estudiante['id']}_{$periodo}_{$year}.pdf";
-$filepath = "{$dir}/{$filename}";
-file_put_contents($filepath, $dompdf->output());
-
-// Record in DB
-$stmtRec = $conexion->prepare("
-    INSERT INTO boletines_pdf (estudiante_id, periodo, year, ruta_pdf, generado_por)
-    VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT (estudiante_id, periodo, year) DO UPDATE SET ruta_pdf = EXCLUDED.ruta_pdf, generado_por = EXCLUDED.generado_por
-");
-$ruta_relativa = "assets/boletines/{$year}/{$periodo}/{$filename}";
-$stmtRec->execute([$estudiante_id, $periodo, $year, $ruta_relativa, $profesor_id]);
-
-// Output PDF to browser
-// ─── Send emails based on paz y salvo ───
+// ─── Envío de correos según paz y salvo ───
 $paz_y_salvo = $_GET['paz_y_salvo'] ?? null;
-$ruta_absoluta = realpath(__DIR__ . '/../' . $ruta_relativa);
+$ruta_absoluta = realpath(__DIR__ . '/../' . $res['ruta']);
 
-// Always send to admin
 $admin_email = config('mail.admin', '');
 if ($admin_email && $ruta_absoluta) {
     enviar_boletin_por_email($admin_email, 'Administrador', $ruta_absoluta, 'Nuevo boletín generado');
 }
-
-// Possibly send to parent
 if ($paz_y_salvo === '1') {
     $stmtPadre = $conexion->prepare("
         SELECT u.email, u.nombre FROM estudiantes e
@@ -178,11 +96,14 @@ if ($paz_y_salvo === '1') {
     ");
     $stmtPadre->execute([$estudiante_id]);
     $padre = $stmtPadre->fetch(PDO::FETCH_ASSOC);
-
     if ($padre && $ruta_absoluta) {
         enviar_boletin_por_email($padre['email'], $padre['nombre'], $ruta_absoluta, 'Boletín de ' . $estudiante['nombre']);
     }
 }
 
-$dompdf->stream("boletin_{$estudiante['nombre']}_{$periodo}.pdf", ['Attachment' => false]);
+// Transmitir el PDF al navegador (pestaña nueva)
+header('Content-Type: application/pdf');
+header('Content-Disposition: inline; filename="boletin_' . $estudiante_id . '_' . $periodo . '.pdf"');
+header('Content-Length: ' . strlen($res['pdf']));
+echo $res['pdf'];
 exit;

@@ -1,0 +1,175 @@
+/* ============================================================
+   Estilo compartido de páginas de acceso (login / recuperación)
+   Gimnasio Castillo Americano — estética oscura + dorado
+   ============================================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body.auth-body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0b1622 0%, #162236 40%, #1b2a45 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    padding: 20px;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* ── Fondo decorativo ── */
+body.auth-body::before {
+    content: '';
+    position: fixed;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 20% 50%, rgba(212,175,55,.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 50%, rgba(212,175,55,.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+}
+.bg-circle { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; }
+.bg-circle-1 {
+    width: 420px; height: 420px;
+    background: radial-gradient(circle, rgba(212,175,55,.09) 0%, transparent 70%);
+    top: -110px; right: -110px;
+    animation: floatA 15s ease-in-out infinite;
+}
+.bg-circle-2 {
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, rgba(100,140,200,.07) 0%, transparent 70%);
+    bottom: -60px; left: -90px;
+    animation: floatB 19s ease-in-out infinite;
+}
+@keyframes floatA { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-32px,22px); } }
+@keyframes floatB { 0%,100% { transform: translate(0,0); } 50% { transform: translate(26px,-20px); } }
+
+/* ── Card ── */
+.auth-wrapper { position: relative; z-index: 1; width: 100%; max-width: 440px; }
+.auth-card {
+    position: relative;
+    overflow: hidden;
+    background: rgba(255,255,255,.97);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 40px 36px 34px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.06);
+    animation: cardIn .7s cubic-bezier(.22,1,.36,1);
+}
+.auth-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, #c9a24d, #e6c76e, #c9a24d);
+}
+@keyframes cardIn {
+    0% { opacity: 0; transform: translateY(30px) scale(.97); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Logo ── */
+.auth-logo {
+    width: 80px; height: 80px; margin: 0 auto 12px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f8f6f0, #fff);
+    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    display: flex; align-items: center; justify-content: center;
+    animation: logoFloat 4s ease-in-out infinite;
+}
+.auth-logo img { height: 60px; width: auto; }
+@keyframes logoFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+.auth-title { font-weight: 800; font-size: 22px; color: #0d1b2a; letter-spacing: -.3px; }
+.auth-sub   { font-size: 13px; color: #7a7f8a; font-weight: 500; }
+.auth-hint  { font-size: 13px; color: #9a9faa; margin-top: 4px; }
+.auth-hint i, .auth-sub i { color: #c9a24d; }
+
+/* ── Campos ── */
+.auth-label { font-size: 13px; font-weight: 600; color: #2c3344; margin-bottom: 5px; display: block; }
+.field { position: relative; }
+.field .form-control {
+    height: 48px; width: 100%; border-radius: 12px;
+    border: 1.5px solid #e2e5ea;
+    padding: 0 44px 0 44px;
+    font-size: 14px; font-weight: 500; color: #1a2233;
+    background: #f8f9fc;
+    transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.field .form-control::placeholder { color: #aab0bc; }
+.field .form-control:focus {
+    border-color: #c9a24d;
+    box-shadow: 0 0 0 4px rgba(201,162,77,.15);
+    background: #fff; outline: none;
+}
+.field .input-icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    color: #a0a7b5; font-size: 18px; pointer-events: none; transition: color .2s; z-index: 2;
+}
+.field .form-control:focus ~ .input-icon { color: #c9a24d; }
+.field .toggle-pass {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: #a0a7b5; font-size: 20px;
+    cursor: pointer; padding: 4px; line-height: 1; z-index: 3; transition: color .2s;
+}
+.field .toggle-pass:hover { color: #2c3344; }
+
+/* ── Botón ── */
+.btn-auth {
+    height: 48px; width: 100%; border-radius: 12px;
+    font-weight: 700; font-size: 15px;
+    background: linear-gradient(135deg, #c9a24d, #b8922e);
+    border: none; color: #0d1b2a;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    position: relative; overflow: hidden;
+    transition: transform .15s ease, box-shadow .2s ease;
+}
+.btn-auth:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(201,162,77,.35); }
+.btn-auth:active { transform: translateY(0); }
+.btn-auth::before {
+    content: ''; position: absolute; top: 0; left: -130%;
+    width: 55%; height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,.5), transparent);
+    transform: skewX(-20deg); transition: left .6s ease;
+}
+.btn-auth:hover::before { left: 150%; }
+
+/* ── Alertas ── */
+.auth-alert {
+    border-radius: 12px; padding: 12px 16px; font-size: 13px; font-weight: 500;
+    border: none; display: flex; align-items: center; gap: 8px;
+}
+.auth-alert.ok  { background: #ecfdf5; color: #047857; }
+.auth-alert.err { background: #fef2f2; color: #b91c1c; animation: shakeX .5s ease; }
+@keyframes shakeX {
+    0%,100% { transform: translateX(0); }
+    10%,50%,90% { transform: translateX(-6px); }
+    30%,70% { transform: translateX(6px); }
+}
+
+/* ── Links ── */
+.auth-links a {
+    font-size: 13px; font-weight: 500; color: #6b7280; text-decoration: none;
+    transition: color .2s; display: inline-flex; align-items: center; gap: 6px;
+}
+.auth-links a:hover { color: #c9a24d; }
+
+/* ── Entrada escalonada de campos ── */
+.stagger > * { animation: fieldUp .5s ease both; }
+.stagger > *:nth-child(1) { animation-delay: .12s; }
+.stagger > *:nth-child(2) { animation-delay: .20s; }
+.stagger > *:nth-child(3) { animation-delay: .28s; }
+.stagger > *:nth-child(4) { animation-delay: .36s; }
+.stagger > *:nth-child(5) { animation-delay: .44s; }
+@keyframes fieldUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+    .auth-card { padding: 28px 20px 24px; border-radius: 18px; }
+    .auth-title { font-size: 19px; }
+    .auth-logo { width: 64px; height: 64px; }
+    .auth-logo img { height: 44px; }
+}
+
+/* ── Accesibilidad ── */
+@media (prefers-reduced-motion: reduce) {
+    .auth-card, .auth-logo, .bg-circle, .stagger > * { animation: none !important; }
+    .btn-auth::before { display: none; }
+}

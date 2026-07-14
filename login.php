@@ -3,6 +3,7 @@ session_start();
 $tz = new DateTimeZone('America/Bogota');
 $h = (int)(new DateTime('now', $tz))->format('H');
 $saludo = $h < 12 ? 'Buenos días' : ($h < 18 ? 'Buenas tardes' : 'Buenas noches');
+$iconoSaludo = $h < 18 ? 'bi-sun' : 'bi-moon-stars';
 
 $error = $_GET['error'] ?? '';
 $oldRol = $_GET['rol'] ?? '';
@@ -284,19 +285,26 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
     .ts-wrapper .ts-control:hover {
         border-color: #ccc;
     }
+    /* El campo de rol (y su desplegable) queda por encima de los campos de abajo */
+    .input-group-custom.role-field { z-index: 20; }
+    .ts-wrapper.dropdown-active, .ts-wrapper.focus { position: relative; z-index: 30; }
     .ts-wrapper .ts-dropdown {
-        border: none;
+        border: 1px solid #eee;
         border-radius: 12px;
-        box-shadow: 0 8px 40px rgba(0,0,0,.12);
+        box-shadow: 0 8px 40px rgba(0,0,0,.16);
         margin-top: 4px;
         overflow: hidden;
         font-family: 'Inter', sans-serif;
+        background: #ffffff;          /* fondo sólido: no deja ver los campos detrás */
+        z-index: 100;                 /* por encima de íconos (z-index:10) y campos */
     }
     .ts-wrapper .ts-dropdown .option {
         padding: 12px 14px;
         font-size: 14px;
         border-bottom: 1px solid #f5f5f5;
         transition: background .12s;
+        background: #ffffff;
+        color: #1a2233;
     }
     .ts-wrapper .ts-dropdown .option:last-child {
         border-bottom: none;
@@ -333,6 +341,43 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
             .logo-wrap img { height: 44px; }
         }
     </style>
+    <!-- ── Glow-up del login ── -->
+    <style>
+        /* Acento dorado superior recortado a las esquinas redondeadas (sin "orejitas") */
+        .login-card { position: relative; overflow: hidden; }
+        .login-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, #c9a24d, #e6c76e, #c9a24d);
+        }
+        /* La contraseña no debe pasar por debajo del ícono del ojo */
+        #passInput { padding-right: 46px; }
+        /* Los íconos se vuelven dorados al enfocar el campo */
+        .input-group-custom:focus-within .input-icon { color: #c9a24d; }
+
+        .logo-wrap { animation: logoFloat 4s ease-in-out infinite; }
+        @keyframes logoFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        .bg-circle-1 { animation: floatA 15s ease-in-out infinite; }
+        .bg-circle-2 { animation: floatB 19s ease-in-out infinite; }
+        @keyframes floatA { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-32px,22px); } }
+        @keyframes floatB { 0%,100% { transform: translate(0,0); } 50% { transform: translate(26px,-20px); } }
+
+        .btn-login { overflow: hidden; }
+        .btn-login::before {
+            content: ''; position: absolute; top: 0; left: -130%;
+            width: 55%; height: 100%;
+            background: linear-gradient(120deg, transparent, rgba(255,255,255,.5), transparent);
+            transform: skewX(-20deg); transition: left .6s ease;
+        }
+        .btn-login:hover::before { left: 150%; }
+
+        /* (Se quitó la animación por campo: el transform residual creaba contextos
+            de apilamiento que dejaban el desplegable de rol debajo de los campos.) */
+
+        @media (prefers-reduced-motion: reduce) {
+            .logo-wrap, .bg-circle-1, .bg-circle-2 { animation: none !important; }
+            .btn-login::before { display: none; }
+        }
+    </style>
 </head>
 <body>
 
@@ -350,7 +395,7 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
             </div>
             <h1 class="login-title">Sistema Académico</h1>
             <p class="login-sub">Gimnasio Castillo Americano</p>
-            <p class="login-greeting"><i class="bi bi-sun me-1"></i><?= $saludo ?>, ingresa tus credenciales</p>
+            <p class="login-greeting"><i class="bi <?= $iconoSaludo ?> me-1"></i><?= $saludo ?>, ingresa tus credenciales</p>
         </div>
 
         <!-- ─── ERROR ─── -->
@@ -371,7 +416,7 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
 
             <div class="mb-3">
                 <label class="form-label" for="rolSelect">Tipo de usuario</label>
-                <div class="input-group-custom">
+                <div class="input-group-custom role-field">
                     <i class="bi bi-person-badge input-icon"></i>
                     <select name="rol" id="rolSelect" class="form-select" required>
                         <option value="">Selecciona tu rol</option>

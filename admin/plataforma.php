@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/init.php';
 checkRole('admin');
 require_once "../lib/rank_helper.php";
+require_once "../lib/csrf_helper.php";
 
 $mensaje = "";
 $error = "";
@@ -10,6 +11,11 @@ $db = db();
 
 /* ── Handle AJAX toggle ── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'toggle') {
+    if (!validar_token_csrf($_POST['_csrf_token'] ?? '')) {
+        http_response_code(403);
+        echo "csrf";
+        exit;
+    }
     $estado = $_POST['estado'] === 'true' ? '1' : '0';
     $conexion->prepare("UPDATE configuraciones SET valor = ? WHERE clave = 'plataforma_activa'")->execute([$estado]);
     echo "ok";
@@ -17,13 +23,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 /* ── Handle form save ── */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['guardar_config'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['guardar_config'])
+    && !validar_token_csrf($_POST['_csrf_token'] ?? '')) {
+    $error = "Error de seguridad. Recargue la página e intente de nuevo.";
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['guardar_config'])) {
     $periodo = $_POST['periodo_activo'] ?? '1';
     $apertura = $_POST['fecha_apertura'] ?? '';
     $cierre = $_POST['fecha_cierre'] ?? '';
+    $anio = (int)($_POST['anio_activo'] ?? date('Y'));
+    if ($anio < 2000 || $anio > 2100) $anio = (int)date('Y');
 
     try {
         $db->update('configuraciones', ['valor' => $periodo], "clave = 'periodo_activo'");
+        $db->update('configuraciones', ['valor' => (string)$anio], "clave = 'anio_activo'");
         $db->update('configuraciones', ['valor' => $apertura], "clave = 'fecha_apertura'");
         $db->update('configuraciones', ['valor' => $cierre], "clave = 'fecha_cierre'");
         $mensaje = "Configuración guardada correctamente.";
@@ -32,9 +44,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['guardar_config'])) {
     }
 }
 
+/* ── Handle: reiniciar período (borra notas/logros/boletines de un período) ── */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reiniciar_periodo'])) {
+    if (!validar_token_csrf($_POST['_csrf_token'] ?? '')) {
+        $error = "Error de seguridad. Recargue la página e intente de nuevo.";
+    } else {
+        $per = $_POST['periodo_reset'] ?? '';
+        $confirma = trim($_POST['confirmacion'] ?? '');
+        if (!in_array($per, ['1', '2', '3', '4'], true)) {
+            $error = "Período inválido.";
+        } elseif ($confirma !== 'REINICIAR') {
+            $error = "Debes escribir REINICIAR para confirmar el borrado.";
+        } else {
+            $anioReset = (int)(getConfig('anio_activo') ?? date('Y'));
+            try {
+                $conexion->beginTransaction();
+                // Borrar los PDF del disco antes de borrar los registros (del período + año activo)
+                $bs = $conexion->prepare("SELECT ruta_pdf FROM boletines_pdf WHERE periodo = ? AND year = ?");
+                $bs->execute([$per, $anioReset]);
+                foreach ($bs->fetchAll(PDO::FETCH_COLUMN) as $ruta) {
+                    $abs = realpath(__DIR__ . '/../' . $ruta);
+                    if ($abs && is_file($abs)) { @unlink($abs); }
+                }
+                $d1 = $conexion->prepare("DELETE FROM notas WHERE periodo = ? AND anio = ?");        $d1->execute([$per, $anioReset]); $cN = $d1->rowCount();
+                $d2 = $conexion->prepare("DELETE FROM logros WHERE periodo = ? AND anio = ?");       $d2->execute([$per, $anioReset]); $cL = $d2->rowCount();
+                $d3 = $conexion->prepare("DELETE FROM boletines_pdf WHERE periodo = ? AND year = ?"); $d3->execute([$per, $anioReset]); $cB = $d3->rowCount();
+                $conexion->commit();
+                $mensaje = "Período {$per} del año {$anioReset} reiniciado: se eliminaron {$cN} nota(s), {$cL} logro(s) y {$cB} boletín(es).";
+            } catch (Throwable $e) {
+                $conexion->rollBack();
+                error_log("[plataforma reiniciar] " . $e->getMessage());
+                $error = "Error al reiniciar el período.";
+            }
+        }
+    }
+}
+
 /* ── Load current config (cached) ── */
 $plataforma_activa = (getConfig('plataforma_activa') ?? '0') === '1';
 $periodo_activo = getConfig('periodo_activo') ?? '1';
+$anio_activo = (int)(getConfig('anio_activo') ?? date('Y'));
 $fecha_apertura = getConfig('fecha_apertura') ?? '';
 $fecha_cierre = getConfig('fecha_cierre') ?? '';
 
@@ -43,15 +92,15 @@ $cursos = $conexion->query("
     SELECT * FROM cursos ORDER BY nivel, grado, nombre
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-function obtenerNotasEstudiantesCurso($conexion, $curso_id) {
+function obtenerNotasEstudiantesCurso($conexion, $curso_id, $anio) {
     $stmt = $conexion->prepare("
         SELECT n.estudiante_id, n.periodo, n.nota, a.nombre as asignatura, a.area, a.id as asignatura_id
         FROM notas n
         JOIN asignaturas a ON n.asignatura_id = a.id
-        WHERE n.curso_id = ?
+        WHERE n.curso_id = ? AND n.anio = ?
         ORDER BY a.area, a.nombre, n.periodo
     ");
-    $stmt->execute([$curso_id]);
+    $stmt->execute([$curso_id, $anio]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $notas_por_estudiante = [];
@@ -155,6 +204,12 @@ include "includes/header.php";
                         <h6 class="fw-bold mb-3"><i class="bi bi-calendar-range me-2" style="color:var(--gold);"></i>Ventana de Registro</h6>
 
                         <form method="POST">
+                            <?= campo_csrf() ?>
+                            <div class="mb-3">
+                                <label class="form-label fw-medium">Año escolar</label>
+                                <input type="number" name="anio_activo" class="form-select" value="<?= (int)$anio_activo ?>" min="2000" max="2100">
+                                <div class="form-text small">Año del calendario escolar. Las notas se guardan y consultan por año.</div>
+                            </div>
                             <div class="mb-3">
                                 <label class="form-label fw-medium">Período Activo</label>
                                 <select name="periodo_activo" class="form-select">
@@ -181,6 +236,40 @@ include "includes/header.php";
 
                             <button type="submit" name="guardar_config" class="btn-gca w-100 justify-content-center">
                                 <i class="bi bi-check-lg"></i> Guardar Configuración
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- ── Zona de mantenimiento: reiniciar período (pruebas) ── -->
+                    <div class="gca-card p-4 mt-4" style="border:1px solid rgba(220,53,69,.28);">
+                        <h6 class="fw-bold mb-1" style="color:#c0392b;">
+                            <i class="bi bi-exclamation-octagon me-2"></i>Reiniciar período
+                        </h6>
+                        <p class="text-muted small mb-3">
+                            Borra <strong>todas las notas, logros y boletines</strong> del período seleccionado.
+                            Acción <strong>irreversible</strong> — pensada para pruebas.
+                        </p>
+                        <form method="POST">
+                            <?= campo_csrf() ?>
+                            <div class="row g-2 mb-3">
+                                <div class="col-sm-5">
+                                    <label class="form-label fw-medium small">Período a borrar</label>
+                                    <select name="periodo_reset" class="form-select">
+                                        <option value="1">1er Período</option>
+                                        <option value="2">2do Período</option>
+                                        <option value="3">3er Período</option>
+                                        <option value="4">4to Período</option>
+                                    </select>
+                                </div>
+                                <div class="col-sm-7">
+                                    <label class="form-label fw-medium small">Escribe <b>REINICIAR</b> para confirmar</label>
+                                    <input type="text" name="confirmacion" class="form-control" placeholder="REINICIAR" autocomplete="off">
+                                </div>
+                            </div>
+                            <button type="submit" name="reiniciar_periodo" class="w-100"
+                                style="background:#c0392b;color:#fff;border:none;border-radius:10px;padding:11px;font-weight:600;cursor:pointer;"
+                                onclick="return confirm('¿Seguro? Se borrarán TODAS las notas, logros y boletines de este período. No se puede deshacer.');">
+                                <i class="bi bi-trash3"></i> Reiniciar período
                             </button>
                         </form>
                     </div>
@@ -213,12 +302,12 @@ include "includes/header.php";
                                     $stmt = $conexion->prepare("SELECT * FROM estudiantes WHERE curso_id = ? ORDER BY nombre");
                                     $stmt->execute([$curso['id']]);
                                     $estudiantes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                                    $ranking = obtenerRankingCurso($conexion, $curso['id'], $periodo_activo);
+                                    $ranking = obtenerRankingCurso($conexion, $curso['id'], $periodo_activo, $anio_activo);
                                     $ranking_map = [];
                                     foreach ($ranking as $i => $r) {
                                         $ranking_map[$r['id']] = ['pos' => $i + 1, 'total' => count($ranking)];
                                     }
-                                    $notas_curso = count($estudiantes) > 0 ? obtenerNotasEstudiantesCurso($conexion, $curso['id']) : [];
+                                    $notas_curso = count($estudiantes) > 0 ? obtenerNotasEstudiantesCurso($conexion, $curso['id'], $anio_activo) : [];
                                 ?>
                                     <div class="accordion-item" style="border-radius:12px!important;margin-bottom:10px;border:1px solid #ece8e0;overflow:hidden;">
                                         <h2 class="accordion-header">
@@ -351,6 +440,7 @@ include "includes/header.php";
             const formData = new FormData();
             formData.append('action', 'toggle');
             formData.append('estado', isActive);
+            formData.append('_csrf_token', <?= json_encode(generar_token_csrf()) ?>);
             fetch('plataforma.php', { method: 'POST', body: formData })
                 .then(r => r.text())
                 .then(res => { if (res === 'ok') location.reload(); });

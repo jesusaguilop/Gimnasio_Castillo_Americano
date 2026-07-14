@@ -2,6 +2,7 @@
 session_start();
 require_once "../config/database.php";
 require_once "../lib/alertas_helper.php";
+require_once "../lib/csrf_helper.php";
 
 if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
     header("Location: ../login.php");
@@ -12,7 +13,9 @@ $usuario_id = $_SESSION["id"];
 
 // Mark as read if requested
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_leida'])) {
-    marcarAlertaLeida($conexion, $_POST['alerta_id']);
+    if (validar_token_csrf($_POST['_csrf_token'] ?? '')) {
+        marcarAlertaLeida($conexion, $_POST['alerta_id']);
+    }
     header("Location: alertas.php");
     exit;
 }
@@ -77,6 +80,7 @@ include "includes/header.php";
                                         <?php endif; ?>
                                         <?php if (!$a['leido']): ?>
                                             <form method="POST" style="display:inline;">
+                                                <?= campo_csrf() ?>
                                                 <input type="hidden" name="alerta_id" value="<?= $a['id'] ?>">
                                                 <button type="submit" name="marcar_leida" class="btn btn-sm btn-link text-decoration-none p-0"
                                                     style="font-size:11px;color:var(--gold-dark);">Marcar como leída</button>

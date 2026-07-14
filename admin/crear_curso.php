@@ -21,7 +21,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $mensaje = "Todos los campos son obligatorios.";
         $tipo = "danger";
     } else {
-        $nivel = obtenerNivelGrado($grado);
+        $nivel = mb_strtolower(obtenerNivelGrado($grado)); // 'preescolar' | 'primaria' | 'secundaria' (consistente con el resto)
         try {
             $sql = "INSERT INTO cursos (nombre, grado, nivel) VALUES (:nombre_curso, :grado, :nivel)";
             $stmt = $conexion->prepare($sql);
