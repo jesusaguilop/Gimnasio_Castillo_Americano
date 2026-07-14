@@ -65,9 +65,10 @@ if (!$estudiante) {
 }
 
 // Generar el boletín (lógica compartida: guarda en disco + registra + calcula promedio/puesto)
-$template = ($_GET['template'] ?? '') === 'v2' ? 'v2' : 'v1';
+$template = ($_GET['template'] ?? '') === 'v1' ? 'v1' : 'v2';
 $anio = (int)($_GET['anio'] ?? date('Y'));
-$res = generarBoletinEstudiante($conexion, (int)$estudiante_id, $periodo, (int)$profesor_id, $template, $anio);
+$pazBool = (($_GET['paz_y_salvo'] ?? '') === '1');
+$res = generarBoletinEstudiante($conexion, (int)$estudiante_id, $periodo, (int)$profesor_id, $template, $anio, $pazBool);
 
 if (!$res['ok']) {
     if (($res['motivo'] ?? '') === 'Sin notas') {
@@ -80,26 +81,9 @@ if (!$res['ok']) {
     boletinMensaje('No se pudo generar', $res['motivo'] ?? 'Ocurrió un error inesperado.', 'bi-exclamation-triangle');
 }
 
-// ─── Envío de correos según paz y salvo ───
-$paz_y_salvo = $_GET['paz_y_salvo'] ?? null;
-$ruta_absoluta = realpath(__DIR__ . '/../' . $res['ruta']);
-
-$admin_email = config('mail.admin', '');
-if ($admin_email && $ruta_absoluta) {
-    enviar_boletin_por_email($admin_email, 'Administrador', $ruta_absoluta, 'Nuevo boletín generado');
-}
-if ($paz_y_salvo === '1') {
-    $stmtPadre = $conexion->prepare("
-        SELECT u.email, u.nombre FROM estudiantes e
-        JOIN usuarios u ON e.padre_id = u.id
-        WHERE e.id = ? AND u.email IS NOT NULL AND u.email != ''
-    ");
-    $stmtPadre->execute([$estudiante_id]);
-    $padre = $stmtPadre->fetch(PDO::FETCH_ASSOC);
-    if ($padre && $ruta_absoluta) {
-        enviar_boletin_por_email($padre['email'], $padre['nombre'], $ruta_absoluta, 'Boletín de ' . $estudiante['nombre']);
-    }
-}
+// El boletín queda PENDIENTE de publicación: NO se envía al padre aquí.
+// El administrador decide el paso al padre desde "Gestión de Boletines".
+// El paz y salvo (marcado por el director) queda registrado como referencia para el admin.
 
 // Transmitir el PDF al navegador (pestaña nueva)
 header('Content-Type: application/pdf');

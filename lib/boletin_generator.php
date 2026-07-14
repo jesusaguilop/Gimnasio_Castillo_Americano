@@ -24,7 +24,7 @@ use Dompdf\Options;
  *   promedio: ?float, puesto: ?string, estudiante: ?array
  * }
  */
-function generarBoletinEstudiante(PDO $conexion, int $estudiante_id, string $periodo, int $generado_por, string $template = 'v2', int $anio = 0): array
+function generarBoletinEstudiante(PDO $conexion, int $estudiante_id, string $periodo, int $generado_por, string $template = 'v2', int $anio = 0, bool $paz_y_salvo = false): array
 {
     if ($anio <= 0) $anio = (int) date('Y');
     $stmt = $conexion->prepare("
@@ -111,12 +111,15 @@ function generarBoletinEstudiante(PDO $conexion, int $estudiante_id, string $per
     file_put_contents("{$dir_fs}/{$filename}", $pdf);
     $ruta_relativa = "assets/boletines/{$year}/{$periodo}/{$filename}";
 
-    // Registrar en BD
+    // Registrar en BD. Queda PENDIENTE de publicación (el admin decide el paso al padre).
+    // Al (re)generar se reinicia a no-publicado para que el admin apruebe la versión vigente.
+    $pazSQL = $paz_y_salvo ? 'TRUE' : 'FALSE';
     $rec = $conexion->prepare("
-        INSERT INTO boletines_pdf (estudiante_id, periodo, year, ruta_pdf, generado_por)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO boletines_pdf (estudiante_id, periodo, year, ruta_pdf, generado_por, paz_y_salvo, publicado, publicado_en)
+        VALUES (?, ?, ?, ?, ?, $pazSQL, FALSE, NULL)
         ON CONFLICT (estudiante_id, periodo, year) DO UPDATE
-            SET ruta_pdf = EXCLUDED.ruta_pdf, generado_por = EXCLUDED.generado_por
+            SET ruta_pdf = EXCLUDED.ruta_pdf, generado_por = EXCLUDED.generado_por,
+                paz_y_salvo = $pazSQL, publicado = FALSE, publicado_en = NULL
     ");
     $rec->execute([$estudiante_id, $periodo, $year, $ruta_relativa, $generado_por]);
 

@@ -25,6 +25,15 @@ if (!$estudiante) {
     exit;
 }
 
+/* ── Endpoint en vivo: períodos con boletín PUBLICADO por el admin ── */
+if (isset($_GET["poll"])) {
+    header("Content-Type: application/json");
+    $q = $conexion->prepare("SELECT periodo, ruta_pdf FROM boletines_pdf WHERE estudiante_id = ? AND year = ? AND publicado = TRUE ORDER BY periodo");
+    $q->execute([$estudiante_id, $anio_activo]);
+    echo json_encode(["boletines" => $q->fetchAll(PDO::FETCH_ASSOC)]);
+    exit;
+}
+
 /* ── Get available periods ── */
 $periodos = $conexion->prepare("
     SELECT DISTINCT n.periodo
@@ -68,7 +77,7 @@ if ($selected_periodo) {
 $boletines_pdf = $conexion->prepare("
     SELECT periodo, year, ruta_pdf
     FROM boletines_pdf
-    WHERE estudiante_id = ? AND year = ?
+    WHERE estudiante_id = ? AND year = ? AND publicado = TRUE
     ORDER BY year, periodo
 ");
 $boletines_pdf->execute([$estudiante_id, $anio_activo]);
@@ -238,5 +247,23 @@ include "includes/header.php";
     </div>
 
 </main>
+
+<script>
+(function () {
+    // Actualización en vivo: si el admin publica/oculta un boletín, la vista se refresca sola.
+    var initial = <?= json_encode(array_map('strval', array_keys($boletines_por_periodo))) ?>;
+    var pollUrl = 'boletin.php?estudiante=<?= (int) $estudiante_id ?>&poll=1';
+    var baseKey = initial.slice().sort().join('|');
+    setInterval(function () {
+        fetch(pollUrl, { cache: 'no-store' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                var now = (d.boletines || []).map(function (b) { return String(b.periodo); }).sort().join('|');
+                if (now !== baseKey) location.reload();
+            })
+            .catch(function () {});
+    }, 10000);
+})();
+</script>
 
 <?php include "includes/footer.php"; ?>
