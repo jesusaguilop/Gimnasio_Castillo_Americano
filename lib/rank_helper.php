@@ -95,7 +95,13 @@ function obtenerNotasPonderadas($conexion, $estudiante_id, $periodo, $anio = nul
  */
 function obtenerRankingCurso($conexion, $curso_id, $periodo, $anio = null)
 {
+    static $memo = [];
     $anio = $anio ?? (int) date('Y');
+    // Memo por request: en la generación masiva de boletines se pide el mismo
+    // ranking del curso una vez por estudiante; así se calcula una sola vez.
+    $memoKey = $curso_id . '|' . $periodo . '|' . $anio;
+    if (isset($memo[$memoKey])) return $memo[$memoKey];
+
     $stmtG = $conexion->prepare("SELECT grado FROM cursos WHERE id = ?");
     $stmtG->execute([$curso_id]);
     $grado = $stmtG->fetchColumn();
@@ -130,6 +136,7 @@ function obtenerRankingCurso($conexion, $curso_id, $periodo, $anio = null)
         ];
     }
     usort($ranking, fn($a, $b) => ($b['promedio'] ?? -1) <=> ($a['promedio'] ?? -1));
+    $memo[$memoKey] = $ranking;
     return $ranking;
 }
 
@@ -220,12 +227,54 @@ function consolidadoAnualEstudiante($conexion, $estudiante_id, $anio = null, $no
 function rankingAnualCurso($conexion, $curso_id, $anio = null, $notaMinima = 60)
 {
     $anio = $anio ?? (int) date('Y');
-    $ests = $conexion->prepare("SELECT id, nombre FROM estudiantes WHERE curso_id = ? ORDER BY nombre");
-    $ests->execute([$curso_id]);
+
+    $grado = $conexion->prepare("SELECT grado FROM cursos WHERE id = ?");
+    $grado->execute([$curso_id]);
+    $grado = $grado->fetchColumn();
+
+    // UNA sola consulta trae la definitiva anual por asignatura (AVG de los períodos)
+    // de TODOS los estudiantes del curso, evitando el patrón N+1.
+    $stmt = $conexion->prepare("
+        SELECT e.id, e.nombre, a.area,
+               AVG(n.nota) AS nota,
+               COALESCE(ag.intensidad_horaria, a.intensidad_horaria, 0) AS intensidad_horaria,
+               COALESCE(ag.porcentaje, 100) AS porcentaje
+        FROM estudiantes e
+        LEFT JOIN notas n ON n.estudiante_id = e.id AND n.anio = ?
+        LEFT JOIN asignaturas a ON n.asignatura_id = a.id
+        LEFT JOIN asignatura_grado ag ON ag.asignatura_id = a.id AND ag.grado = ?
+        WHERE e.curso_id = ?
+        GROUP BY e.id, e.nombre, a.id, a.area, ag.intensidad_horaria, a.intensidad_horaria, ag.porcentaje
+        ORDER BY e.nombre
+    ");
+    $stmt->execute([$anio, $grado, $curso_id]);
+
+    // Agrupar por estudiante
+    $porEst = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $eid = (int) $r['id'];
+        if (!isset($porEst[$eid])) {
+            $porEst[$eid] = ['id' => $eid, 'nombre' => $r['nombre'], 'notas' => []];
+        }
+        if ($r['area'] !== null && $r['nota'] !== null) {
+            $porEst[$eid]['notas'][] = [
+                'area' => $r['area'], 'nota' => $r['nota'],
+                'porcentaje' => $r['porcentaje'], 'intensidad_horaria' => $r['intensidad_horaria'],
+            ];
+        }
+    }
+
     $ranking = [];
-    foreach ($ests->fetchAll(PDO::FETCH_ASSOC) as $e) {
-        $c = consolidadoAnualEstudiante($conexion, (int)$e['id'], $anio, $notaMinima);
-        $ranking[] = ['id' => (int)$e['id'], 'nombre' => $e['nombre'], 'promedio' => $c['general'], 'aprobo' => $c['aprobo'], 'areas_perdidas' => $c['areas_perdidas']];
+    foreach ($porEst as $e) {
+        if (count($e['notas']) === 0) {
+            $ranking[] = ['id' => $e['id'], 'nombre' => $e['nombre'], 'promedio' => null, 'aprobo' => false, 'areas_perdidas' => 0];
+            continue;
+        }
+        $def = calcularDefinitivas($e['notas']);
+        $perdidas = 0;
+        foreach ($def['areas'] as $v) if ($v < $notaMinima) $perdidas++;
+        $aprobo = ($def['general'] !== null && $def['general'] >= $notaMinima);
+        $ranking[] = ['id' => $e['id'], 'nombre' => $e['nombre'], 'promedio' => $def['general'], 'aprobo' => $aprobo, 'areas_perdidas' => $perdidas];
     }
     usort($ranking, fn($a, $b) => ($b['promedio'] ?? -1) <=> ($a['promedio'] ?? -1));
     return $ranking;
