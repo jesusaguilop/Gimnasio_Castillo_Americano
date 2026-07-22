@@ -1,3 +1,4 @@
+
 <?php
 require_once __DIR__ . '/../includes/init.php';
 checkRole('profesor');
@@ -142,10 +143,8 @@ include "includes/header.php";
                 <div class="d-flex align-items-center gap-3 mt-4 p-3 gca-card" style="background:#fcfbfa;">
                     <i class="bi bi-info-circle-fill" style="color:var(--gold);font-size:20px;"></i>
                     <p class="mb-0 small">
-                        Los boletines se guardaron con su <strong>promedio</strong> y <strong>puesto</strong>, y quedan
-                        <strong>pendientes de publicación</strong>: el <strong>administrador</strong> decide cuáles se
-                        muestran al padre. Los estudiantes <strong>sin notas</strong> se omiten: registra sus
-                        calificaciones y vuelve a generar.
+                        Los boletines se guardaron con su <strong>promedio</strong> y <strong>puesto</strong>. Los estudiantes
+                        <strong>sin notas</strong> se omiten: registra sus calificaciones y vuelve a generar.
                     </p>
                 </div>
 
