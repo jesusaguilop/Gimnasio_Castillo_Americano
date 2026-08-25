@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/lib/csrf_helper.php';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -40,8 +41,15 @@ session_start();
                 <span>Ocurrió un error. Intenta nuevamente.</span>
             </div>
         <?php endif; ?>
+        <?php if (isset($_GET["sincorreo"])): ?>
+            <div class="auth-alert err mb-4">
+                <i class="bi bi-envelope-slash-fill"></i>
+                <span>El envío de correos no está configurado todavía. Comunícate con el colegio para restablecer tu contraseña.</span>
+            </div>
+        <?php endif; ?>
 
         <form action="auth/forgot_password_procesar.php" method="POST" class="stagger">
+            <?= campo_csrf() ?>
             <div class="mb-4">
                 <label class="auth-label" for="emailInput">Correo electrónico</label>
                 <div class="field">

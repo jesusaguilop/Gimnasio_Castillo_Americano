@@ -8,7 +8,7 @@ $periodo_activo = getConfig('periodo_activo') ?? '1';
 $anio_activo = (int)(getConfig('anio_activo') ?? date('Y'));
 
 $stmtPd = $conexion->prepare("
-    SELECT DISTINCT periodo FROM notas WHERE anio = ? ORDER BY
+    SELECT periodo FROM notas WHERE anio = ? GROUP BY periodo ORDER BY
         CASE periodo
             WHEN '1' THEN 1 WHEN '2' THEN 2 WHEN '3' THEN 3 WHEN '4' THEN 4
             WHEN '1er Periodo' THEN 1 WHEN '2do Periodo' THEN 2 WHEN '3er Periodo' THEN 3 WHEN '4to Periodo' THEN 4

@@ -15,21 +15,20 @@
 
 require_once __DIR__ . '/env.php';
 
-$host    = config('db.host');
-$port    = config('db.port');
-$dbname  = config('db.name');
-$user    = config('db.user');
-$pass    = config('db.pass');
+$user = config('db.user');
+$pass = config('db.pass');
 
 try {
     $conexion = new PDO(
-        "pgsql:host=$host;port=$port;dbname=$dbname",
+        db_dsn(),
         $user,
         $pass,
         [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES   => false,
+            // Ver la nota en src/Base/Database.php: emulación ON ahorra
+            // 3-4 viajes de red por consulta contra Neon.
+            PDO::ATTR_EMULATE_PREPARES   => true,
         ]
     );
 } catch (PDOException $e) {

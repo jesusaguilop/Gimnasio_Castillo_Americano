@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../includes/init.php';
+require_once __DIR__ . "/../lib/csrf_helper.php";
 checkRole('admin');
 
 use App\Base\Session;
@@ -7,9 +8,17 @@ use App\Base\Session;
 $mensaje = "";
 $tipo = "";
 
-if (isset($_GET["id"]) && isset($_GET["confirmar"])) {
+// Borrado por POST + token CSRF. Antes se disparaba con un GET
+// (ver_*.php?id=N&confirmar=1): cualquier enlace o <img> que cargara
+// el admin estando logueado podía eliminar registros.
+$puedeEliminar = $_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["eliminar_id"]);
+if ($puedeEliminar && !validar_token_csrf($_POST["_csrf_token"] ?? "")) {
+    $mensaje = "Error de seguridad. Intenta de nuevo.";
+    $puedeEliminar = false;
+}
+if ($puedeEliminar) {
     try {
-        db()->delete("eventos", "id = ?", [$_GET["id"]]);
+        db()->delete("eventos", "id = ?", [(int) $_POST["eliminar_id"]]);
         Session::setSuccess("Evento eliminado.");
     } catch (Exception $e) {
         $mensaje = "Error: " . $e->getMessage();
@@ -84,9 +93,14 @@ include "includes/header.php";
                             <td><span class="badge-gca" style="font-size:11px;"><?= htmlspecialchars($e["tipo"]) ?></span></td>
                             <td class="text-end">
                                 <a href="editar_evento.php?id=<?= $e["id"] ?>" class="btn-action btn-edit"><i class="bi bi-pencil"></i></a>
-                                <a href="ver_eventos.php?id=<?= $e["id"] ?>&confirmar=1"
-                                   onclick="event.preventDefault();showConfirm('¿Eliminar este evento?',()=>window.location.href=this.href);"
-                                   class="btn-action btn-delete"><i class="bi bi-trash"></i></a>
+                                <form method="POST" style="display:inline" id="delForm<?= $e["id"] ?>">
+                                    <?= campo_csrf() ?>
+                                    <input type="hidden" name="eliminar_id" value="<?= $e["id"] ?>">
+                                    <button type="button" class="btn-action btn-delete" title="Eliminar"
+                                        onclick="showConfirm('¿Eliminar este evento?',()=>document.getElementById('delForm<?= $e["id"] ?>').submit());">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                         <?php endforeach; ?>

@@ -28,7 +28,7 @@ if (!$estudiante) {
 /* ── Endpoint en vivo: períodos con boletín PUBLICADO por el admin ── */
 if (isset($_GET["poll"])) {
     header("Content-Type: application/json");
-    $q = $conexion->prepare("SELECT periodo, ruta_pdf FROM boletines_pdf WHERE estudiante_id = ? AND year = ? AND publicado = TRUE ORDER BY periodo");
+    $q = $conexion->prepare("SELECT id, periodo FROM boletines_pdf WHERE estudiante_id = ? AND year = ? AND publicado = TRUE ORDER BY periodo");
     $q->execute([$estudiante_id, $anio_activo]);
     echo json_encode(["boletines" => $q->fetchAll(PDO::FETCH_ASSOC)]);
     exit;
@@ -36,9 +36,10 @@ if (isset($_GET["poll"])) {
 
 /* ── Get available periods ── */
 $periodos = $conexion->prepare("
-    SELECT DISTINCT n.periodo
+    SELECT n.periodo
     FROM notas n
     WHERE n.estudiante_id = ? AND n.anio = ?
+    GROUP BY n.periodo
     ORDER BY
         CASE n.periodo
             WHEN '1' THEN 1 WHEN '2' THEN 2 WHEN '3' THEN 3 WHEN '4' THEN 4
@@ -75,7 +76,7 @@ if ($selected_periodo) {
 
 /* ── Check available PDF boletines ── */
 $boletines_pdf = $conexion->prepare("
-    SELECT periodo, year, ruta_pdf
+    SELECT id, periodo, year
     FROM boletines_pdf
     WHERE estudiante_id = ? AND year = ? AND publicado = TRUE
     ORDER BY year, periodo
@@ -135,7 +136,7 @@ include "includes/header.php";
                     <i class="bi bi-calendar3"></i> <?= htmlspecialchars($p) ?>
                 </a>
                 <?php if (isset($boletines_por_periodo[$p])): ?>
-                    <a href="../<?= $boletines_por_periodo[$p]['ruta_pdf'] ?>" target="_blank"
+                    <a href="../boletin_descargar.php?id=<?= (int) $boletines_por_periodo[$p]['id'] ?>" target="_blank"
                        style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:#2e7d32;background:#e8f5e9;padding:3px 8px;border-radius:20px;text-decoration:none;font-weight:600;white-space:nowrap;">
                         <i class="bi bi-file-pdf-fill"></i> PDF
                     </a>
@@ -224,12 +225,40 @@ include "includes/header.php";
         </div>
     <?php endif; ?>
 
-    <?php if ($selected_periodo && isset($boletines_por_periodo[$selected_periodo])): ?>
-        <div style="text-align:center;margin-top:16px;">
-            <a href="../<?= $boletines_por_periodo[$selected_periodo]['ruta_pdf'] ?>" target="_blank"
-               class="btn-gca-pdf">
-                <i class="bi bi-file-pdf-fill"></i> Descargar Boletín PDF
-            </a>
+    <?php if ($selected_periodo && isset($boletines_por_periodo[$selected_periodo])):
+        // Un solo origen para la vista previa y la descarga: boletin_descargar.php
+        // valida que el boletín sea de un hijo de este padre Y que el admin ya lo
+        // haya publicado. Si no, responde 403 y aquí no se ve nada.
+        $urlBoletin = '../boletin_descargar.php?id=' . (int) $boletines_por_periodo[$selected_periodo]['id'];
+    ?>
+        <div class="boletin-preview">
+            <div class="boletin-preview-head">
+                <span>
+                    <i class="bi bi-file-earmark-pdf-fill"></i>
+                    Boletín del período <?= htmlspecialchars($selected_periodo) ?>
+                </span>
+                <div class="boletin-preview-acciones">
+                    <a href="<?= $urlBoletin ?>" target="_blank" rel="noopener">
+                        <i class="bi bi-arrows-fullscreen"></i> Pantalla completa
+                    </a>
+                    <a href="<?= $urlBoletin ?>" target="_blank" rel="noopener" class="btn-gca-pdf">
+                        <i class="bi bi-download"></i> Descargar
+                    </a>
+                </div>
+            </div>
+
+            <iframe class="boletin-visor"
+                    src="<?= $urlBoletin ?>#view=FitH"
+                    title="Boletín del período <?= htmlspecialchars($selected_periodo) ?>"
+                    loading="lazy">
+            </iframe>
+
+            <!-- Algunos navegadores móviles no muestran PDF dentro de un marco -->
+            <p class="boletin-preview-nota">
+                <i class="bi bi-info-circle"></i>
+                ¿No se ve el boletín aquí? Ábrelo con
+                <a href="<?= $urlBoletin ?>" target="_blank" rel="noopener">Pantalla completa</a>.
+            </p>
         </div>
     <?php endif; ?>
 

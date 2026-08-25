@@ -354,6 +354,54 @@
         }
         .btn-gca-pdf:hover { background: #b8951f; color: #fff; }
 
+        /* ── Vista previa del boletín ── */
+        .boletin-preview {
+            margin-top: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+        .boletin-preview-head {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; flex-wrap: wrap;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-surface);
+            font-weight: 700; font-size: 14px; color: var(--text-primary);
+        }
+        .boletin-preview-head .bi-file-earmark-pdf-fill { color: var(--gold-dark); }
+        .boletin-preview-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .boletin-preview-acciones > a:not(.btn-gca-pdf) {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--text-secondary); font-size: 13px; text-decoration: none;
+            padding: 8px 14px; border: 1px solid var(--border); border-radius: 50px;
+            transition: all .2s;
+        }
+        .boletin-preview-acciones > a:not(.btn-gca-pdf):hover {
+            color: var(--gold-dark); border-color: var(--gold);
+        }
+        .boletin-preview-acciones .btn-gca-pdf { padding: 8px 18px; font-size: 13px; }
+
+        /* Alto generoso: el boletín se lee sin abrir otra pestaña */
+        .boletin-visor {
+            display: block; width: 100%; height: 78vh; min-height: 520px;
+            border: 0; background: var(--bg-surface);
+        }
+        .boletin-preview-nota {
+            margin: 0; padding: 10px 16px;
+            border-top: 1px solid var(--border);
+            font-size: 12px; color: var(--text-muted); text-align: center;
+        }
+        .boletin-preview-nota a { color: var(--gold-dark); font-weight: 600; }
+
+        @media (max-width: 480px) {
+            /* En móvil el visor embebido es incómodo (y iOS a veces no lo pinta) */
+            .boletin-visor { height: 60vh; min-height: 380px; }
+            .boletin-preview-head { font-size: 13px; }
+        }
+
         @media (max-width: 480px) {
             body { padding-top: 56px; }
             .app-header { height: 56px; padding: 0 12px; padding-top: env(safe-area-inset-top, 0px); padding-bottom: 8px; }

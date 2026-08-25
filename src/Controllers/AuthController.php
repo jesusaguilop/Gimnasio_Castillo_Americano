@@ -28,8 +28,17 @@ class AuthController extends Controller
             [$email]
         );
 
-        if (!$usuario || !password_verify($password, $usuario['password']) || $usuario['rol'] !== $rol) {
+        // Credenciales mal: mismo mensaje exista o no el correo, para no
+        // revelar qué direcciones están registradas.
+        if (!$usuario || !password_verify($password, $usuario['password'])) {
             $this->redirect("../login.php?error=1&rol=$rol&email=$email");
+        }
+
+        // Credenciales BIEN pero el tipo de usuario elegido no es el suyo.
+        // Antes daba el mismo "Credenciales incorrectas" y la gente creía que
+        // se había equivocado de contraseña.
+        if ($usuario['rol'] !== $rol) {
+            $this->redirect("../login.php?error=rol&rol={$usuario['rol']}&email=$email");
         }
 
         Auth::login($usuario['id'], $usuario['nombre'], $usuario['rol']);

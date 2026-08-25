@@ -107,7 +107,26 @@ function generarBoletinEstudiante(PDO $conexion, int $estudiante_id, string $per
     if (!is_dir($dir_fs)) {
         mkdir($dir_fs, 0777, true);
     }
-    $filename = "boletin_{$est['id']}_{$periodo}_{$year}.pdf";
+    // El nombre lleva un sufijo aleatorio a propósito: antes era
+    // boletin_{id}_{periodo}_{año}.pdf y cualquiera podía adivinar la URL del
+    // boletín de otro estudiante. El acceso normal es por
+    // boletin_descargar.php (que valida quién pide), y este sufijo es la
+    // segunda barrera si el directorio quedara servido como estático.
+    $filename = "boletin_{$est['id']}_{$periodo}_{$year}_" . bin2hex(random_bytes(8)) . ".pdf";
+
+    // Al regenerar, borrar el PDF anterior para no dejar copias huérfanas
+    // (con nombre aleatorio ya no se sobreescriben entre ellas).
+    $anterior = $conexion->prepare(
+        "SELECT ruta_pdf FROM boletines_pdf WHERE estudiante_id = ? AND periodo = ? AND year = ?"
+    );
+    $anterior->execute([$estudiante_id, $periodo, $year]);
+    if ($rutaVieja = $anterior->fetchColumn()) {
+        $archivoViejo = __DIR__ . '/../' . ltrim($rutaVieja, '/');
+        if (is_file($archivoViejo)) {
+            @unlink($archivoViejo);
+        }
+    }
+
     file_put_contents("{$dir_fs}/{$filename}", $pdf);
     $ruta_relativa = "assets/boletines/{$year}/{$periodo}/{$filename}";
 

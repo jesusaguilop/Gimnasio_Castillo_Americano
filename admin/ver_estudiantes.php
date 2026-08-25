@@ -1,13 +1,22 @@
 <?php
 
 require_once __DIR__ . '/../includes/init.php';
+require_once __DIR__ . '/../lib/csrf_helper.php';
 checkRole('admin');
 
 use App\Base\Session;
 
 $mensaje = Session::getSuccess() ?: "";
-if (isset($_GET["id"]) && isset($_GET["confirmar"])) {
-    $id = (int)$_GET["id"];
+// Borrado por POST + token CSRF. Antes se disparaba con un GET
+// (ver_*.php?id=N&confirmar=1): cualquier enlace o <img> que cargara
+// el admin estando logueado podía eliminar registros.
+$puedeEliminar = $_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["eliminar_id"]);
+if ($puedeEliminar && !validar_token_csrf($_POST["_csrf_token"] ?? "")) {
+    $mensaje = "Error de seguridad. Intenta de nuevo.";
+    $puedeEliminar = false;
+}
+if ($puedeEliminar) {
+    $id = (int)(int) $_POST["eliminar_id"];
     try {
         $est = db()->fetch("SELECT usuario_id FROM estudiantes WHERE id = ?", [$id]);
 
@@ -59,7 +68,9 @@ $sql .= " ORDER BY
 $estudiantes = db()->fetchAll($sql, $params);
 
 $grados = db()->fetchAll(
-    "SELECT DISTINCT grado FROM cursos ORDER BY
+    // GROUP BY en vez de DISTINCT: PostgreSQL exige que la expresión del
+    // ORDER BY esté en la lista del SELECT si se usa DISTINCT (con GROUP BY no).
+    "SELECT grado FROM cursos GROUP BY grado ORDER BY
         CASE grado
             WHEN 'maternal' THEN 1 WHEN 'prejardin' THEN 2 WHEN 'jardin' THEN 3 WHEN 'transicion' THEN 4
             WHEN 'primero' THEN 5 WHEN 'segundo' THEN 6 WHEN 'tercero' THEN 7 WHEN 'cuarto' THEN 8 WHEN 'quinto' THEN 9
@@ -156,11 +167,14 @@ include "includes/header.php";
                                             <a href="editar_estudiante.php?eid=<?= $e["id"] ?>" class="btn-action btn-edit me-1" title="Editar">
                                                 <i class="bi bi-pencil-square"></i>
                                             </a>
-                                            <a href="ver_estudiantes.php?id=<?= $e["id"] ?>&confirmar=1"
-                                                class="btn-action btn-delete" title="Eliminar"
-                                                onclick="event.preventDefault();showConfirm('¿Seguro que deseas eliminar este estudiante?',()=>window.location.href=this.href);">
+                                            <form method="POST" style="display:inline" id="delForm<?= $e["id"] ?>">
+                                            <?= campo_csrf() ?>
+                                            <input type="hidden" name="eliminar_id" value="<?= $e["id"] ?>">
+                                            <button type="button" class="btn-action btn-delete" title="Eliminar"
+                                                onclick="showConfirm('¿Seguro que deseas eliminar este estudiante?',()=>document.getElementById('delForm<?= $e["id"] ?>').submit());">
                                                 <i class="bi bi-trash"></i>
-                                            </a>
+                                            </button>
+                                        </form>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

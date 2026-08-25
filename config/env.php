@@ -63,6 +63,95 @@ if (!function_exists('env')) {
 }
 
 /**
+ * Descompone una cadena de conexión PostgreSQL en sus partes.
+ * Formato de Neon (y de Railway/Heroku):
+ *   postgresql://usuario:clave@ep-xxx-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
+ * Devuelve [] si la cadena no es válida, para que se usen las variables sueltas.
+ */
+if (!function_exists('parse_db_url')) {
+    function parse_db_url(string $url): array
+    {
+        $p = parse_url($url);
+        if ($p === false || empty($p['host'])) return [];
+
+        $out = [
+            'host' => $p['host'],
+            'port' => (string) ($p['port'] ?? '5432'),
+        ];
+
+        if (isset($p['user'])) $out['user'] = rawurldecode($p['user']);
+        if (isset($p['pass'])) $out['pass'] = rawurldecode($p['pass']);
+
+        $name = trim($p['path'] ?? '', '/');
+        if ($name !== '') $out['name'] = rawurldecode($name);
+
+        if (!empty($p['query'])) {
+            parse_str($p['query'], $q);
+            if (!empty($q['sslmode'])) $out['sslmode'] = $q['sslmode'];
+        }
+
+        return $out;
+    }
+}
+
+/**
+ * URL base pública de la aplicación, sin barra final.
+ *
+ * Se usa para armar enlaces absolutos (el correo de recuperación de
+ * contraseña). En el hosting NO hay archivo .env, así que si nadie define
+ * APP_URL se deduce del dominio real en vez de quedarse en "localhost"
+ * y mandar enlaces que no funcionan.
+ *
+ * Orden: APP_URL → dominio público de Railway → host de la petición.
+ */
+if (!function_exists('app_url_base')) {
+    function app_url_base(): string
+    {
+        $explicita = env('APP_URL', '');
+        if (is_string($explicita) && $explicita !== '' && !str_contains($explicita, 'localhost')) {
+            return rtrim($explicita, '/');
+        }
+
+        $railway = env('RAILWAY_PUBLIC_DOMAIN', '');
+        if (is_string($railway) && $railway !== '') {
+            return 'https://' . rtrim($railway, '/');
+        }
+
+        // Deducir de la petición (no existe en CLI)
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        if ($host !== '') {
+            $https = (($_SERVER['HTTPS'] ?? '') !== '' && ($_SERVER['HTTPS'] ?? '') !== 'off')
+                || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
+                || (int) ($_SERVER['SERVER_PORT'] ?? 0) === 443;
+
+            return ($https ? 'https://' : 'http://') . $host;
+        }
+
+        // Último recurso: lo que diga APP_URL, aunque sea localhost (desarrollo)
+        return rtrim(is_string($explicita) && $explicita !== '' ? $explicita : 'http://localhost', '/');
+    }
+}
+
+/**
+ * DSN de PDO para PostgreSQL, construido en un solo lugar.
+ */
+if (!function_exists('db_dsn')) {
+    function db_dsn(): string
+    {
+        $dsn = 'pgsql:host=' . config('db.host')
+             . ';port=' . config('db.port')
+             . ';dbname=' . config('db.name');
+
+        $sslmode = config('db.sslmode');
+        if ($sslmode) {
+            $dsn .= ';sslmode=' . $sslmode;
+        }
+
+        return $dsn;
+    }
+}
+
+/**
  * Obtiene una constante de configuración de la app.
  */
 if (!function_exists('config')) {
@@ -71,23 +160,34 @@ if (!function_exists('config')) {
     static $config = [];
 
     if (empty($config)) {
-        // Supabase/PostgreSQL — detecta vars inyectadas automáticamente
-        $dbHost = env('PGHOST') ?: env('DB_HOST', 'localhost');
-        $dbPort = env('PGPORT') ?: env('DB_PORT', '5432');
-        $dbName = env('PGDATABASE') ?: env('DB_NAME', 'postgres');
-        $dbUser = env('PGUSER') ?: env('DB_USER', 'postgres');
-        $dbPass = env('PGPASSWORD') ?: env('DB_PASS', '');
+        // PostgreSQL (Neon) — acepta DATABASE_URL o las variables sueltas (PG* / DB_*)
+        $url    = env('DATABASE_URL') ?: env('POSTGRES_URL', '');
+        $parsed = $url ? parse_db_url($url) : [];
+
+        $dbHost = $parsed['host'] ?? (env('PGHOST') ?: env('DB_HOST', 'localhost'));
+        $dbPort = $parsed['port'] ?? (env('PGPORT') ?: env('DB_PORT', '5432'));
+        $dbName = $parsed['name'] ?? (env('PGDATABASE') ?: env('DB_NAME', 'neondb'));
+        $dbUser = $parsed['user'] ?? (env('PGUSER') ?: env('DB_USER', 'postgres'));
+        $dbPass = $parsed['pass'] ?? (env('PGPASSWORD') ?: env('DB_PASS', ''));
+
+        // Neon SOLO acepta conexiones TLS. Contra un Postgres local sin SSL se
+        // puede bajar con DB_SSLMODE=prefer (o disable).
+        $dbSsl = $parsed['sslmode'] ?? (env('PGSSLMODE') ?: env('DB_SSLMODE', ''));
+        if ($dbSsl === '') {
+            $dbSsl = in_array($dbHost, ['localhost', '127.0.0.1', '::1'], true) ? 'prefer' : 'require';
+        }
 
         $config = [
             'app.name'    => env('APP_NAME', 'Sistema Académico'),
             'app.env'     => env('APP_ENV', 'production'),
             'app.debug'   => env('APP_DEBUG', false),
-            'app.url'     => env('APP_URL', 'http://localhost'),
+            'app.url'     => app_url_base(),
             'db.host'     => $dbHost,
             'db.port'     => $dbPort,
             'db.name'     => $dbName,
             'db.user'     => $dbUser,
             'db.pass'     => $dbPass,
+            'db.sslmode'  => $dbSsl,
             'db.charset'  => 'utf8',
             'session.lifetime' => (int) env('SESSION_LIFETIME', 7200),
             'mail.host'       => env('MAIL_HOST', 'smtp.gmail.com'),

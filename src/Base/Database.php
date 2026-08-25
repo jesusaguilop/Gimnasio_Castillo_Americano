@@ -12,21 +12,23 @@ class Database
 
     private function __construct()
     {
-        $host    = config('db.host', 'localhost');
-        $port    = config('db.port', '5432');
-        $dbname  = config('db.name', 'postgres');
-        $user    = config('db.user', 'postgres');
-        $pass    = config('db.pass', '');
+        $user = config('db.user', 'postgres');
+        $pass = config('db.pass', '');
 
         try {
             $this->pdo = new PDO(
-                "pgsql:host=$host;port=$port;dbname=$dbname",
+                db_dsn(),
                 $user,
                 $pass,
                 [
                     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES   => false,
+                    // Emulación ACTIVADA a propósito: contra una base remota
+                    // (Neon) el prepare nativo gasta 3-4 viajes de red por
+                    // consulta en vez de 1. Medido: 542 ms → 186 ms por consulta.
+                    // Los parámetros los sigue escapando PDO, así que la
+                    // protección contra inyección SQL no cambia.
+                    PDO::ATTR_EMULATE_PREPARES   => true,
                 ]
             );
         } catch (PDOException $e) {

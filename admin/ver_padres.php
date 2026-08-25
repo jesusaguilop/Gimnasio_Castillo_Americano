@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once "../config/database.php";
+require_once __DIR__ . "/../lib/csrf_helper.php";
 
 if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
     header("Location: ../login.php");
@@ -13,8 +14,16 @@ if (isset($_SESSION["success_msg"])) {
     unset($_SESSION["success_msg"]);
 }
 
-if (isset($_GET["id"]) && isset($_GET["confirmar"])) {
-    $id = $_GET["id"];
+// Borrado por POST + token CSRF. Antes se disparaba con un GET
+// (ver_*.php?id=N&confirmar=1): cualquier enlace o <img> que cargara
+// el admin estando logueado podía eliminar registros.
+$puedeEliminar = $_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["eliminar_id"]);
+if ($puedeEliminar && !validar_token_csrf($_POST["_csrf_token"] ?? "")) {
+    $mensaje = "Error de seguridad. Intenta de nuevo.";
+    $puedeEliminar = false;
+}
+if ($puedeEliminar) {
+    $id = (int) $_POST["eliminar_id"];
     $stmt = $conexion->prepare("DELETE FROM usuarios WHERE id = :id AND rol = 'padre'");
     $stmt->execute([":id" => $id]);
     $mensaje = "Padre eliminado correctamente";
@@ -76,11 +85,14 @@ include "includes/header.php";
                                         <a href="editar_padre.php?id=<?= $p["id"] ?>" class="btn-action btn-edit me-1" title="Editar">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
-                                        <a href="ver_padres.php?id=<?= $p["id"] ?>&confirmar=1"
-                                            class="btn-action btn-delete" title="Eliminar"
-                                            onclick="event.preventDefault();showConfirm('¿Seguro que deseas eliminar este padre?',()=>window.location.href=this.href);">
-                                            <i class="bi bi-trash"></i>
-                                        </a>
+                                        <form method="POST" style="display:inline" id="delForm<?= $p["id"] ?>">
+                                    <?= campo_csrf() ?>
+                                    <input type="hidden" name="eliminar_id" value="<?= $p["id"] ?>">
+                                    <button type="button" class="btn-action btn-delete" title="Eliminar"
+                                        onclick="showConfirm('¿Seguro que deseas eliminar este padre?',()=>document.getElementById('delForm<?= $p["id"] ?>').submit());">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

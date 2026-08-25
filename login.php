@@ -404,7 +404,8 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
                 <i class="bi bi-exclamation-triangle-fill" style="font-size:16px;"></i>
                 <span>
                     <?= match ($error) {
-                        'empty'  => 'Completa todos los campos.',
+                        'empty'  => 'Completa todos los campos, incluido el tipo de usuario.',
+                        'rol'    => 'Tu contraseña es correcta, pero ese correo no es de ese tipo de usuario. Ya te dejamos seleccionado el correcto arriba: vuelve a intentar.',
                         default => 'Credenciales incorrectas. Verifica e intenta de nuevo.',
                     } ?>
                 </span>
@@ -424,6 +425,9 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
                         <option value="profesor" <?= $oldRol === 'profesor' ? 'selected' : '' ?>>Profesor</option>
                         <option value="padre" <?= $oldRol === 'padre' ? 'selected' : '' ?>>Padre de familia</option>
                     </select>
+                </div>
+                <div id="avisoRol" class="d-none" style="color:#c0392b;font-size:12px;margin-top:6px;">
+                    <i class="bi bi-exclamation-circle"></i> Elige si entras como administrador, profesor o padre de familia.
                 </div>
             </div>
 
@@ -502,14 +506,36 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
     const btnText = document.getElementById('btnText');
     const btnSpinner = document.getElementById('btnSpinner');
 
-    form.addEventListener('submit', function() {
-        // Simple client validation
-        const rol = document.getElementById('rolSelect').value;
-        const email = document.getElementById('emailInput').value.trim();
+    form.addEventListener('submit', function(ev) {
+        // El <form> lleva novalidate, así que la validación nativa NO corre:
+        // antes este handler hacía `return` y el formulario se enviaba igual
+        // con el rol vacío (el servidor respondía "Completa todos los campos").
+        const rolSelect = document.getElementById('rolSelect');
+        const emailEl = document.getElementById('emailInput');
+        const rol = rolSelect.value;
+        const email = emailEl.value.trim();
         const pass = passInput.value.trim();
 
+        const avisoRol = document.getElementById('avisoRol');
+        avisoRol.classList.add('d-none');
+        emailEl.classList.remove('is-invalid');
+        passInput.classList.remove('is-invalid');
+
         if (!rol || !email || !pass) {
-            return; // browser will show native validation
+            ev.preventDefault();
+
+            if (!rol) {
+                avisoRol.classList.remove('d-none');
+                // El select real está oculto tras TomSelect: se enfoca el suyo.
+                (rolSelect.tomselect ? rolSelect.tomselect.control : rolSelect).focus();
+            } else if (!email) {
+                emailEl.classList.add('is-invalid');
+                emailEl.focus();
+            } else {
+                passInput.classList.add('is-invalid');
+                passInput.focus();
+            }
+            return;
         }
 
         submitBtn.disabled = true;

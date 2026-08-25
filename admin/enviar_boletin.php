@@ -94,7 +94,7 @@ function boletinesTbody(array $filas): string
         $acc = '';
         // Ver PDF
         if (!empty($b['ruta_pdf'])) {
-            $acc .= '<a href="../' . htmlspecialchars($b['ruta_pdf']) . '" target="_blank" class="btn-action btn-edit" title="Ver PDF"><i class="bi bi-file-earmark-pdf"></i></a> ';
+            $acc .= '<a href="../boletin_descargar.php?id=' . (int) $b['id'] . '" target="_blank" class="btn-action btn-edit" title="Ver PDF"><i class="bi bi-file-earmark-pdf"></i></a> ';
         }
         // Publicar / Ocultar
         $tog = $pub ? 'ocultar' : 'publicar';

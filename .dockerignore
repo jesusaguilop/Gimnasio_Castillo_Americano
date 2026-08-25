@@ -1,0 +1,10 @@
+.git
+.gitignore
+.env
+*.md
+composer
+database/*.sql
+assets/boletines/*
+MODELO BOLETIN.docx
+vendor
+lib/vendor

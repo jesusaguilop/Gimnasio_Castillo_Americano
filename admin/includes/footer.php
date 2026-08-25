@@ -4,7 +4,9 @@
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('select:not(.no-ts)').forEach(function(el) {
             new TomSelect(el, {
-                maxOptions: 100,
+                // 100 dejaba fuera de la lista a más de la mitad de los
+                // estudiantes (son 245); se veían solo escribiendo para buscar.
+                maxOptions: 400,
                 placeholder: el.options[0]?.text || 'Seleccionar...',
                 allowEmptyOption: true,
                 onDropdownOpen: function() {
