@@ -4,7 +4,7 @@
 *.md
 composer
 database/*.sql
-assets/boletines/*
+assets/uploads/*
 MODELO BOLETIN.docx
 vendor
 lib/vendor

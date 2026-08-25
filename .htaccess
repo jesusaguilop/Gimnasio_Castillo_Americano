@@ -10,7 +10,7 @@ RedirectMatch 403 ^/tools/.*$
 RedirectMatch 403 ^/database/.*$
 # Los boletines NO se sirven como archivo estático: se piden por
 # boletin_descargar.php, que valida quién los pide.
-RedirectMatch 403 ^/assets/boletines/.*$
+RedirectMatch 403 ^/assets/uploads/boletines/.*$
 RedirectMatch 403 ^/lib/(?!.*\.php$).*$
 RedirectMatch 403 ^/vendor/.*$
 

@@ -8,6 +8,9 @@
  * NO valida permisos: el archivo que llama debe verificar acceso.
  */
 require_once __DIR__ . '/vendor/autoload.php';
+// Para ruta_subidas()/url_subidas(): no depender de que el archivo que llama
+// haya cargado ya la configuración.
+require_once __DIR__ . '/../config/env.php';
 require_once __DIR__ . '/boletin_template.php';
 require_once __DIR__ . '/boletin_template_v2.php';
 require_once __DIR__ . '/rank_helper.php';
@@ -103,7 +106,7 @@ function generarBoletinEstudiante(PDO $conexion, int $estudiante_id, string $per
 
     // Guardar en disco
     $year = $anio;
-    $dir_fs = __DIR__ . "/../assets/boletines/{$year}/{$periodo}";
+    $dir_fs = ruta_subidas("boletines/{$year}/{$periodo}");
     if (!is_dir($dir_fs)) {
         mkdir($dir_fs, 0777, true);
     }
@@ -128,7 +131,7 @@ function generarBoletinEstudiante(PDO $conexion, int $estudiante_id, string $per
     }
 
     file_put_contents("{$dir_fs}/{$filename}", $pdf);
-    $ruta_relativa = "assets/boletines/{$year}/{$periodo}/{$filename}";
+    $ruta_relativa = url_subidas("boletines/{$year}/{$periodo}") . "/{$filename}";
 
     // Registrar en BD. Queda PENDIENTE de publicación (el admin decide el paso al padre).
     // Al (re)generar se reinicia a no-publicado para que el admin apruebe la versión vigente.

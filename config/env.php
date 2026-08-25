@@ -95,6 +95,40 @@ if (!function_exists('parse_db_url')) {
 }
 
 /**
+ * Directorio de TODO lo que la aplicación escribe en tiempo de ejecución:
+ * boletines generados, fotos de docentes e imágenes de noticias.
+ *
+ * Están juntos a propósito. En el hosting el disco del contenedor es
+ * efímero (se borra en cada despliegue), así que hay que montar un volumen
+ * persistente encima — y Railway solo permite UNO por servicio. Si cada cosa
+ * viviera en su carpeta no se podrían persistir todas.
+ *
+ * OJO: no montar el volumen en `assets/` a secas; taparía el CSS y las
+ * imágenes del diseño, que sí vienen dentro de la imagen.
+ *
+ * @param string $sub Subruta opcional, p.ej. 'docentes' o 'boletines/2026/1'.
+ */
+if (!function_exists('ruta_subidas')) {
+    function ruta_subidas(string $sub = ''): string
+    {
+        $base = dirname(__DIR__) . '/assets/uploads';
+        return $sub === '' ? $base : $base . '/' . trim($sub, '/');
+    }
+}
+
+/**
+ * La misma ubicación pero como ruta relativa, que es la que se guarda en la
+ * base de datos y se usa en el HTML.
+ */
+if (!function_exists('url_subidas')) {
+    function url_subidas(string $sub = ''): string
+    {
+        $base = 'assets/uploads';
+        return $sub === '' ? $base : $base . '/' . trim($sub, '/');
+    }
+}
+
+/**
  * URL base pública de la aplicación, sin barra final.
  *
  * Se usa para armar enlaces absolutos (el correo de recuperación de

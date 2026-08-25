@@ -34,12 +34,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     if (file_exists($ruta_vieja)) unlink($ruta_vieja);
                 }
                 $nombre = "noticia_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $ext;
-                $destino = __DIR__ . "/../assets/img/noticias/" . $nombre;
-                if (!is_dir(__DIR__ . "/../assets/img/noticias")) {
-                    mkdir(__DIR__ . "/../assets/img/noticias", 0755, true);
+                if (!is_dir(ruta_subidas("noticias"))) {
+                    mkdir(ruta_subidas("noticias"), 0755, true);
                 }
+                $destino = ruta_subidas("noticias") . "/" . $nombre;
                 move_uploaded_file($_FILES["imagen"]["tmp_name"], $destino);
-                $imagen = "assets/img/noticias/" . $nombre;
+                $imagen = url_subidas("noticias") . "/" . $nombre;
             }
 
             db()->update("noticias", [

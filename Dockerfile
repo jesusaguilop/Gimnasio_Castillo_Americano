@@ -57,8 +57,8 @@ COPY . .
 RUN composer dump-autoload --no-dev --optimize \
     && composer dump-autoload -d lib --no-dev --optimize \
     && chown -R www-data:www-data /var/www/html \
-    && mkdir -p assets/boletines assets/img/docentes assets/img/noticias \
-    && chown -R www-data:www-data assets
+    && mkdir -p assets/uploads/boletines assets/uploads/docentes assets/uploads/noticias \
+    && chown -R www-data:www-data assets/uploads
 
 # .htaccess necesita AllowOverride para que sus reglas apliquen
 RUN printf '%s\n' \

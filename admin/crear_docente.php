@@ -26,9 +26,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     throw new Exception("Formato de imagen no permitido (jpg, png, webp).");
                 }
                 $nombre_foto = "docente_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $ext;
-                $destino = __DIR__ . "/../assets/img/docentes/" . $nombre_foto;
+                // assets/uploads: lo que el usuario sube va todo junto para poder
+                // montar encima un volumen persistente en el hosting.
+                if (!is_dir(ruta_subidas("docentes"))) {
+                    mkdir(ruta_subidas("docentes"), 0755, true);
+                }
+                $destino = ruta_subidas("docentes") . "/" . $nombre_foto;
                 move_uploaded_file($_FILES["foto"]["tmp_name"], $destino);
-                $foto = "assets/img/docentes/" . $nombre_foto;
+                $foto = url_subidas("docentes") . "/" . $nombre_foto;
             }
 
             db()->insert("docentes", [
