@@ -103,9 +103,9 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5>Asignar Materias</h5>
+                <h5 role="heading" aria-level="1">Asignar Materias</h5>
                 <p>Panel Administrativo &nbsp;/&nbsp; Asignación Académica</p>
             </div>
         </div>
@@ -124,21 +124,21 @@ include "includes/header.php";
                         <?php if ($mensaje): ?>
                             <div class="alert alert-success alert-dismissible fade show" role="alert">
                                 <i class="bi bi-check-circle me-2"></i><?= htmlspecialchars($mensaje) ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                             </div>
                         <?php endif; ?>
                         <?php if ($error): ?>
                             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                                 <i class="bi bi-exclamation-triangle me-2"></i><?= htmlspecialchars($error) ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                             </div>
                         <?php endif; ?>
 
                         <form method="POST">
                             <?= campo_csrf() ?>
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Profesor</label>
-                                <select name="profesor" class="form-select" required>
+                                <label class="form-label fw-medium" for="f_profesor">Profesor</label>
+                                <select id="f_profesor" name="profesor" class="form-select" required>
                                     <option value="">-- Seleccionar --</option>
                                     <?php foreach ($profesores as $p): ?>
                                         <option value="<?= $p["id"] ?>"><?= htmlspecialchars($p["nombre"]) ?></option>
@@ -147,7 +147,7 @@ include "includes/header.php";
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Curso</label>
+                                <label class="form-label fw-medium" for="selectCurso">Curso</label>
                                 <select name="curso" id="selectCurso" class="form-select" required>
                                     <option value="">-- Seleccionar --</option>
                                     <?php foreach ($cursos as $c): ?>
@@ -166,7 +166,7 @@ include "includes/header.php";
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label fw-medium">Asignatura</label>
+                                <label class="form-label fw-medium" for="selectAsignatura">Asignatura</label>
                                 <select name="asignatura" id="selectAsignatura" class="form-select" required>
                                     <option value="">-- Seleccionar --</option>
                                     <?php foreach ($asignaturas as $a):
@@ -180,8 +180,8 @@ include "includes/header.php";
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label fw-medium">Peso % en el área</label>
-                                <input type="number" name="porcentaje" class="form-control" value="100" min="1" max="100"
+                                <label class="form-label fw-medium" for="f_porcentaje">Peso % en el área</label>
+                                <input id="f_porcentaje" type="number" name="porcentaje" class="form-control" value="100" min="1" max="100"
                                     placeholder="Ej. 100">
                                 <div class="form-text">Porcentaje de aporte de esta asignatura al promedio global del área.</div>
                             </div>
@@ -210,11 +210,11 @@ include "includes/header.php";
                                 <table class="table gca-table mb-0">
                                     <thead>
                                         <tr>
-                                            <th>Profesor</th>
-                                            <th>Curso</th>
-                                            <th>Materia</th>
-                                            <th style="width:60px;">%</th>
-                                            <th style="width:60px;"></th>
+                                            <th scope="col">Profesor</th>
+                                            <th scope="col">Curso</th>
+                                            <th scope="col">Materia</th>
+                                            <th scope="col" style="width:60px;">%</th>
+                                            <th scope="col" style="width:60px;"><span class="visually-hidden">Acciones</span></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -241,8 +241,8 @@ include "includes/header.php";
                                                         <input type="hidden" name="eliminar" value="<?= $a['id'] ?>">
                                                         <button type="button" class="btn btn-sm btn-outline-danger border-0"
                                                                 onclick="showConfirm('¿Eliminar esta asignación?',()=>document.getElementById('deleteForm<?= $a['id'] ?>').submit());"
-                                                                style="font-size:16px;padding:2px 6px;">
-                                                            <i class="bi bi-trash3"></i>
+                                                                style="font-size:16px;padding:2px 6px;" aria-label="Eliminar asignación">
+                                                            <i class="bi bi-trash3" aria-hidden="true"></i>
                                                         </button>
                                                     </form>
                                                 </td>

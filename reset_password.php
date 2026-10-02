@@ -10,6 +10,8 @@ $stmt = $conexion->prepare("
 $stmt->bindParam(":token", $token);
 $stmt->execute();
 $tokenValido = (bool) $stmt->fetch();
+
+$errorReset = $_GET["error"] ?? "";
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -17,6 +19,8 @@ $tokenValido = (bool) $stmt->fetch();
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nueva contraseña | Gimnasio Castillo Americano</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" href="assets/img/escudo-gca.png">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/auth.css">
@@ -31,45 +35,64 @@ $tokenValido = (bool) $stmt->fetch();
 
         <div class="text-center mb-4">
             <div class="auth-logo">
-                <img src="assets/img/escudo-gca.png" alt="Escudo GCA">
+                <img src="assets/img/escudo-gca.png" alt="">
             </div>
             <h1 class="auth-title">Nueva contraseña</h1>
             <p class="auth-sub">Gimnasio Castillo Americano</p>
         </div>
 
         <?php if (!$tokenValido): ?>
-            <div class="auth-alert err mb-4">
-                <i class="bi bi-x-octagon-fill"></i>
+            <div class="auth-alert err mb-4" role="alert">
+                <i class="bi bi-x-octagon-fill" aria-hidden="true"></i>
                 <span>El enlace es inválido o ha expirado. Solicita uno nuevo.</span>
             </div>
             <div class="auth-links text-center mt-2">
-                <a href="forgot_password.php"><i class="bi bi-arrow-repeat"></i> Solicitar otro enlace</a>
+                <a href="forgot_password.php"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Solicitar otro enlace</a>
             </div>
         <?php else: ?>
-            <p class="auth-hint text-center mb-4"><i class="bi bi-key me-1"></i>Elige una contraseña de al menos 6 caracteres</p>
+            <?php if ($errorReset !== ""): ?>
+                <div class="auth-alert err mb-4" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                    <span><?= $errorReset === "distintas"
+                        ? "Las dos contraseñas no coinciden. Escríbelas de nuevo."
+                        : "La contraseña debe tener al menos 6 caracteres." ?></span>
+                </div>
+            <?php endif; ?>
 
-            <form action="auth/reset_password_procesar.php" method="POST" class="stagger" id="resetForm" novalidate>
+            <p class="auth-hint text-center mb-4" id="passHint"><i class="bi bi-key me-1" aria-hidden="true"></i>Elige una contraseña de al menos 6 caracteres</p>
+
+            <form action="auth/reset_password_procesar.php" method="POST" class="stagger" id="resetForm">
                 <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
 
-                <div class="mb-4">
+                <div class="mb-3">
                     <label class="auth-label" for="passInput">Nueva contraseña</label>
                     <div class="field">
                         <input type="password" name="password" id="passInput" class="form-control"
-                               placeholder="••••••••" minlength="6" required autofocus>
-                        <i class="bi bi-lock input-icon"></i>
-                        <button type="button" class="toggle-pass" id="togglePass" tabindex="-1" aria-label="Mostrar contraseña">
-                            <i class="bi bi-eye-slash" id="passIcon"></i>
+                               placeholder="••••••••" minlength="6" required autofocus
+                               autocomplete="new-password" aria-describedby="passHint">
+                        <i class="bi bi-lock input-icon" aria-hidden="true"></i>
+                        <button type="button" class="toggle-pass" id="togglePass" aria-label="Mostrar contraseña" aria-pressed="false" aria-controls="passInput">
+                            <i class="bi bi-eye-slash" id="passIcon" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
 
+                <div class="mb-4">
+                    <label class="auth-label" for="passConfirm">Repite la contraseña</label>
+                    <div class="field">
+                        <input type="password" name="password_confirm" id="passConfirm" class="form-control"
+                               placeholder="••••••••" minlength="6" required autocomplete="new-password">
+                        <i class="bi bi-lock input-icon" aria-hidden="true"></i>
+                    </div>
+                </div>
+
                 <button type="submit" class="btn-auth">
-                    <i class="bi bi-check2-circle"></i> Guardar contraseña
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i> Guardar contraseña
                 </button>
             </form>
 
             <div class="auth-links text-center mt-4 pt-1">
-                <a href="login.php"><i class="bi bi-arrow-left"></i> Volver al inicio de sesión</a>
+                <a href="login.php"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al inicio de sesión</a>
             </div>
         <?php endif; ?>
 
@@ -87,7 +110,18 @@ $tokenValido = (bool) $stmt->fetch();
         pass.setAttribute('type', type);
         icon.classList.toggle('bi-eye');
         icon.classList.toggle('bi-eye-slash');
+        var visible = type === 'text';
+        t.setAttribute('aria-pressed', visible ? 'true' : 'false');
+        t.setAttribute('aria-label', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
     });
+
+    // Las dos contraseñas deben coincidir (mensaje nativo del navegador)
+    var confirmar = document.getElementById('passConfirm');
+    var revisar = function () {
+        confirmar.setCustomValidity(confirmar.value && confirmar.value !== pass.value ? 'Las contraseñas no coinciden.' : '');
+    };
+    pass.addEventListener('input', revisar);
+    confirmar.addEventListener('input', revisar);
 })();
 </script>
 

@@ -152,10 +152,10 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5><i class="ti ti-settings"></i> Configuración de Plataforma</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Sistema</p>
+                <h5 role="heading" aria-level="1"><i class="ti ti-settings" aria-hidden="true"></i> Periodo y notas</h5>
+                <p>Panel Administrativo &nbsp;/&nbsp; Configuración del periodo y notas por curso</p>
             </div>
         </div>
 
@@ -178,10 +178,11 @@ include "includes/header.php";
                         <div class="d-flex align-items-center justify-content-between">
                             <div>
                                 <h6 class="fw-bold mb-1"><i class="bi bi-toggle-on me-2" style="color:var(--gold);"></i>Estado de la Plataforma</h6>
-                                <p class="text-muted small mb-0">Habilita o deshabilita el registro de notas y la vista de boletines.</p>
+                                <p class="text-muted small mb-0" id="platformHelp">Habilita o deshabilita el registro de notas y la vista de boletines.</p>
                             </div>
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="platformSwitch"
+                                <input class="form-check-input" type="checkbox" id="platformSwitch" role="switch"
+                                    aria-label="Plataforma de notas activa" aria-describedby="platformHelp"
                                     style="width:3.2rem;height:1.6rem;cursor:pointer;"
                                     <?= $plataforma_activa ? 'checked' : '' ?>>
                             </div>
@@ -206,13 +207,13 @@ include "includes/header.php";
                         <form method="POST">
                             <?= campo_csrf() ?>
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Año escolar</label>
-                                <input type="number" name="anio_activo" class="form-select" value="<?= (int)$anio_activo ?>" min="2000" max="2100">
+                                <label class="form-label fw-medium" for="f_anio_activo">Año escolar</label>
+                                <input type="number" id="f_anio_activo" name="anio_activo" class="form-control" value="<?= (int)$anio_activo ?>" min="2000" max="2100">
                                 <div class="form-text small">Año del calendario escolar. Las notas se guardan y consultan por año.</div>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Período Activo</label>
-                                <select name="periodo_activo" class="form-select">
+                                <label class="form-label fw-medium" for="f_periodo_activo">Período Activo</label>
+                                <select id="f_periodo_activo" name="periodo_activo" class="form-select">
                                     <option value="1" <?= $periodo_activo === '1' ? 'selected' : '' ?>>1er Período</option>
                                     <option value="2" <?= $periodo_activo === '2' ? 'selected' : '' ?>>2do Período</option>
                                     <option value="3" <?= $periodo_activo === '3' ? 'selected' : '' ?>>3er Período</option>
@@ -223,13 +224,13 @@ include "includes/header.php";
 
                             <div class="row g-3 mb-4">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-medium">Fecha de Apertura</label>
-                                    <input type="date" name="fecha_apertura" class="form-control" value="<?= htmlspecialchars($fecha_apertura) ?>">
+                                    <label class="form-label fw-medium" for="f_fecha_apertura">Fecha de Apertura</label>
+                                    <input id="f_fecha_apertura" type="date" name="fecha_apertura" class="form-control" value="<?= htmlspecialchars($fecha_apertura) ?>">
                                     <div class="form-text small">Desde esta fecha los profesores pueden registrar notas.</div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-medium">Fecha de Cierre</label>
-                                    <input type="date" name="fecha_cierre" class="form-control" value="<?= htmlspecialchars($fecha_cierre) ?>">
+                                    <label class="form-label fw-medium" for="f_fecha_cierre">Fecha de Cierre</label>
+                                    <input id="f_fecha_cierre" type="date" name="fecha_cierre" class="form-control" value="<?= htmlspecialchars($fecha_cierre) ?>">
                                     <div class="form-text small">Hasta esta fecha los profesores pueden registrar notas.</div>
                                 </div>
                             </div>
@@ -253,8 +254,8 @@ include "includes/header.php";
                             <?= campo_csrf() ?>
                             <div class="row g-2 mb-3">
                                 <div class="col-sm-5">
-                                    <label class="form-label fw-medium small">Período a borrar</label>
-                                    <select name="periodo_reset" class="form-select">
+                                    <label class="form-label fw-medium small" for="f_periodo_reset">Período a borrar</label>
+                                    <select id="f_periodo_reset" name="periodo_reset" class="form-select">
                                         <option value="1">1er Período</option>
                                         <option value="2">2do Período</option>
                                         <option value="3">3er Período</option>
@@ -262,13 +263,13 @@ include "includes/header.php";
                                     </select>
                                 </div>
                                 <div class="col-sm-7">
-                                    <label class="form-label fw-medium small">Escribe <b>REINICIAR</b> para confirmar</label>
-                                    <input type="text" name="confirmacion" class="form-control" placeholder="REINICIAR" autocomplete="off">
+                                    <label class="form-label fw-medium small" for="f_confirmacion">Escribe <b>REINICIAR</b> para confirmar</label>
+                                    <input id="f_confirmacion" type="text" name="confirmacion" class="form-control" placeholder="REINICIAR" autocomplete="off">
                                 </div>
                             </div>
                             <button type="submit" name="reiniciar_periodo" class="w-100"
                                 style="background:#c0392b;color:#fff;border:none;border-radius:10px;padding:11px;font-weight:600;cursor:pointer;"
-                                onclick="return confirm('¿Seguro? Se borrarán TODAS las notas, logros y boletines de este período. No se puede deshacer.');">
+                                onclick="event.preventDefault(); var b=this, f=b.form; if (!f.reportValidity()) return; showConfirm('¿Seguro? Se borrarán TODAS las notas, logros y boletines de este período. No se puede deshacer.', function(){ var h=document.createElement('input'); h.type='hidden'; h.name='reiniciar_periodo'; h.value='1'; f.appendChild(h); f.submit(); }, 'Sí, borrar');">
                                 <i class="bi bi-trash3"></i> Reiniciar período
                             </button>
                         </form>
@@ -278,9 +279,9 @@ include "includes/header.php";
 
                 <!-- ─── COL DERECHA: VISTA DE NOTAS (BACKUP) ─── -->
                 <div class="col-lg-7">
-                    <div class="gca-card p-4">
-                        <div class="section-header mb-0 pb-3" style="border-bottom:1px solid #ece8e0;">
-                            <h4><i class="bi bi-database"></i> Backup de Notas</h4>
+                    <div class="gca-card p-4" id="notas" style="scroll-margin-top:80px;">
+                        <div class="section-header mb-0 pb-3" style="border-bottom:1px solid var(--border-color);">
+                            <h4><i class="bi bi-database" aria-hidden="true"></i> Notas por curso</h4>
                             <span class="badge bg-dark rounded-pill px-3 py-1" style="color:var(--gold);font-size:11px;">
                                 <i class="bi bi-eye"></i> Vista general
                             </span>
@@ -350,13 +351,13 @@ include "includes/header.php";
                                                                                 <table class="table gca-table mb-0" style="font-size:12px;">
                                                                                     <thead>
                                                                                         <tr>
-                                                                                            <th>Área</th>
-                                                                                            <th>Asignatura</th>
-                                                                                            <th style="text-align:center;width:40px;">P1</th>
-                                                                                            <th style="text-align:center;width:40px;">P2</th>
-                                                                                            <th style="text-align:center;width:40px;">P3</th>
-                                                                                            <th style="text-align:center;width:40px;">P4</th>
-                                                                                            <th style="text-align:center;width:50px;">Prom.</th>
+                                                                                            <th scope="col">Área</th>
+                                                                                            <th scope="col">Asignatura</th>
+                                                                                            <th scope="col" style="text-align:center;width:40px;">P1</th>
+                                                                                            <th scope="col" style="text-align:center;width:40px;">P2</th>
+                                                                                            <th scope="col" style="text-align:center;width:40px;">P3</th>
+                                                                                            <th scope="col" style="text-align:center;width:40px;">P4</th>
+                                                                                            <th scope="col" style="text-align:center;width:50px;">Prom.</th>
                                                                                         </tr>
                                                                                     </thead>
                                                                                     <tbody>
@@ -436,14 +437,23 @@ include "includes/header.php";
 
     <script>
         document.getElementById('platformSwitch')?.addEventListener('change', function() {
+            const sw = this;
             const isActive = this.checked;
+            const pregunta = isActive
+                ? '¿Activar el registro de notas para todos los profesores?'
+                : '¿Desactivar el registro de notas? Ningún profesor podrá guardar notas hasta que se vuelva a activar.';
+            if (!confirm(pregunta)) { sw.checked = !isActive; return; }
             const formData = new FormData();
             formData.append('action', 'toggle');
             formData.append('estado', isActive);
             formData.append('_csrf_token', <?= json_encode(generar_token_csrf()) ?>);
             fetch('plataforma.php', { method: 'POST', body: formData })
                 .then(r => r.text())
-                .then(res => { if (res === 'ok') location.reload(); });
+                .then(res => {
+                    if (res === 'ok') location.reload();
+                    else { alert('No se pudo guardar el cambio. Intente de nuevo.'); sw.checked = !isActive; }
+                })
+                .catch(() => { alert('No se pudo conectar con el servidor.'); sw.checked = !isActive; });
         });
     </script>
 

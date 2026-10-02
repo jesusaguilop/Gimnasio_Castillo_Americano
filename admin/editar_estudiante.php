@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../includes/init.php';
+require_once __DIR__ . "/../lib/csrf_helper.php";
 checkRole('admin');
 
 use App\Base\Session;
@@ -47,7 +48,10 @@ $cursos = $db->fetchAll(
         END, nombre"
 );
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !validar_token_csrf($_POST["_csrf_token"] ?? "")) {
+    $mensaje = "Error de seguridad. Recargue la página e intente de nuevo.";
+    $tipo = "danger";
+} elseif ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $nombre = trim($_POST["nombre"] ?? "");
     $email = trim($_POST["email"] ?? "");
@@ -63,6 +67,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     } elseif ($usuario && ($email === "" || !filter_var($email, FILTER_VALIDATE_EMAIL))) {
         $mensaje = "El correo electrónico no es válido.";
         $tipo = "danger";
+    } elseif ($pass1 !== "" && strlen($pass1) < 8) {
+        $mensaje = "La contraseña debe tener al menos 8 caracteres.";
+        $tipo = "warning";
     } elseif ($pass1 !== "" && $pass1 !== $pass2) {
         $mensaje = "Las contraseñas no coinciden.";
         $tipo = "warning";
@@ -128,9 +135,9 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5>Editar Estudiante</h5>
+                <h5 role="heading" aria-level="1">Editar Estudiante</h5>
                 <p>Panel Administrativo &nbsp;/&nbsp; Editar Estudiante</p>
             </div>
         </div>
@@ -149,28 +156,30 @@ include "includes/header.php";
                         <?php if ($mensaje): ?>
                             <div class="alert alert-<?= $tipo ?> alert-dismissible fade show" role="alert">
                                 <?= htmlspecialchars($mensaje) ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                             </div>
                         <?php endif; ?>
 
                         <form method="POST" autocomplete="off">
+                            <?= campo_csrf() ?>
+                            <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Nombre completo</label>
-                                <input type="text" name="nombre" class="form-control"
+                                <label class="form-label fw-medium" for="f_nombre">Nombre completo <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_nombre" type="text" name="nombre" class="form-control"
                                     value="<?= htmlspecialchars($_POST["nombre"] ?? ($estudiante["nombre"] ?? $usuario["nombre"])) ?>" required
                                     placeholder="Ej. Ana Sofía Torres">
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Número de documento</label>
-                                <input type="text" name="documento" class="form-control"
+                                <label class="form-label fw-medium" for="f_documento">Número de documento <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_documento" type="text" name="documento" class="form-control"
                                     value="<?= htmlspecialchars($_POST["documento"] ?? ($estudiante["documento"] ?? "")) ?>" required
                                     placeholder="Ej. 1234567890">
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Curso</label>
-                                <select name="curso_id" class="form-select" required>
+                                <label class="form-label fw-medium" for="f_curso_id">Curso <span class="req" aria-hidden="true">*</span></label>
+                                <select id="f_curso_id" name="curso_id" class="form-select" required>
                                     <option value="">Seleccione un curso</option>
                                     <?php $lastNivel = ""; ?>
                                     <?php foreach ($cursos as $c):
@@ -190,31 +199,31 @@ include "includes/header.php";
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Fecha de nacimiento <small class="text-muted fw-normal">(opcional)</small></label>
-                                <input type="date" name="fecha_nacimiento" class="form-control"
+                                <label class="form-label fw-medium" for="f_fecha_nacimiento">Fecha de nacimiento <small class="text-muted fw-normal">(opcional)</small></label>
+                                <input id="f_fecha_nacimiento" type="date" name="fecha_nacimiento" class="form-control"
                                     value="<?= htmlspecialchars($_POST["fecha_nacimiento"] ?? ($estudiante["fecha_nacimiento"] ?? "")) ?>">
                             </div>
 
                             <?php if ($usuario): ?>
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Correo electrónico</label>
-                                <input type="email" name="email" class="form-control" placeholder="estudiante@gca.edu.co"
+                                <label class="form-label fw-medium" for="f_email">Correo electrónico <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_email" type="email" name="email" class="form-control" placeholder="estudiante@gca.edu.co"
                                     value="<?= htmlspecialchars($_POST["email"] ?? $usuario["email"]) ?>" required>
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Nueva contraseña <small class="text-muted fw-normal">(dejar vacío para mantener la actual)</small></label>
-                                <input type="password" name="password" class="form-control">
+                                <label class="form-label fw-medium" for="f_password">Nueva contraseña <small class="text-muted fw-normal">(dejar vacío para mantener la actual)</small></label>
+                                <input id="f_password" type="password" name="password" minlength="8" class="form-control">
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label fw-medium">Confirmar nueva contraseña</label>
-                                <input type="password" name="password2" class="form-control">
+                                <label class="form-label fw-medium" for="f_password2">Confirmar nueva contraseña</label>
+                                <input id="f_password2" type="password" name="password2" minlength="8" class="form-control">
                             </div>
                             <?php else: ?>
                             <input type="hidden" name="email" value="">
-                            <input type="hidden" name="password" value="">
-                            <input type="hidden" name="password2" value="">
+                            <input type="hidden" name="password" minlength="8" value="">
+                            <input type="hidden" name="password2" minlength="8" value="">
                             <?php endif; ?>
 
                             <button type="submit" class="btn-gca w-100">

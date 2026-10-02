@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $pageTitle; ?> | Profesor · GCA</title>
+    <title><?= htmlspecialchars($pageTitle ?? "Panel") ?> | Profesor · GCA</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link
@@ -31,7 +31,7 @@
             --text-primary: #1a1a1a;
             --text-sidebar: #f0ede6;
             --text-secondary: #555;
-            --text-muted: #888;
+            --text-muted: #6b6b6b;
             --border-color: #ece8e0;
             --border-input: #ddd;
             --border-light: rgba(0,0,0,.06);
@@ -55,7 +55,7 @@
             --text-primary: #e8e6e0;
             --text-sidebar: #e8e6e0;
             --text-secondary: #aaa;
-            --text-muted: #777;
+            --text-muted: #9a9a9a;
             --border-color: #2a2d3a;
             --border-input: #333750;
             --border-light: rgba(255,255,255,.04);
@@ -745,13 +745,13 @@
     <!-- ═══ Unificación con el rediseño público (Poppins + oro degradado) ═══ -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap');
-        :root { --gold:#c9a24d; --gold-dark:#a87f2e; --gold-light:#e7c877; --gold-glow:rgba(201,162,77,.10); }
+        :root { --gold:#c9a24d; --gold-dark:#7d6218; --gold-deep:#a87f2e; --gold-light:#e7c877; --gold-glow:rgba(201,162,77,.10); }
         .breadcrumb-bar h5, .section-header h4, .header-box h4,
         .sidebar-logo-text span, .stat-info h3, .quick-card h6 {
             font-family:'Poppins','Outfit',sans-serif !important; letter-spacing:-.015em; font-weight:800;
         }
         .btn-gca {
-            background:linear-gradient(135deg,var(--gold-light),var(--gold) 55%,var(--gold-dark)) !important;
+            background:linear-gradient(135deg,var(--gold-light),var(--gold) 55%,var(--gold-deep)) !important;
             color:#1a1400 !important; border:none !important; border-radius:999px !important;
             font-weight:700 !important; box-shadow:0 10px 24px rgba(201,162,77,.32) !important;
         }
@@ -761,5 +761,13 @@
         .gca-card, .card-form, .stat-card, .quick-card { border-radius:20px !important; }
         .btn-outline-gca { border-radius:999px !important; }
         .gca-table thead th { font-family:'Poppins',sans-serif; }
+        /* Foco visible para quien navega con teclado (WCAG 2.4.7) */
+        .form-control:focus-visible, .form-select:focus-visible, .grade-input:focus-visible,
+        .btn-gca:focus-visible, .btn-outline-gca:focus-visible, .toggle-btn:focus-visible,
+        #sidebar a:focus-visible, .page-link:focus-visible, .content-area a:focus-visible {
+            outline:2px solid var(--gold-dark) !important; outline-offset:2px;
+        }
+        .dark-mode .form-control:focus-visible, .dark-mode .grade-input:focus-visible,
+        .dark-mode .btn-gca:focus-visible, .dark-mode #sidebar a:focus-visible { outline-color:var(--gold-light) !important; }
     </style>
 </head>

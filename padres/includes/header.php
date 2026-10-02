@@ -2,19 +2,19 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#0f1117">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="../manifest.json">
-    <title><?= $pageTitle ?> · Padres · GCA</title>
+    <title><?= htmlspecialchars($pageTitle ?? 'Inicio') ?> · Padres · GCA</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --gold: #d4af37;
-            --gold-dark: #b8962e;
+            --gold-dark: #7d6218;
             --gold-light: #f0d060;
             --gold-glow: rgba(212,175,55,.08);
             --radius: 16px;
@@ -30,7 +30,7 @@
             --surface-alt: #f8f7f4;
             --text-primary: #1a1a1a;
             --text-secondary: #666;
-            --text-muted: #999;
+            --text-muted: #6b6b6b;
             --border: #ece8e0;
             --border-input: #ddd;
             --form-bg: #fff;
@@ -51,7 +51,7 @@
             --surface-alt: #1a1d27;
             --text-primary: #e8e6e0;
             --text-secondary: #aaa;
-            --text-muted: #777;
+            --text-muted: #9a9a9a;
             --border: #2a2d3a;
             --border-input: #333750;
             --form-bg: #1a1d27;
@@ -267,18 +267,18 @@
             display: flex; align-items: center; justify-content: center;
             font-weight: 700; font-size: 16px; flex-shrink: 0;
         }
-        .grade-badge.high { background: rgba(25,135,84,0.12); color: #198754; }
-        .grade-badge.medium { background: rgba(255,193,7,0.15); color: #997404; }
-        .grade-badge.low { background: rgba(220,53,69,0.1); color: #dc3545; }
+        .grade-badge.high { background: rgba(25,135,84,0.12); color: #146c43; }
+        .grade-badge.medium { background: rgba(255,193,7,0.15); color: #7a5c00; }
+        .grade-badge.low { background: rgba(220,53,69,0.1); color: #b02a37; }
 
         .avg-pill {
             display: inline-flex; align-items: center; gap: 8px;
             padding: 8px 20px; border-radius: 50px;
             font-weight: 700; font-size: 18px;
         }
-        .avg-pill.high { background: rgba(25,135,84,0.1); color: #198754; }
-        .avg-pill.medium { background: rgba(255,193,7,0.12); color: #997404; }
-        .avg-pill.low { background: rgba(220,53,69,0.1); color: #dc3545; }
+        .avg-pill.high { background: rgba(25,135,84,0.1); color: #146c43; }
+        .avg-pill.medium { background: rgba(255,193,7,0.12); color: #7a5c00; }
+        .avg-pill.low { background: rgba(220,53,69,0.1); color: #b02a37; }
 
         .period-tabs {
             display: flex; gap: 8px; overflow-x: auto;
@@ -508,5 +508,56 @@
             .app-content > *, .student-card { animation: none !important; }
             .app-card:hover, .period-tab:hover, .grade-card:hover .grade-badge { transform: none; }
         }
+        /* Botón de modo oscuro (ahora <button>, antes <a href="#">) */
+        button.btn-header { cursor: pointer; padding: 0; }
+        .btn-header:focus-visible, .period-tab:focus-visible, .student-card:focus-visible,
+        .btn-gca-pdf:focus-visible, .boletin-preview a:focus-visible {
+            outline: 2px solid var(--gold-dark); outline-offset: 2px;
+        }
+
+        .desempeno-msg { font-size: 13px; margin-top: 10px; font-weight: 500; }
+        .desempeno-msg.high { color: #146c43; }
+        .desempeno-msg.medium { color: #7a5c00; }
+        .desempeno-msg.low { color: #b02a37; }
+        body.dark-mode .desempeno-msg.high { color: #75d6a3; }
+        body.dark-mode .desempeno-msg.medium { color: #f0c75e; }
+        body.dark-mode .desempeno-msg.low { color: #f28b95; }
+
+        /* Aviso de boletín nuevo (reemplaza la recarga automática) */
+        .nuevo-boletin {
+            position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 1050;
+            max-width: 480px; margin: 0 auto; padding: 12px 16px;
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            background: var(--bg-dark); color: #fff; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.25); font-size: 14px;
+        }
+        .nuevo-boletin[hidden] { display: none; }
+        .alerta-ok {
+            border: 1px solid var(--alert-color); background: transparent; color: var(--alert-color);
+            border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600;
+            min-height: 32px; white-space: nowrap; cursor: pointer;
+        }
+        .alerta-ok:hover { background: var(--alert-color); color: #fff; }
+        .alerta-ok:focus-visible { outline: 2px solid var(--alert-color); outline-offset: 2px; }
+        .nuevo-boletin button {
+            border: 0; border-radius: 999px; padding: 8px 16px; font-weight: 700;
+            background: var(--gold); color: #1a1400; min-height: 40px;
+        }
+
+        /* En celulares el PDF no se ve dentro de un marco: botón grande en su lugar */
+        @media (max-width: 480px) {
+            .boletin-visor { display: none; }
+            .boletin-preview-acciones { width: 100%; }
+            .boletin-preview-acciones a { flex: 1; justify-content: center; min-height: 44px; }
+        }
+    </style>
+    <!-- ═══ Unificación con el panel de profesores y la web pública ═══ -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap');
+        :root { --gold:#c9a24d; --gold-light:#e7c877; --gold-glow:rgba(201,162,77,.10); }
+        .student-header h4, .app-header-brand span, .empty-state h2, .empty-state h5 {
+            font-family:'Poppins','Outfit',sans-serif; letter-spacing:-.015em; font-weight:800;
+        }
+        .app-card, .student-card, .boletin-preview { border-radius:20px; }
     </style>
 </head>

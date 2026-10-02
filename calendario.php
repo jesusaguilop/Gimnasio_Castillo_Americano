@@ -55,8 +55,8 @@ function getColombianHolidays(int $year): array
 
 $mes = (int)($_GET["mes"] ?? date("m"));
 $anio = (int)($_GET["anio"] ?? date("Y"));
-if ($mes < 1) { $mes = 1; $anio--; }
-if ($mes > 12) { $mes = 12; $anio++; }
+if ($mes < 1) { $mes = 12; $anio--; }
+if ($mes > 12) { $mes = 1; $anio++; }
 
 $eventos = db()->fetchAll(
     "SELECT * FROM eventos WHERE activo = TRUE AND EXTRACT(YEAR FROM fecha_evento) = ? AND EXTRACT(MONTH FROM fecha_evento) = ? ORDER BY fecha_evento ASC",
@@ -91,6 +91,7 @@ $dias_semana = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 
 function renderCalGrid($primer_dia, $total_dias, $dia_actual, $mes, $anio, $agrupados, $festivos_mes, $dias_semana): string
 {
+    global $meses;
     $html = '';
     foreach ($dias_semana as $d) {
         $html .= '<div class="day-name">' . $d . '</div>';
@@ -105,12 +106,20 @@ function renderCalGrid($primer_dia, $total_dias, $dia_actual, $mes, $anio, $agru
         $cls = trim(($tiene ? 'has-event' : '') . ' ' . ($es_festivo ? 'festivo' : '') . ' ' . ($hoy ? 'day-today' : ''));
         $tt = ($es_festivo ? $festivos_mes[$d] : '') . ($tiene && $es_festivo ? ' · ' : '') . ($tiene ? count($agrupados[$d]) . ' evento(s)' : '');
         $html .= '<div class="day ' . $cls . '" title="' . htmlspecialchars($tt) . '">';
-        $html .= '<span class="num">' . $d . '</span>';
+        $html .= '<span class="num" aria-hidden="true">' . $d . '</span>';
+        $lectura = $d . ' de ' . mb_strtolower($meses[$mes]) . ($hoy ? ', hoy' : '');
         if ($es_festivo) {
-            $html .= '<span class="festivo-label">' . htmlspecialchars($festivos_mes[$d]) . '</span>';
+            $lectura .= ', festivo: ' . $festivos_mes[$d];
         }
         if ($tiene) {
-            $html .= '<div class="event-dots">';
+            $lectura .= ', ' . implode(', ', array_map(fn($ev) => $ev['titulo'], $agrupados[$d]));
+        }
+        $html .= '<span class="visually-hidden">' . htmlspecialchars($lectura) . '</span>';
+        if ($es_festivo) {
+            $html .= '<span class="festivo-label" aria-hidden="true">' . htmlspecialchars($festivos_mes[$d]) . '</span>';
+        }
+        if ($tiene) {
+            $html .= '<div class="event-dots" aria-hidden="true">';
             foreach ($agrupados[$d] as $ev) {
                 $html .= '<span class="event-dot" style="background:' . htmlspecialchars($ev['color']) . ';"></span>';
             }
@@ -123,8 +132,9 @@ function renderCalGrid($primer_dia, $total_dias, $dia_actual, $mes, $anio, $agru
 
 function renderProximos($proximos): string
 {
+    global $meses;
     if (empty($proximos)) {
-        return '<p class="text-muted">No hay eventos próximos.</p>';
+        return '<p style="color:#6b7280;">No hay eventos próximos.</p>';
     }
     $html = '';
     foreach ($proximos as $e) {
@@ -132,13 +142,13 @@ function renderProximos($proximos): string
         $html .= '<div class="event-card-glow mb-3" style="border-left-color: ' . $evColor . ';">';
         $html .= '<div class="event-date-badge">';
         $html .= '<span class="day">' . date("j", strtotime($e["fecha_evento"])) . '</span>';
-        $html .= '<span class="month">' . date("M", strtotime($e["fecha_evento"])) . '</span>';
+        $html .= '<span class="month">' . mb_substr($meses[(int) date("n", strtotime($e["fecha_evento"]))], 0, 3) . '</span>';
         $html .= '</div>';
         $html .= '<div class="event-body">';
-        $html .= '<span class="event-type-badge" style="background:' . $evColor . '15;color:' . $evColor . ';">' . htmlspecialchars($e["tipo"]) . '</span>';
-        $html .= '<h5>' . htmlspecialchars($e["titulo"]) . '</h5>';
+        $html .= '<span class="event-type-badge" style="background:' . $evColor . '1f;">' . htmlspecialchars($e["tipo"]) . '</span>';
+        $html .= '<h3>' . htmlspecialchars($e["titulo"]) . '</h3>';
         if ($e["hora_evento"]) {
-            $html .= '<small><i class="bi bi-clock"></i> ' . date("h:i A", strtotime($e["hora_evento"])) . '</small>';
+            $html .= '<small><i class="bi bi-clock" aria-hidden="true"></i> ' . date("h:i A", strtotime($e["hora_evento"])) . '</small>';
         }
         if ($e["descripcion"]) {
             $html .= '<p>' . htmlspecialchars($e["descripcion"]) . '</p>';
@@ -160,6 +170,8 @@ if (isset($_GET["json"])) {
     exit;
 }
 
+$pageTitle = 'Calendario';
+$pageDesc = 'Calendario de eventos, festivos y actividades del Gimnasio Castillo Americano.';
 include "header.php";
 ?>
 
@@ -233,7 +245,6 @@ include "header.php";
     }
     .cal-grid .day.has-event {
         background: rgba(201,162,77,.06);
-        cursor: pointer;
     }
     .cal-grid .day .event-dot {
         width: 7px;
@@ -266,17 +277,18 @@ include "header.php";
         text-decoration: none; cursor: pointer; user-select: none;
     }
     .btn-nav-cal:hover { border-color: var(--gca-gold); color: var(--gca-dark); background: rgba(201,162,77,.06); }
+    .btn-nav-cal:focus-visible { outline: 2px solid #876524; outline-offset: 2px; }
+    .cal-msg { color: #b91c1c; font-size: 13px; margin: -16px 0 16px; text-align: center; }
 
     .day.festivo {
         background: rgba(220,53,69,.08);
-        cursor: help;
     }
     .day.festivo .num {
         color: #c0392b;
         font-weight: 800;
     }
     .day.festivo .festivo-label {
-        font-size: 8px;
+        font-size: 10px;
         line-height: 1.2;
         color: #c0392b;
         font-weight: 600;
@@ -303,7 +315,7 @@ include "header.php";
         .cal-grid .day { min-height: 70px; font-size: 12px; padding: 4px; }
         .cal-grid .day .num { font-size: 12px; }
         .cal-grid .day-name { font-size: 11px; padding: 10px 0; }
-        .cal-nav h3 { font-size: 1.1rem; }
+        .cal-nav h2 { font-size: 1.1rem; }
         .cal-col { max-width: 100%; flex: 0 0 100%; }
     }
     @media (max-width: 576px) {
@@ -312,7 +324,7 @@ include "header.php";
         .cal-grid .day .num { font-size: 10px; margin-bottom: 1px; }
         .cal-grid .day-name { font-size: 9px; padding: 6px 0; }
         .cal-nav { flex-wrap: wrap; gap: 8px; justify-content: center; }
-        .cal-nav h3 { font-size: 1rem; order: -1; width: 100%; text-align: center; }
+        .cal-nav h2 { font-size: 1rem; order: -1; width: 100%; text-align: center; }
         .btn-nav-cal { font-size: 12px; padding: 4px 12px; }
         .day.festivo .festivo-label { display: none; }
         .event-dots { gap: 2px; }
@@ -384,7 +396,7 @@ include "header.php";
         letter-spacing: 1.5px;
         font-weight: 700;
         margin-top: 3px;
-        color: var(--gca-gold);
+        color: #876524;
     }
     .event-card-glow .event-body {
         padding: 16px 20px;
@@ -394,6 +406,7 @@ include "header.php";
         justify-content: center;
         gap: 2px;
     }
+    .event-card-glow .event-body h3,
     .event-card-glow .event-body h5 {
         font-weight: 700;
         margin-bottom: 2px;
@@ -402,14 +415,14 @@ include "header.php";
     }
     .event-card-glow .event-body small {
         font-size: 12px;
-        color: #999;
+        color: #6b7280;
         display: inline-flex;
         align-items: center;
         gap: 5px;
     }
     .event-card-glow .event-body p {
         font-size: 13px;
-        color: #888;
+        color: #6b7280;
         margin: 6px 0 0;
         line-height: 1.5;
     }
@@ -420,7 +433,7 @@ include "header.php";
         padding: 3px 12px;
         border-radius: 20px;
         background: rgba(201,162,77,.1);
-        color: var(--gca-gold);
+        color: #3a3324;
         margin-bottom: 4px;
         align-self: flex-start;
         text-transform: uppercase;
@@ -446,32 +459,33 @@ include "header.php";
     <div class="row g-4">
         <div class="col-lg-7 cal-col mx-auto" data-aos="fade-up">
             <div class="cal-nav">
-                <button class="btn btn-nav-cal" data-nav="-1"><i class="bi bi-chevron-left"></i> Anterior</button>
-                <h3 class="cal-month-title"><?= $meses[$mes] ?> <?= $anio ?></h3>
-                <button class="btn btn-nav-cal" data-nav="1">Siguiente <i class="bi bi-chevron-right"></i></button>
+                <button type="button" class="btn btn-nav-cal" data-nav="-1" aria-label="Mes anterior"><i class="bi bi-chevron-left" aria-hidden="true"></i> Anterior</button>
+                <h2 class="cal-month-title" aria-live="polite"><?= $meses[$mes] ?> <?= $anio ?></h2>
+                <button type="button" class="btn btn-nav-cal" data-nav="1" aria-label="Mes siguiente">Siguiente <i class="bi bi-chevron-right" aria-hidden="true"></i></button>
             </div>
+            <p class="cal-msg" id="calMsg" role="alert" hidden>No se pudo cargar el mes. Revisa tu conexión e intenta de nuevo.</p>
 
             <div class="cal-grid" id="calGrid">
                 <?= renderCalGrid($primer_dia, $total_dias, $dia_actual, $mes, $anio, $agrupados, $festivos_mes, $dias_semana) ?>
             </div>
         </div>
 
-        <div class="col-lg-5" data-aos="fade-left">
+        <div class="col-lg-5" data-aos="fade-up">
             <div class="d-flex align-items-center gap-2 mb-4 pb-2" style="border-bottom:2px solid var(--gca-gold);">
-                <i class="bi bi-calendar-event" style="color:var(--gca-gold);font-size:1.2rem;"></i>
-                <h5 class="fw-bold mb-0">Próximos Eventos</h5>
+                <i class="bi bi-calendar-event" style="color:var(--gca-gold);font-size:1.2rem;" aria-hidden="true"></i>
+                <h2 class="h5 fw-bold mb-0">Próximos Eventos</h2>
             </div>
             <div id="proximosContainer">
                 <?= renderProximos($proximos) ?>
             </div>
 
             <div class="mt-4 p-3 rounded-4" style="background:#faf9f6;border:1px solid #f0eee8;">
-                <small class="text-muted d-flex align-items-center gap-2">
-                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#c0392b;"></span>
+                <small class="d-flex align-items-center gap-2" style="color:#4b5563;">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#c0392b;" aria-hidden="true"></span>
                     Festivo nacional
                 </small>
-                <small class="text-muted d-flex align-items-center gap-2 mt-1">
-                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--gca-gold);"></span>
+                <small class="d-flex align-items-center gap-2 mt-1" style="color:#4b5563;">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--gca-gold);" aria-hidden="true"></span>
                     Evento institucional
                 </small>
             </div>
@@ -489,8 +503,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentMes = <?= $mes ?>;
     let currentAnio = <?= $anio ?>;
 
-    function loadMonth(mes, anio) {
+    const calMsg = document.getElementById('calMsg');
+
+    function loadMonth(mes, anio, desdeHistorial) {
         container.classList.add('cal-loading');
+        calMsg.hidden = true;
 
         const url = new URL(window.location.href);
         url.searchParams.set('mes', mes);
@@ -498,7 +515,7 @@ document.addEventListener('DOMContentLoaded', function() {
         url.searchParams.set('json', '1');
 
         fetch(url)
-            .then(function(r) { return r.json(); })
+            .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); })
             .then(function(data) {
                 calGrid.innerHTML = data.calGrid;
                 monthTitle.textContent = data.monthTitle;
@@ -506,12 +523,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentMes = data.mes;
                 currentAnio = data.anio;
 
-                history.pushState({ mes: data.mes, anio: data.anio }, '', '?mes=' + data.mes + '&anio=' + data.anio);
+                if (!desdeHistorial) {
+                    history.pushState({ mes: data.mes, anio: data.anio }, '', '?mes=' + data.mes + '&anio=' + data.anio);
+                }
 
                 container.classList.remove('cal-loading');
             })
             .catch(function() {
                 container.classList.remove('cal-loading');
+                calMsg.hidden = false;
             });
     }
 
@@ -530,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var params = new URLSearchParams(window.location.search);
         var m = parseInt(params.get('mes')) || currentMes;
         var a = parseInt(params.get('anio')) || currentAnio;
-        loadMonth(m, a);
+        loadMonth(m, a, true);
     });
 });
 </script>

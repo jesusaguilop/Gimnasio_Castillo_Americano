@@ -110,9 +110,9 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5>Asignar Padre</h5>
+                <h5 role="heading" aria-level="1">Asignar Padre</h5>
                 <p>Panel Administrativo &nbsp;/&nbsp; Vinculación Familiar</p>
             </div>
         </div>
@@ -131,14 +131,14 @@ include "includes/header.php";
                         <?php if ($mensaje): ?>
                             <div class="alert alert-<?= $tipoMensaje ?> alert-dismissible fade show" role="alert">
                                 <?= htmlspecialchars($mensaje) ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                             </div>
                         <?php endif; ?>
 
                         <!-- Paso 1: el grado. Recarga la página con solo ese grado. -->
                         <form method="GET" id="formGrado">
                             <div class="mb-4">
-                                <label class="form-label fw-medium">
+                                <label class="form-label fw-medium" for="selGrado">
                                     <span class="badge bg-dark me-1">1</span> Grado
                                 </label>
                                 <select name="grado" id="selGrado" class="form-select">
@@ -170,14 +170,14 @@ include "includes/header.php";
                                 <input type="hidden" name="grado" value="<?= htmlspecialchars($grado) ?>">
 
                                 <div class="mb-3">
-                                    <label class="form-label fw-medium">
+                                    <label class="form-label fw-medium" for="f_estudiante_id">
                                         <span class="badge bg-dark me-1">2</span> Estudiante
                                         <small class="text-muted">
                                             &middot; <?= count($estudiantes) ?> en <?= htmlspecialchars(ucfirst($grado)) ?>,
                                             <?= $sinVincular ?> sin padre
                                         </small>
                                     </label>
-                                    <select name="estudiante_id" class="form-select" required>
+                                    <select id="f_estudiante_id" name="estudiante_id" class="form-select" required>
                                         <option value="">-- Elija un estudiante --</option>
                                         <?php foreach ($estudiantes as $e): ?>
                                             <option value="<?= (int) $e["id"] ?>">
@@ -198,10 +198,10 @@ include "includes/header.php";
                                 </div>
 
                                 <div class="mb-4">
-                                    <label class="form-label fw-medium">
+                                    <label class="form-label fw-medium" for="f_padre_id">
                                         <span class="badge bg-dark me-1">3</span> Padre
                                     </label>
-                                    <select name="padre_id" class="form-select" required>
+                                    <select id="f_padre_id" name="padre_id" class="form-select" required>
                                         <option value="">-- Elija un padre --</option>
                                         <?php foreach ($padres as $p): ?>
                                             <option value="<?= (int) $p["id"] ?>">

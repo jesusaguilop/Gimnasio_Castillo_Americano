@@ -224,6 +224,7 @@ if (!function_exists('config')) {
             'db.sslmode'  => $dbSsl,
             'db.charset'  => 'utf8',
             'session.lifetime' => (int) env('SESSION_LIFETIME', 7200),
+            'mail.brevo_key'  => env('BREVO_API_KEY', ''),
             'mail.host'       => env('MAIL_HOST', 'smtp.gmail.com'),
             'mail.port'       => (int) env('MAIL_PORT', 587),
             'mail.username'   => env('MAIL_USERNAME', ''),
@@ -232,6 +233,11 @@ if (!function_exists('config')) {
             'mail.from'       => env('MAIL_FROM_ADDRESS', 'no-reply@gimcaste.com'),
             'mail.from_name'  => env('MAIL_FROM_NAME', 'Gimnasio Castillo Americano'),
             'mail.admin'      => env('MAIL_ADMIN', 'admin@gimcaste.com'),
+            // Redes del colegio: cada ícono se muestra solo si su URL está definida
+            'social.facebook'  => env('SOCIAL_FACEBOOK', ''),
+            'social.instagram' => env('SOCIAL_INSTAGRAM', ''),
+            'social.youtube'   => env('SOCIAL_YOUTUBE', ''),
+            'social.tiktok'    => env('SOCIAL_TIKTOK', ''),
         ];
     }
 

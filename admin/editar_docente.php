@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/init.php';
+require_once __DIR__ . "/../lib/csrf_helper.php";
+require_once __DIR__ . '/../lib/imagen_helper.php';
 checkRole('admin');
 
 use App\Base\Session;
@@ -11,7 +13,10 @@ if (!$docente) { header("Location: ver_docentes.php"); exit; }
 $mensaje = "";
 $tipo = "";
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !validar_token_csrf($_POST["_csrf_token"] ?? "")) {
+    $mensaje = "Error de seguridad. Recargue la página e intente de nuevo.";
+    $tipo = "danger";
+} elseif ($_SERVER["REQUEST_METHOD"] === "POST") {
     $nombre = trim($_POST["nombre"] ?? "");
     $especialidad = trim($_POST["especialidad"] ?? "");
     $descripcion = trim($_POST["descripcion"] ?? "");
@@ -23,25 +28,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $tipo = "danger";
     } else {
         try {
-            if (isset($_FILES["foto"]) && $_FILES["foto"]["error"] === UPLOAD_ERR_OK) {
-                $ext = strtolower(pathinfo($_FILES["foto"]["name"], PATHINFO_EXTENSION));
-                $allowed = ["jpg", "jpeg", "png", "webp"];
-                if (!in_array($ext, $allowed)) {
-                    throw new Exception("Formato no permitido.");
+            if (isset($_FILES["foto"])) {
+                $nuevaFoto = guardar_imagen_subida($_FILES["foto"], "docentes", "docente");
+                if ($nuevaFoto !== "") {
+                    // La anterior se borra SOLO cuando la nueva ya está guardada:
+                    // antes se borraba primero y un fallo dejaba al docente sin foto.
+                    borrar_imagen_subida($docente["foto"]);
+                    $foto = $nuevaFoto;
                 }
-                if ($docente["foto"]) {
-                    $ruta_vieja = __DIR__ . "/../" . $docente["foto"];
-                    if (file_exists($ruta_vieja)) unlink($ruta_vieja);
-                }
-                $nombre_foto = "docente_" . time() . "_" . bin2hex(random_bytes(4)) . "." . $ext;
-                // assets/uploads: lo que el usuario sube va todo junto para poder
-                // montar encima un volumen persistente en el hosting.
-                if (!is_dir(ruta_subidas("docentes"))) {
-                    mkdir(ruta_subidas("docentes"), 0755, true);
-                }
-                $destino = ruta_subidas("docentes") . "/" . $nombre_foto;
-                move_uploaded_file($_FILES["foto"]["tmp_name"], $destino);
-                $foto = url_subidas("docentes") . "/" . $nombre_foto;
             }
 
             db()->update("docentes", [
@@ -55,7 +49,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             header("Location: ver_docentes.php");
             exit;
         } catch (Exception $e) {
-            $mensaje = "Error: " . $e->getMessage();
+            // Los errores de la imagen ya vienen redactados para el usuario; los de la
+            // base de datos no (traen SQL), así que esos van al log.
+            error_log("[editar_docente] " . $e->getMessage());
+            $mensaje = $e instanceof PDOException ? "No se pudo guardar. Intente de nuevo." : $e->getMessage();
             $tipo = "danger";
         }
     }
@@ -69,9 +66,9 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5>Editar Docente</h5>
+                <h5 role="heading" aria-level="1">Editar Docente</h5>
                 <p>Panel Administrativo &nbsp;/&nbsp; Docentes &nbsp;/&nbsp; Editar</p>
             </div>
         </div>
@@ -81,30 +78,32 @@ include "includes/header.php";
             <?php endif; ?>
             <div class="gca-card card-form">
                 <form method="POST" enctype="multipart/form-data" autocomplete="off">
+                    <?= campo_csrf() ?>
+                    <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Nombre completo *</label>
-                            <input type="text" name="nombre" class="form-control" required value="<?= htmlspecialchars($docente["nombre"]) ?>">
+                            <label class="form-label" for="f_nombre">Nombre completo *</label>
+                            <input id="f_nombre" type="text" name="nombre" class="form-control" required value="<?= htmlspecialchars($docente["nombre"]) ?>">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Correo electrónico</label>
-                            <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($docente["email"] ?? "") ?>">
+                            <label class="form-label" for="f_email">Correo electrónico</label>
+                            <input id="f_email" type="email" name="email" class="form-control" value="<?= htmlspecialchars($docente["email"] ?? "") ?>">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Especialidad / Área</label>
-                            <input type="text" name="especialidad" class="form-control" value="<?= htmlspecialchars($docente["especialidad"] ?? "") ?>">
+                            <label class="form-label" for="f_especialidad">Especialidad / Área</label>
+                            <input id="f_especialidad" type="text" name="especialidad" class="form-control" value="<?= htmlspecialchars($docente["especialidad"] ?? "") ?>">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Foto</label>
+                            <label class="form-label" for="f_foto">Foto</label>
                             <?php if ($docente["foto"]): ?>
-                                <div class="mb-2"><img src="../<?= $docente["foto"] ?>" style="max-height:80px;border-radius:8px;"></div>
+                                <div class="mb-2"><img src="../<?= htmlspecialchars($docente["foto"]) ?>" alt="Foto actual del docente" style="max-height:80px;border-radius:8px;"></div>
                             <?php endif; ?>
-                            <input type="file" name="foto" class="form-control" accept="image/png,image/jpeg,image/webp">
+                            <input id="f_foto" type="file" name="foto" class="form-control" accept="image/png,image/jpeg,image/webp">
                             <small class="text-muted">Dejar vacío para mantener la foto actual.</small>
                         </div>
                         <div class="col-12">
-                            <label class="form-label">Descripción / Formación</label>
-                            <textarea name="descripcion" class="form-control" rows="4"><?= htmlspecialchars($docente["descripcion"] ?? "") ?></textarea>
+                            <label class="form-label" for="f_descripcion">Descripción / Formación</label>
+                            <textarea id="f_descripcion" name="descripcion" class="form-control" rows="4"><?= htmlspecialchars($docente["descripcion"] ?? "") ?></textarea>
                         </div>
                     </div>
                     <div class="d-flex gap-2 mt-4">
@@ -116,5 +115,3 @@ include "includes/header.php";
         </div>
     </main>
     <?php include "includes/footer.php"; ?>
-</body>
-</html>

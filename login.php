@@ -1,11 +1,14 @@
 <?php
-session_start();
+require_once __DIR__ . '/vendor/autoload.php';
+\App\Base\Session::start();
+require_once __DIR__ . '/lib/csrf_helper.php';
 $tz = new DateTimeZone('America/Bogota');
 $h = (int)(new DateTime('now', $tz))->format('H');
 $saludo = $h < 12 ? 'Buenos días' : ($h < 18 ? 'Buenas tardes' : 'Buenas noches');
 $iconoSaludo = $h < 18 ? 'bi-sun' : 'bi-moon-stars';
 
 $error = $_GET['error'] ?? '';
+$resetOk = isset($_GET['reset']);
 $oldRol = $_GET['rol'] ?? '';
 $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
 ?>
@@ -15,6 +18,8 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acceso | Gimnasio Castillo Americano</title>
+    <meta name="description" content="Ingreso al sistema académico del Gimnasio Castillo Americano para administradores, profesores y padres de familia.">
+    <link rel="icon" type="image/png" href="assets/img/escudo-gca.png">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
@@ -113,12 +118,12 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
         }
         .login-sub {
             font-size: 13px;
-            color: #7a7f8a;
+            color: #6b7280;
             font-weight: 500;
         }
         .login-greeting {
             font-size: 13px;
-            color: #9a9faa;
+            color: #6b7280;
             margin-top: 2px;
             font-weight: 400;
         }
@@ -180,7 +185,7 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
             transform: translateY(-50%);
             background: none;
             border: none;
-            color: #a0a7b5;
+            color: #6b7280;
             font-size: 20px;
             cursor: pointer;
             padding: 4px;
@@ -189,6 +194,9 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
             z-index: 5;
         }
         .input-group-custom .toggle-pass:hover { color: #2c3344; }
+        .input-group-custom .toggle-pass:focus-visible { outline: 2px solid #876524; outline-offset: 2px; border-radius: 6px; }
+        .field-error { color: #b91c1c; font-size: 12px; margin-top: 6px; }
+        .alert-custom.alert-success { background: #ecfdf3; color: #146c43; }
 
         /* ── Select flecha personalizada ── */
         .input-group-custom .form-select {
@@ -391,22 +399,29 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
         <!-- ─── HEADER ─── -->
         <div class="text-center mb-4">
             <div class="logo-wrap">
-                <img src="assets/img/escudo-gca.png" alt="Escudo GCA">
+                <img src="assets/img/escudo-gca.png" alt="">
             </div>
             <h1 class="login-title">Sistema Académico</h1>
             <p class="login-sub">Gimnasio Castillo Americano</p>
-            <p class="login-greeting"><i class="bi <?= $iconoSaludo ?> me-1"></i><?= $saludo ?>, ingresa tus credenciales</p>
+            <p class="login-greeting"><i class="bi <?= $iconoSaludo ?> me-1" aria-hidden="true"></i><?= $saludo ?>, ingresa tus credenciales</p>
         </div>
 
         <!-- ─── ERROR ─── -->
+        <?php if ($resetOk && !$error): ?>
+            <div class="alert alert-custom alert-success d-flex align-items-center gap-2 mb-4" role="status">
+                <i class="bi bi-check-circle-fill" style="font-size:16px;" aria-hidden="true"></i>
+                <span>Tu contraseña se actualizó. Ya puedes iniciar sesión.</span>
+            </div>
+        <?php endif; ?>
+
         <?php if ($error): ?>
-            <div class="alert alert-custom alert-danger d-flex align-items-center gap-2 mb-4" id="errorAlert">
-                <i class="bi bi-exclamation-triangle-fill" style="font-size:16px;"></i>
+            <div class="alert alert-custom alert-danger d-flex align-items-center gap-2 mb-4" id="errorAlert" role="alert">
+                <i class="bi bi-exclamation-triangle-fill" style="font-size:16px;" aria-hidden="true"></i>
                 <span>
                     <?= match ($error) {
-                        'empty'  => 'Completa todos los campos, incluido el tipo de usuario.',
-                        'rol'    => 'Tu contraseña es correcta, pero ese correo no es de ese tipo de usuario. Ya te dejamos seleccionado el correcto arriba: vuelve a intentar.',
-                        default => 'Credenciales incorrectas. Verifica e intenta de nuevo.',
+                        'empty'    => 'Escribe tu correo y tu contraseña.',
+                        'expirado' => 'La página estuvo abierta mucho tiempo. Vuelve a intentarlo.',
+                        default    => 'Correo o contraseña incorrectos. Verifica e intenta de nuevo.',
                     } ?>
                 </span>
             </div>
@@ -414,27 +429,28 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
 
         <!-- ─── FORM ─── -->
         <form action="auth/login_procesar.php" method="POST" id="loginForm" novalidate>
+            <?= campo_csrf() ?>
 
             <div class="mb-3">
-                <label class="form-label" for="rolSelect">Tipo de usuario</label>
+                <label class="form-label" for="rolSelect">Entro como <span style="font-weight:400;color:#6b7280;">(opcional)</span></label>
                 <div class="input-group-custom role-field">
-                    <i class="bi bi-person-badge input-icon"></i>
-                    <select name="rol" id="rolSelect" class="form-select" required>
+                    <i class="bi bi-person-badge input-icon" aria-hidden="true"></i>
+                    <select name="rol" id="rolSelect" class="form-select" aria-describedby="avisoRol">
                         <option value="">Selecciona tu rol</option>
                         <option value="admin" <?= $oldRol === 'admin' ? 'selected' : '' ?>>Administrador</option>
                         <option value="profesor" <?= $oldRol === 'profesor' ? 'selected' : '' ?>>Profesor</option>
                         <option value="padre" <?= $oldRol === 'padre' ? 'selected' : '' ?>>Padre de familia</option>
                     </select>
                 </div>
-                <div id="avisoRol" class="d-none" style="color:#c0392b;font-size:12px;margin-top:6px;">
-                    <i class="bi bi-exclamation-circle"></i> Elige si entras como administrador, profesor o padre de familia.
+                <div id="avisoRol" style="color:#6b7280;font-size:12px;margin-top:6px;">
+                    Si eliges otro no pasa nada: te llevamos a tu panel según tu cuenta.
                 </div>
             </div>
 
             <div class="mb-3">
                 <label class="form-label" for="emailInput">Correo electrónico</label>
                 <div class="input-group-custom">
-                    <i class="bi bi-envelope input-icon"></i>
+                    <i class="bi bi-envelope input-icon" aria-hidden="true"></i>
                     <input
                         type="email"
                         name="correo"
@@ -442,44 +458,50 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
                         class="form-control"
                         placeholder="usuario@correo.com"
                         value="<?= $oldEmail ?>"
+                        autocomplete="username"
+                        inputmode="email"
+                        aria-describedby="emailError"
                         required
-                        autofocus
                     >
                 </div>
+                <div id="emailError" class="field-error d-none">Escribe tu correo.</div>
             </div>
 
             <div class="mb-4">
                 <label class="form-label" for="passInput">Contraseña</label>
                 <div class="input-group-custom">
-                    <i class="bi bi-lock input-icon"></i>
+                    <i class="bi bi-lock input-icon" aria-hidden="true"></i>
                     <input
                         type="password"
                         name="password"
                         id="passInput"
                         class="form-control"
                         placeholder="••••••••"
+                        autocomplete="current-password"
+                        aria-describedby="passError"
                         required
                     >
-                    <button type="button" class="toggle-pass" id="togglePass" tabindex="-1" aria-label="Mostrar contraseña">
-                        <i class="bi bi-eye-slash" id="passIcon"></i>
+                    <button type="button" class="toggle-pass" id="togglePass" aria-label="Mostrar contraseña" aria-pressed="false" aria-controls="passInput">
+                        <i class="bi bi-eye-slash" id="passIcon" aria-hidden="true"></i>
                     </button>
                 </div>
+                <div id="passError" class="field-error d-none">Escribe tu contraseña.</div>
             </div>
 
             <button type="submit" class="btn btn-login w-100" id="submitBtn">
                 <span id="btnText">Iniciar sesión</span>
-                <span id="btnSpinner" class="d-none"><span class="spinner-border spinner-border-sm"></span> Ingresando…</span>
+                <span id="btnSpinner" class="d-none" role="status"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Ingresando…</span>
             </button>
         </form>
 
         <!-- ─── LINKS ─── -->
         <div class="links text-center mt-4 pt-1">
             <a href="forgot_password.php" class="d-inline-flex align-items-center gap-1">
-                <i class="bi bi-shield-exclamation"></i> ¿Olvidaste tu contraseña?
+                <i class="bi bi-shield-exclamation" aria-hidden="true"></i> ¿Olvidaste tu contraseña?
             </a>
             <br>
             <a href="index.php" class="text-muted d-inline-flex align-items-center gap-1 mt-1">
-                <i class="bi bi-arrow-left"></i> Volver al sitio web
+                <i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al sitio web
             </a>
         </div>
 
@@ -498,6 +520,9 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
         passInput.setAttribute('type', type);
         passIcon.classList.toggle('bi-eye');
         passIcon.classList.toggle('bi-eye-slash');
+        const visible = type === 'text';
+        toggleBtn.setAttribute('aria-pressed', visible ? 'true' : 'false');
+        toggleBtn.setAttribute('aria-label', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
     });
 
     // ── Loading spinner on submit ──
@@ -507,34 +532,34 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
     const btnSpinner = document.getElementById('btnSpinner');
 
     form.addEventListener('submit', function(ev) {
-        // El <form> lleva novalidate, así que la validación nativa NO corre:
-        // antes este handler hacía `return` y el formulario se enviaba igual
-        // con el rol vacío (el servidor respondía "Completa todos los campos").
-        const rolSelect = document.getElementById('rolSelect');
+        // El <form> lleva novalidate: la validación es esta, con un mensaje de
+        // texto ligado a cada campo. El tipo de usuario es opcional.
         const emailEl = document.getElementById('emailInput');
-        const rol = rolSelect.value;
         const email = emailEl.value.trim();
         const pass = passInput.value.trim();
+        const emailError = document.getElementById('emailError');
+        const passError = document.getElementById('passError');
 
-        const avisoRol = document.getElementById('avisoRol');
-        avisoRol.classList.add('d-none');
-        emailEl.classList.remove('is-invalid');
-        passInput.classList.remove('is-invalid');
+        [emailEl, passInput].forEach(function (el) {
+            el.classList.remove('is-invalid');
+            el.removeAttribute('aria-invalid');
+        });
+        emailError.classList.add('d-none');
+        passError.classList.add('d-none');
 
-        if (!rol || !email || !pass) {
+        if (!email || !pass) {
             ev.preventDefault();
-
-            if (!rol) {
-                avisoRol.classList.remove('d-none');
-                // El select real está oculto tras TomSelect: se enfoca el suyo.
-                (rolSelect.tomselect ? rolSelect.tomselect.control : rolSelect).focus();
-            } else if (!email) {
+            if (!email) {
                 emailEl.classList.add('is-invalid');
-                emailEl.focus();
-            } else {
-                passInput.classList.add('is-invalid');
-                passInput.focus();
+                emailEl.setAttribute('aria-invalid', 'true');
+                emailError.classList.remove('d-none');
             }
+            if (!pass) {
+                passInput.classList.add('is-invalid');
+                passInput.setAttribute('aria-invalid', 'true');
+                passError.classList.remove('d-none');
+            }
+            (!email ? emailEl : passInput).focus();
             return;
         }
 
@@ -543,15 +568,6 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
         btnSpinner.classList.remove('d-none');
     });
 
-    // ── Auto-dismiss error alert ──
-    const errorAlert = document.getElementById('errorAlert');
-    if (errorAlert) {
-        setTimeout(function() {
-            errorAlert.style.transition = 'opacity .4s';
-            errorAlert.style.opacity = '0';
-            setTimeout(function() { errorAlert.remove(); }, 500);
-        }, 5000);
-    }
 })();
 </script>
 

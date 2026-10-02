@@ -26,7 +26,8 @@ if ($puedeEliminar) {
         db()->delete("noticias", "id = ?", [(int) $_POST["eliminar_id"]]);
         Session::setSuccess("Noticia eliminada.");
     } catch (Exception $e) {
-        $mensaje = "Error al eliminar: " . $e->getMessage();
+        error_log("[ver_noticias] " . $e->getMessage());
+        $mensaje = "No se pudo eliminar. Intente de nuevo.";
         $tipo = "danger";
     }
 }
@@ -35,7 +36,7 @@ $search = trim($_GET["q"] ?? "");
 $sql = "SELECT * FROM noticias WHERE activo = TRUE";
 $params = [];
 if ($search) {
-    $sql .= " AND (titulo LIKE ? OR categoria LIKE ?)";
+    $sql .= " AND (titulo ILIKE ? OR categoria ILIKE ?)";
     $params[] = "%$search%";
     $params[] = "%$search%";
 }
@@ -50,9 +51,9 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5>Gestión de Noticias</h5>
+                <h5 role="heading" aria-level="1">Gestión de Noticias</h5>
                 <p>Panel Administrativo &nbsp;/&nbsp; Noticias</p>
             </div>
         </div>
@@ -79,11 +80,11 @@ include "includes/header.php";
                 <table class="table gca-table">
                     <thead>
                         <tr>
-                            <th>Título</th>
-                            <th>Categoría</th>
-                            <th>Fecha</th>
-                            <th>Imagen</th>
-                            <th class="text-end">Acciones</th>
+                            <th scope="col">Título</th>
+                            <th scope="col">Categoría</th>
+                            <th scope="col">Fecha</th>
+                            <th scope="col">Imagen</th>
+                            <th scope="col" class="text-end">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -115,5 +116,3 @@ include "includes/header.php";
         </div>
     </main>
     <?php include "includes/footer.php"; ?>
-</body>
-</html>

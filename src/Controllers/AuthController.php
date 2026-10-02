@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Base\Auth;
 use App\Base\Controller;
 use App\Base\Database;
+use App\Base\Session;
 
 class AuthController extends Controller
 {
@@ -14,12 +15,26 @@ class AuthController extends Controller
             $this->redirect('../login.php');
         }
 
+        Session::start();
+        require_once __DIR__ . '/../../lib/csrf_helper.php';
+
         $email = trim($this->post('correo', ''));
         $password = $this->post('password', '');
-        $rol = $this->post('rol', '');
+        $volver = '&email=' . urlencode($email);
 
-        if ($email === '' || $password === '' || $rol === '') {
-            $this->redirect("../login.php?error=empty&rol=$rol&email=$email");
+        if (!validar_token_csrf($this->post('_csrf_token', ''))) {
+            $this->redirect("../login.php?error=expirado$volver");
+        }
+
+        if ($email === '' || $password === '') {
+            $this->redirect("../login.php?error=empty$volver");
+        }
+
+        // Freno a la fuerza bruta: tras 5 intentos fallidos en la sesión,
+        // cada intento extra espera 1 segundo.
+        $fallidos = (int) Session::get('login_fallidos', 0);
+        if ($fallidos >= 5) {
+            sleep(1);
         }
 
         $db = Database::getInstance();
@@ -31,16 +46,13 @@ class AuthController extends Controller
         // Credenciales mal: mismo mensaje exista o no el correo, para no
         // revelar qué direcciones están registradas.
         if (!$usuario || !password_verify($password, $usuario['password'])) {
-            $this->redirect("../login.php?error=1&rol=$rol&email=$email");
+            Session::set('login_fallidos', $fallidos + 1);
+            $this->redirect("../login.php?error=1$volver");
         }
 
-        // Credenciales BIEN pero el tipo de usuario elegido no es el suyo.
-        // Antes daba el mismo "Credenciales incorrectas" y la gente creía que
-        // se había equivocado de contraseña.
-        if ($usuario['rol'] !== $rol) {
-            $this->redirect("../login.php?error=rol&rol={$usuario['rol']}&email=$email");
-        }
-
+        // El tipo de usuario elegido en el formulario ya no bloquea la entrada:
+        // el servidor conoce el rol real y lleva a cada quien a su panel.
+        Session::remove('login_fallidos');
         Auth::login($usuario['id'], $usuario['nombre'], $usuario['rol']);
 
         match ($usuario['rol']) {

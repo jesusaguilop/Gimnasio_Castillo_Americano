@@ -14,17 +14,32 @@ if (isset($_SESSION["success_msg"])) {
     unset($_SESSION["success_msg"]);
 }
 
+$tipo = "success";
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["eliminar_id"])) {
+    $id = (int) $_POST["eliminar_id"];
     if (!validar_token_csrf($_POST["_csrf_token"] ?? "")) {
         $mensaje = "Error de seguridad. Intente de nuevo.";
+        $tipo = "danger";
     } else {
-        try {
-            $stmt = $conexion->prepare("DELETE FROM asignaturas WHERE id = :id");
-            $stmt->execute([":id" => $_POST["eliminar_id"]]);
-            $mensaje = "Asignatura eliminada correctamente";
-        } catch (PDOException $e) {
-            error_log("[ver_asignaturas] " . $e->getMessage());
-            $mensaje = "No se puede eliminar la asignatura porque tiene dependencias.";
+        // Las llaves foráneas borran EN CASCADA notas y logros de la
+        // asignatura: si hay calificaciones, se bloquea en vez de perderlas.
+        $q = $conexion->prepare("SELECT (SELECT COUNT(*) FROM notas WHERE asignatura_id = ?)
+                                      + (SELECT COUNT(*) FROM logros WHERE asignatura_id = ?)");
+        $q->execute([$id, $id]);
+        if ((int) $q->fetchColumn() > 0) {
+            $mensaje = "No se eliminó: esta asignatura ya tiene notas o logros registrados. Eliminarla borraría esas calificaciones.";
+            $tipo = "warning";
+        } else {
+            try {
+                $stmt = $conexion->prepare("DELETE FROM asignaturas WHERE id = :id");
+                $stmt->execute([":id" => $id]);
+                $mensaje = $stmt->rowCount() ? "Asignatura eliminada correctamente" : "No se encontró el registro.";
+                $tipo = $stmt->rowCount() ? "success" : "warning";
+            } catch (PDOException $e) {
+                error_log("[ver_asignaturas] " . $e->getMessage());
+                $mensaje = "No se pudo eliminar la asignatura.";
+                $tipo = "danger";
+            }
         }
     }
 }
@@ -50,9 +65,9 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5>Asignaturas</h5>
+                <h5 role="heading" aria-level="1">Asignaturas</h5>
                 <p>Panel Administrativo &nbsp;/&nbsp; Asignaturas</p>
             </div>
         </div>
@@ -67,9 +82,9 @@ include "includes/header.php";
                 </div>
 
                 <?php if ($mensaje): ?>
-                    <div class="alert alert-info alert-dismissible fade show" role="alert">
-                        <?= $mensaje ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <div class="alert alert-<?= $tipo ?? 'success' ?> alert-dismissible fade show" role="alert">
+                        <?= htmlspecialchars($mensaje) ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                     </div>
                 <?php endif; ?>
 
@@ -77,12 +92,12 @@ include "includes/header.php";
                     <table class="table gca-table table-hover align-middle">
                         <thead>
                             <tr>
-                                <th>Área</th>
-                                <th>Nombre</th>
-                                <th>Nivel</th>
-                                <th>Grados</th>
-                                <th style="width:100px;">Int. Horaria</th>
-                                <th class="text-end">Acciones</th>
+                                <th scope="col">Área</th>
+                                <th scope="col">Nombre</th>
+                                <th scope="col">Nivel</th>
+                                <th scope="col">Grados</th>
+                                <th scope="col" style="width:100px;">Int. Horaria</th>
+                                <th scope="col" class="text-end">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -112,7 +127,7 @@ include "includes/header.php";
                                             <?= campo_csrf() ?>
                                             <input type="hidden" name="eliminar_id" value="<?= $a["id"] ?>">
                                             <button type="button" class="btn-action btn-delete" title="Eliminar"
-                                                onclick="showConfirm('¿Seguro que deseas eliminar esta asignatura?',()=>document.getElementById('deleteForm<?= $a["id"] ?>').submit());">
+                                                onclick="showConfirm('¿Eliminar esta asignatura? Si ya tiene notas registradas no se podrá eliminar.',()=>document.getElementById('deleteForm<?= $a["id"] ?>').submit());">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>

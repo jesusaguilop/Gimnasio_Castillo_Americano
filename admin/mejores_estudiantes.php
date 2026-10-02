@@ -33,9 +33,9 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5><i class="ti ti-trophy"></i> Mejores Estudiantes por Grado</h5>
+                <h5 role="heading" aria-level="1"><i class="ti ti-trophy"></i> Mejores Estudiantes por Grado</h5>
                 <p>Panel Administrativo &nbsp;/&nbsp; Reportes &nbsp;/&nbsp; Rendimiento</p>
             </div>
         </div>
@@ -46,8 +46,8 @@ include "includes/header.php";
             <div class="gca-card p-4 mb-4">
                 <form method="GET" class="row g-3 align-items-end">
                     <div class="col-md-4">
-                        <label class="form-label fw-medium"><i class="bi bi-calendar3 me-1" style="color:var(--gold);"></i> Período</label>
-                        <select name="periodo" class="form-select">
+                        <label class="form-label fw-medium" for="f_periodo"><i class="bi bi-calendar3 me-1" style="color:var(--gold);"></i> Período</label>
+                        <select id="f_periodo" name="periodo" class="form-select">
                             <?php foreach ($periodos_disponibles as $p): ?>
                                 <option value="<?= htmlspecialchars($p) ?>" <?= $p === $selected_periodo ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($p) ?>
@@ -56,8 +56,8 @@ include "includes/header.php";
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label fw-medium"><i class="bi bi-sort-numeric-up me-1" style="color:var(--gold);"></i> Top</label>
-                        <select name="limite" class="form-select">
+                        <label class="form-label fw-medium" for="f_limite"><i class="bi bi-sort-numeric-up me-1" style="color:var(--gold);"></i> Top</label>
+                        <select id="f_limite" name="limite" class="form-select">
                             <?php foreach ([3, 5, 10, 15, 20] as $l): ?>
                                 <option value="<?= $l ?>" <?= $l === $limite ? 'selected' : '' ?>><?= $l ?> estudiantes</option>
                             <?php endforeach; ?>
@@ -115,10 +115,10 @@ include "includes/header.php";
                                     <table class="table gca-table mb-0">
                                         <thead>
                                             <tr>
-                                                <th style="width:50px;">#</th>
-                                                <th>Estudiante</th>
-                                                <th>Curso</th>
-                                                <th style="width:120px;text-align:center;">Promedio</th>
+                                                <th scope="col" style="width:50px;">#</th>
+                                                <th scope="col">Estudiante</th>
+                                                <th scope="col">Curso</th>
+                                                <th scope="col" style="width:120px;text-align:center;">Promedio</th>
                                             </tr>
                                         </thead>
                                         <tbody>

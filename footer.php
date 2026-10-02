@@ -45,6 +45,11 @@
 
     .ft-contact li { display:flex; align-items:flex-start; gap:10px; font-size:13.5px; color:#c4c4c4; margin-bottom:12px; }
     .ft-contact i { color:var(--gca-gold, #c9a24d); font-size:1rem; margin-top:1px; flex-shrink:0; }
+    /* El correo largo no debe ensanchar la página en móviles */
+    .ft-contact li span, .ft-contact li a { overflow-wrap:anywhere; min-width:0; }
+    .ft-contact a { color:inherit; text-decoration:none; }
+    .ft-contact a:hover { text-decoration:underline; }
+    .site-footer a:focus-visible { outline:2px solid var(--gca-gold, #c9a24d); outline-offset:2px; }
 
     .ft-social { display:flex; gap:10px; margin-top:16px; }
 
@@ -74,39 +79,50 @@
 
             <div class="col-lg-5" data-aos="fade-up">
                 <div class="ft-brand">
-                    <img src="assets/img/escudo-gca.png" alt="GCA" class="ft-logo">
+                    <img src="assets/img/escudo-gca.png" alt="" class="ft-logo">
                     <div>
                         <h5 class="ft-title">Gimnasio Castillo Americano</h5>
                         <span class="ft-tagline">“Cultivar para cosechar”</span>
                     </div>
                 </div>
                 <p class="ft-desc">Institución educativa comprometida con la formación integral, el desarrollo humano y la excelencia académica.</p>
+                <?php
+                require_once __DIR__ . '/config/env.php';
+                $__redes = array_filter([
+                    'facebook'  => 'Facebook',
+                    'instagram' => 'Instagram',
+                    'youtube'   => 'YouTube',
+                    'tiktok'    => 'TikTok',
+                ], fn($k) => (string) config('social.' . $k, '') !== '', ARRAY_FILTER_USE_KEY);
+                if ($__redes): ?>
                 <div class="ft-social">
-                    <a href="https://facebook.com" class="social-circle" title="Facebook"><i class="bi bi-facebook"></i></a>
-                    <a href="https://instagram.com" class="social-circle" title="Instagram"><i class="bi bi-instagram"></i></a>
-                    <a href="https://youtube.com" class="social-circle" title="YouTube"><i class="bi bi-youtube"></i></a>
+                    <?php foreach ($__redes as $__k => $__n): ?>
+                    <a href="<?= htmlspecialchars(config('social.' . $__k)) ?>" class="social-circle" target="_blank" rel="noopener"
+                       title="<?= $__n ?>" aria-label="<?= $__n ?> del colegio (se abre en otra pestaña)"><i class="bi bi-<?= $__k ?>" aria-hidden="true"></i></a>
+                    <?php endforeach; ?>
                 </div>
+                <?php endif; ?>
             </div>
 
             <div class="col-6 col-lg-4" data-aos="fade-up" data-aos-delay="100">
                 <h6 class="ft-heading">Enlaces</h6>
                 <ul class="ft-links">
-                    <li><a href="institucion.php"><i class="bi bi-chevron-right"></i>Institución</a></li>
-                    <li><a href="admisiones.php"><i class="bi bi-chevron-right"></i>Admisiones</a></li>
-                    <li><a href="noticias.php"><i class="bi bi-chevron-right"></i>Noticias</a></li>
-                    <li><a href="docentes.php"><i class="bi bi-chevron-right"></i>Docentes</a></li>
-                    <li><a href="calendario.php"><i class="bi bi-chevron-right"></i>Calendario</a></li>
-                    <li><a href="servicios.php"><i class="bi bi-chevron-right"></i>Servicios</a></li>
-                    <li><a href="contacto.php"><i class="bi bi-chevron-right"></i>Contacto</a></li>
+                    <li><a href="institucion.php"><i class="bi bi-chevron-right" aria-hidden="true"></i>Institución</a></li>
+                    <li><a href="admisiones.php"><i class="bi bi-chevron-right" aria-hidden="true"></i>Admisiones</a></li>
+                    <li><a href="noticias.php"><i class="bi bi-chevron-right" aria-hidden="true"></i>Noticias</a></li>
+                    <li><a href="docentes.php"><i class="bi bi-chevron-right" aria-hidden="true"></i>Docentes</a></li>
+                    <li><a href="calendario.php"><i class="bi bi-chevron-right" aria-hidden="true"></i>Calendario</a></li>
+                    <li><a href="servicios.php"><i class="bi bi-chevron-right" aria-hidden="true"></i>Servicios</a></li>
+                    <li><a href="contacto.php"><i class="bi bi-chevron-right" aria-hidden="true"></i>Contacto</a></li>
                 </ul>
             </div>
 
             <div class="col-6 col-lg-3" data-aos="fade-up" data-aos-delay="200">
                 <h6 class="ft-heading">Contacto</h6>
                 <ul class="ft-contact">
-                    <li><i class="bi bi-geo-alt-fill"></i><span>Valledupar – Cesar, Colombia</span></li>
-                    <li><i class="bi bi-telephone-fill"></i><span>321 654 8235</span></li>
-                    <li><i class="bi bi-envelope-fill"></i><span>gimnasiocastilloamericano@gmail.com</span></li>
+                    <li><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><span>Valledupar – Cesar, Colombia</span></li>
+                    <li><i class="bi bi-telephone-fill" aria-hidden="true"></i><a href="tel:+573216548235">321 654 8235</a></li>
+                    <li><i class="bi bi-envelope-fill" aria-hidden="true"></i><a href="mailto:gimnasiocastilloamericano@gmail.com">gimnasiocastilloamericano@gmail.com</a></li>
                 </ul>
             </div>
 
@@ -114,13 +130,22 @@
 
         <div class="ft-bottom">
             <span>© <?php echo date("Y"); ?> Gimnasio Castillo Americano · Todos los derechos reservados</span>
-            <span>Hecho con <span class="ft-heart">♥</span> en Valledupar</span>
+            <span>Hecho con <span class="ft-heart" aria-hidden="true">♥</span><span class="visually-hidden">amor</span> en Valledupar</span>
         </div>
     </div>
 </footer>
 
 <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 <script>
-    AOS.init({ duration: 800, easing: 'ease-out-cubic', once: true, offset: 60 });
+    // Sin AOS (CDN caído) el contenido con data-aos quedaría invisible: se
+    // quitan los atributos. Con "reducir movimiento" no se anima nada.
+    if (window.AOS) {
+        AOS.init({
+            duration: 800, easing: 'ease-out-cubic', once: true, offset: 60,
+            disable: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        });
+    } else {
+        document.querySelectorAll('[data-aos]').forEach(function (el) { el.removeAttribute('data-aos'); });
+    }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

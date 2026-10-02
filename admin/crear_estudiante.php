@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../includes/init.php';
+require_once __DIR__ . "/../lib/csrf_helper.php";
 checkRole('admin');
 
 use App\Base\Session;
@@ -18,7 +19,10 @@ $cursos = db()->fetchAll(
         END, nombre"
 );
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !validar_token_csrf($_POST["_csrf_token"] ?? "")) {
+    $mensaje = "Error de seguridad. Recargue la página e intente de nuevo.";
+    $tipo = "danger";
+} elseif ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $nombre = trim($_POST["nombre"] ?? "");
     $documento = trim($_POST["documento"] ?? "");
@@ -39,7 +43,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 'curso_id' => $curso_id,
             ]);
 
-            Session::setSuccess("Estudiante creado correctamente.");
+            Session::setSuccess("Estudiante creado. Ahora vincúlelo con su padre o acudiente para que pueda ver sus boletines.");
+            // Siguiente paso sugerido: vincular el padre, ya filtrado por el grado del curso
+            $gradoCurso = $db->fetch("SELECT grado FROM cursos WHERE id = ?", [(int) $curso_id]);
+            Session::flash('vincular_padre_grado', (string) ($gradoCurso['grado'] ?? ''));
             header("Location: ver_estudiantes.php");
             exit;
         } catch (\PDOException $e) {
@@ -60,9 +67,9 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5>Crear Estudiante</h5>
+                <h5 role="heading" aria-level="1">Crear Estudiante</h5>
                 <p>Panel Administrativo &nbsp;/&nbsp; Nuevo Estudiante</p>
             </div>
         </div>
@@ -81,28 +88,30 @@ include "includes/header.php";
                         <?php if ($mensaje): ?>
                             <div class="alert alert-<?= $tipo ?> alert-dismissible fade show" role="alert">
                                 <?= htmlspecialchars($mensaje) ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                             </div>
                         <?php endif; ?>
 
                         <form method="POST" autocomplete="off">
+                            <?= campo_csrf() ?>
+                            <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Nombre completo</label>
-                                <input type="text" name="nombre" class="form-control"
+                                <label class="form-label fw-medium" for="f_nombre">Nombre completo <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_nombre" type="text" name="nombre" class="form-control"
                                     value="<?= htmlspecialchars($_POST["nombre"] ?? "") ?>" required
                                     placeholder="Ej. Ana Sofía Torres">
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Número de documento</label>
-                                <input type="text" name="documento" class="form-control"
+                                <label class="form-label fw-medium" for="f_documento">Número de documento <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_documento" type="text" name="documento" class="form-control"
                                     value="<?= htmlspecialchars($_POST["documento"] ?? "") ?>" required
                                     placeholder="Ej. 1234567890">
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Curso</label>
-                                <select name="curso_id" class="form-select" required>
+                                <label class="form-label fw-medium" for="f_curso_id">Curso <span class="req" aria-hidden="true">*</span></label>
+                                <select id="f_curso_id" name="curso_id" class="form-select" required>
                                     <option value="">Seleccione un curso</option>
                                     <?php $lastNivel = ""; ?>
                                     <?php foreach ($cursos as $c):
@@ -121,8 +130,8 @@ include "includes/header.php";
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label fw-medium">Fecha de nacimiento</label>
-                                <input type="date" name="fecha_nacimiento" class="form-control"
+                                <label class="form-label fw-medium" for="f_fecha_nacimiento">Fecha de nacimiento <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_fecha_nacimiento" type="date" name="fecha_nacimiento" class="form-control"
                                     value="<?= htmlspecialchars($_POST["fecha_nacimiento"] ?? "") ?>" required>
                             </div>
 

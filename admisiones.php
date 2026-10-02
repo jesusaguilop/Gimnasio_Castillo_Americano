@@ -1,4 +1,8 @@
-<?php include "header.php"; ?>
+<?php
+$pageTitle = 'Admisiones';
+$pageDesc = 'Requisitos, formulario de inscripción y pasos para matricularse en el Gimnasio Castillo Americano.';
+include "header.php";
+?>
 
 <div class="hm-wrap">
 
@@ -39,21 +43,21 @@
                     </div>
                     <div class="col-lg-5">
                         <div class="hm-infopanel">
-                            <h4>Proceso de Matrícula</h4>
+                            <h3>Proceso de Matrícula</h3>
                             <p>El proceso de admisión se realiza de forma presencial en nuestras instalaciones. Agenda una cita para conocer nuestro colegio y recibir información detallada sobre nuestros programas educativos.</p>
-                            <a href="contacto.php" class="hm-btn hm-btn-primary">Agendar Cita <i class="bi bi-arrow-right-short"></i></a>
+                            <a href="contacto.php" class="hm-btn hm-btn-primary">Agendar Cita <i class="bi bi-arrow-right-short" aria-hidden="true"></i></a>
                             <?php
                             $pdf_path_rel = 'assets/docs/formulario_inscripcion.pdf';
                             if (file_exists(__DIR__ . '/' . $pdf_path_rel)): ?>
                             <a class="hm-download mt-3" href="<?= $pdf_path_rel ?>" target="_blank" rel="noopener noreferrer">
-                                <div class="ic"><i class="bi bi-download"></i></div>
-                                <div class="info"><h6>Formulario de Inscripción</h6><small>Descargar formato en PDF</small></div>
-                                <span class="go">Descargar</span>
+                                <div class="ic"><i class="bi bi-download" aria-hidden="true"></i></div>
+                                <div class="info"><h3>Formulario de Inscripción</h3><small>Descargar formato en PDF</small></div>
+                                <span class="go">Descargar <span class="visually-hidden">(se abre en otra pestaña)</span></span>
                             </a>
                             <?php else: ?>
                             <div class="hm-download mt-3">
-                                <div class="ic"><i class="bi bi-file-earmark-pdf"></i></div>
-                                <div class="info"><h6>Formulario de Inscripción</h6><small class="text-danger">PDF no disponible — súbelo a assets/docs/formulario_inscripcion.pdf</small></div>
+                                <div class="ic"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i></div>
+                                <div class="info"><h3>Formulario de Inscripción</h3><small>Solicítalo en la secretaría del colegio o por <a href="https://wa.me/573216548235" target="_blank" rel="noopener">WhatsApp</a>.</small></div>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -71,16 +75,16 @@
                     if (file_exists(__DIR__ . '/' . $fmt_rel)): ?>
                     <div class="col-md-6">
                         <a class="hm-download" href="<?= $fmt_rel ?>" target="_blank" rel="noopener noreferrer">
-                            <div class="ic"><i class="bi bi-file-earmark-pdf"></i></div>
-                            <div class="info"><h6>Formulario de Inscripción (PDF)</h6><small>Descargar</small></div>
-                            <span class="go">Descargar</span>
+                            <div class="ic"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i></div>
+                            <div class="info"><h3>Formulario de Inscripción (PDF)</h3><small>Descargar</small></div>
+                            <span class="go">Descargar <span class="visually-hidden">(se abre en otra pestaña)</span></span>
                         </a>
                     </div>
                     <?php else: ?>
                     <div class="col-12">
                         <div class="hm-download">
-                            <div class="ic"><i class="bi bi-file-earmark-pdf"></i></div>
-                            <div class="info"><h6>Formulario de Inscripción</h6><small class="text-danger">PDF no disponible. Coloca el archivo en <strong>assets/docs/formulario_inscripcion.pdf</strong></small></div>
+                            <div class="ic"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i></div>
+                            <div class="info"><h3>Formulario de Inscripción</h3><small>Solicítalo en la secretaría del colegio o por <a href="https://wa.me/573216548235" target="_blank" rel="noopener">WhatsApp</a>.</small></div>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -105,8 +109,8 @@
                     foreach ($pasos as $i => $p): ?>
                     <div class="col-md-4" data-aos="fade-up" data-aos-delay="<?= ($i % 3) * 100 ?>">
                         <div class="hm-feature center">
-                            <div class="hm-feature-icon"><i class="<?= $p[2] ?>"></i></div>
-                            <h4><?= $p[0] ?></h4>
+                            <div class="hm-feature-icon"><i class="<?= $p[2] ?>" aria-hidden="true"></i></div>
+                            <h3><?= $p[0] ?></h3>
                             <p><?= $p[1] ?></p>
                         </div>
                     </div>
@@ -124,7 +128,7 @@
                     <span class="hm-kicker hm-kicker-center hm-kicker-light">Únete a la familia</span>
                     <h2 class="hm-cta-title">¿Listo para ser parte de nuestra familia?</h2>
                     <p class="hm-cta-sub">En el Gimnasio Castillo Americano formamos líderes con valores, excelencia académica y visión global. Te esperamos.</p>
-                    <a href="contacto.php" class="hm-btn hm-btn-primary hm-btn-lg">Solicitar Información <i class="bi bi-arrow-right-short"></i></a>
+                    <a href="contacto.php" class="hm-btn hm-btn-primary hm-btn-lg">Solicitar Información <i class="bi bi-arrow-right-short" aria-hidden="true"></i></a>
                 </div>
             </div>
         </div>

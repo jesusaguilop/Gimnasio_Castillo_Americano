@@ -26,7 +26,7 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
                 <h5><i class="ti ti-award"></i> Resultados del Año</h5>
                 <p>Panel del Profesor &nbsp;/&nbsp; Dirección de Grupo</p>

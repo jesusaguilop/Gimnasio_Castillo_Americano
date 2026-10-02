@@ -12,11 +12,20 @@ class Session
             session_set_cookie_params([
                 'lifetime' => $lifetime,
                 'path' => '/',
+                // La app corre detrás de Vercel + Railway: el HTTPS termina en el
+                // proxy, así que también se mira X-Forwarded-Proto.
+                'secure' => self::esHttps(),
                 'httponly' => true,
                 'samesite' => 'Lax',
             ]);
             session_start();
         }
+    }
+
+    private static function esHttps(): bool
+    {
+        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
     }
 
     public static function set(string $key, mixed $value): void

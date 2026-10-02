@@ -966,4 +966,48 @@
         .btn-outline-gca { border-radius:999px !important; }
         .gca-table thead th { font-family:'Poppins',sans-serif; }
     </style>
+    <!-- ═══ Accesibilidad: contraste (WCAG AA), foco visible y menú por teclado ═══ -->
+    <style>
+        /* El oro sigue en fondos y degradados; para TEXTO sobre blanco se usa
+           --gold-text (≈5.3:1). #a87f2e daba 3.66:1 y #888 3.54:1. */
+        :root { --gold-text:#8a6a1f; --text-muted:#6b6b6b; }
+        .dark-mode { --text-muted:#9a9a9a; --gold-text:var(--gold); }
+        .header-box span, .btn-outline-gca:hover, .btn-edit,
+        .ts-wrapper .ts-dropdown .option.selected::after { color: var(--gold-text); }
+        .dark-mode .btn-edit, .dark-mode .btn-outline-gca:hover { color: var(--gold); }
+
+        /* Foco visible: Bootstrap quita el outline y el borde dorado no llega a 3:1 */
+        .form-control:focus, .form-select:focus,
+        .ts-wrapper.focus .ts-control {
+            outline: 2px solid var(--gold-text) !important;
+            outline-offset: 2px;
+        }
+        .btn-gca:focus-visible, .btn-outline-gca:focus-visible, .btn-action:focus-visible,
+        .nav-parent:focus-visible, .nav-sub-item:focus-visible, .quick-action:focus-visible,
+        .toggle-btn:focus-visible, .btn-logout:focus-visible, a.stat-link:focus-visible {
+            outline: 2px solid var(--gold) !important;
+            outline-offset: 2px;
+        }
+
+        /* Los grupos del menú ahora son <button>: mismo aspecto que antes */
+        button.nav-parent {
+            width: 100%;
+            background: none;
+            border: 0;
+            border-left: 3px solid transparent;
+            text-align: left;
+            font-family: inherit;
+        }
+        /* Un submenú cerrado no debe recibir el foco del tabulador */
+        .nav-submenu { visibility: hidden; transition: max-height .35s cubic-bezier(.4,0,.2,1), visibility 0s linear .35s; }
+        .nav-submenu.open { visibility: visible; transition: max-height .35s cubic-bezier(.4,0,.2,1), visibility 0s; }
+
+        /* Tarjetas de estadística clicables sin cambiar su look */
+        a.stat-link { display: block; height: 100%; color: inherit; text-decoration: none; border-radius: 20px; }
+        a.stat-link > .stat-card { height: 100%; }
+
+        /* Campos obligatorios */
+        .req { color: #b02a37; margin-left: 2px; }
+        .form-note { font-size: 13px; color: var(--text-muted); }
+    </style>
 </head>

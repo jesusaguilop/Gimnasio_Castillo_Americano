@@ -5,6 +5,19 @@
  */
 function crearAlerta($conexion, $tipo, $titulo, $mensaje, $para_rol = null, $para_usuario_id = null)
 {
+    // Si ya hay una igual sin leer no se repite (cada "Guardar todo" volvía a crearlas)
+    $dup = $conexion->prepare("
+        SELECT id FROM alertas
+        WHERE tipo = ? AND titulo = ? AND mensaje = ? AND leido = FALSE
+          AND para_rol IS NOT DISTINCT FROM ? AND para_usuario_id IS NOT DISTINCT FROM ?
+        LIMIT 1
+    ");
+    $dup->execute([$tipo, $titulo, $mensaje, $para_rol, $para_usuario_id]);
+    $existente = $dup->fetchColumn();
+    if ($existente) {
+        return (int) $existente;
+    }
+
     $stmt = $conexion->prepare("
         INSERT INTO alertas (tipo, titulo, mensaje, para_rol, para_usuario_id)
         VALUES (?, ?, ?, ?, ?) RETURNING id
@@ -45,10 +58,19 @@ function contarAlertasNoLeidas($conexion, $usuario_id, $rol)
 /**
  * Mark an alert as read.
  */
-function marcarAlertaLeida($conexion, $alerta_id)
+function marcarAlertaLeida($conexion, $alerta_id, $usuario_id = null, $rol = null)
 {
-    $stmt = $conexion->prepare("UPDATE alertas SET leido = TRUE WHERE id = ?");
-    $stmt->execute([$alerta_id]);
+    if ($usuario_id === null) {
+        $stmt = $conexion->prepare("UPDATE alertas SET leido = TRUE WHERE id = ?");
+        $stmt->execute([(int) $alerta_id]);
+        return;
+    }
+    // Solo alertas dirigidas a este usuario o a su rol en general
+    $stmt = $conexion->prepare("
+        UPDATE alertas SET leido = TRUE
+        WHERE id = ? AND (para_usuario_id = ? OR (para_rol = ? AND para_usuario_id IS NULL))
+    ");
+    $stmt->execute([(int) $alerta_id, (int) $usuario_id, $rol]);
 }
 
 /**
@@ -136,14 +158,21 @@ function verificarRiesgoAcademico($conexion, $estudiante_id, $curso_id, $periodo
         $alertas_creadas[] = $idDir;
     }
 
-    // Alert for the parent
+    // Alerta al padre: solo cuando el colegio ya publicó el boletín del período.
+    // Antes salía con cada "Guardar todo" del profesor, con notas a medio digitar
+    // y una alerta nueva cada vez que cambiaba un promedio.
     if ($est['padre_id']) {
-        $idPadre = crearAlerta($conexion, 'riesgo_academico',
-            '📢 Alerta académica — Su hijo está en riesgo',
-            "Estimado padre, informamos que {$est['nombre']} presenta un rendimiento académico por debajo del mínimo en las siguientes materias: {$detalle}. Es importante tomar medidas de refuerzo antes del 4to período.",
-            'padre', $est['padre_id']
-        );
-        $alertas_creadas[] = $idPadre;
+        $pub = $conexion->prepare("SELECT 1 FROM boletines_pdf WHERE estudiante_id = ? AND periodo = ? AND year = ? AND publicado = TRUE");
+        $pub->execute([$estudiante_id, $periodo, $anio]);
+        if ($pub->fetchColumn()) {
+            $materias_padre = implode(', ', array_map(fn($t) => preg_replace('/ \([0-9.]+\)$/', '', $t), $materias_riesgo));
+            $idPadre = crearAlerta($conexion, 'riesgo_academico',
+                '📢 Alerta académica — Su hijo está en riesgo',
+                "Estimado padre, informamos que {$est['nombre']} presenta un rendimiento académico por debajo del mínimo en: {$materias_padre}. Puede ver el detalle en el boletín del período {$periodo}. Es importante tomar medidas de refuerzo antes del 4to período.",
+                'padre', $est['padre_id']
+            );
+            $alertas_creadas[] = $idPadre;
+        }
     }
 
     return $alertas_creadas;

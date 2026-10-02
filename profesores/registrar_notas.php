@@ -31,7 +31,7 @@ $asignaciones = $asignaciones->fetchAll(PDO::FETCH_ASSOC);
 /* ── Determine view ── */
 $asignacion_id = $_GET['asignacion_id'] ?? null;
 $pagina = max(1, (int)($_GET['page'] ?? 1));
-$por_pagina = 10;
+$por_pagina = 60; // un curso completo por página: menos riesgo de perder notas al paginar
 
 $asignacion_seleccionada = null;
 if ($asignacion_id) {
@@ -44,85 +44,105 @@ if ($asignacion_id) {
 }
 
 /* ── Handle save ── */
+$flash = \App\Base\Session::getSuccess();
+if ($flash) $mensaje = $flash;
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $asignacion_seleccionada && isset($_POST['guardar_masivo'])
     && !validar_token_csrf($_POST['_csrf_token'] ?? '')) {
     $error = "Error de seguridad. Recargue la página e intente de nuevo.";
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && $asignacion_seleccionada && isset($_POST['guardar_masivo']) && !$plataforma_activa) {
+    // El formulario se oculta con la plataforma cerrada, pero el POST también se bloquea
+    $error = "El registro de notas está cerrado. Consulte con administración.";
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && $asignacion_seleccionada && isset($_POST['guardar_masivo'])) {
     $curso_id = $asignacion_seleccionada['curso_id'];
     $asignatura_id = $asignacion_seleccionada['asignatura_id'];
+    $nota_field = 'nota_' . $periodo_activo;
 
     $estudiantes_post = $_POST['estudiantes'] ?? [];
 
     try {
-        $conexion->beginTransaction();
-
-        $est_ids = array_keys($estudiantes_post);
+        $est_ids = array_map('intval', array_keys($estudiantes_post));
         if (count($est_ids) === 0) throw new Exception("No hay estudiantes para guardar.");
 
-        // Single bulk check: verify all students belong to this course
+        // Solo estudiantes que de verdad son de este curso
         $placeholders = implode(',', array_fill(0, count($est_ids), '?'));
-        $checkStmt = $conexion->prepare("SELECT id FROM estudiantes WHERE id IN ($placeholders) AND curso_id = ?");
+        $checkStmt = $conexion->prepare("SELECT id, nombre FROM estudiantes WHERE id IN ($placeholders) AND curso_id = ?");
         $checkStmt->execute(array_merge($est_ids, [$curso_id]));
-        $valid_ids = $checkStmt->fetchAll(PDO::FETCH_COLUMN);
-        $valid_set = array_flip($valid_ids);
+        $nombres = $checkStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        $valid_ids = array_map('intval', array_keys($nombres));
+        if (count($valid_ids) === 0) throw new Exception("Ningún estudiante pertenece a este curso.");
 
-        // Bulk DELETE existing notas for all students (del período y año activos)
-        $delNotas = $conexion->prepare("
-            DELETE FROM notas
-            WHERE estudiante_id IN ($placeholders) AND asignatura_id = ? AND periodo = ? AND curso_id = ? AND anio = ?
-        ");
-        $delNotas->execute(array_merge($est_ids, [$asignatura_id, $periodo_activo, $curso_id, $anio_activo]));
-
-        // Bulk DELETE existing logros
-        $delLogros = $conexion->prepare("
-            DELETE FROM logros WHERE estudiante_id IN ($placeholders) AND asignatura_id = ? AND periodo = ? AND anio = ?
-        ");
-        $delLogros->execute(array_merge($est_ids, [$asignatura_id, $periodo_activo, $anio_activo]));
-
-        // Batch INSERT notas + logros
-        $insNota = $conexion->prepare("
-            INSERT INTO notas (estudiante_id, profesor_id, asignatura_id, curso_id, periodo, nota, anio)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ");
-        $insLogro = $conexion->prepare("
-            INSERT INTO logros (estudiante_id, asignatura_id, periodo, logro, anio)
-            VALUES (?, ?, ?, ?, ?)
-        ");
-
-        foreach ($estudiantes_post as $est_id => $data) {
-            if (!isset($valid_set[$est_id])) continue;
-
-            $nota_field = 'nota_' . $periodo_activo;
-            $nota_valor = isset($data[$nota_field]) && $data[$nota_field] !== '' ? (int)$data[$nota_field] : null;
-            $logro_texto = $data['logro'] ?? '';
-
-            if ($nota_valor !== null && $nota_valor >= 0 && $nota_valor <= 100) {
-                $insNota->execute([$est_id, $profesor_id, $asignatura_id, $curso_id, $periodo_activo, $nota_valor, $anio_activo]);
-            }
-
-            if (trim($logro_texto) !== '') {
-                $insLogro->execute([$est_id, $asignatura_id, $periodo_activo, trim($logro_texto), $anio_activo]);
+        // Validar ANTES de borrar nada: una nota inválida ya no borra la anterior en silencio
+        $invalidos = [];
+        foreach ($valid_ids as $eid) {
+            $v = trim((string) ($estudiantes_post[$eid][$nota_field] ?? ''));
+            if ($v !== '' && (!ctype_digit($v) || (int) $v > 100)) {
+                $invalidos[] = $nombres[$eid];
             }
         }
 
-        $conexion->commit();
+        if ($invalidos) {
+            $error = "Revise estas notas (deben ser números enteros de 0 a 100): " . implode(', ', $invalidos)
+                   . ". No se guardó ningún cambio.";
+        } else {
+            $conexion->beginTransaction();
+            $placeholders = implode(',', array_fill(0, count($valid_ids), '?'));
 
-        // Check risk alerts for period 3
-        $riesgos = 0;
-        if ($periodo_activo === '3') {
-            foreach ($estudiantes_post as $est_id => $data) {
-                $alertas = verificarRiesgoAcademico($conexion, $est_id, $curso_id, $periodo_activo, $anio_activo);
-                $riesgos += count($alertas);
+            $delNotas = $conexion->prepare("
+                DELETE FROM notas
+                WHERE estudiante_id IN ($placeholders) AND asignatura_id = ? AND periodo = ? AND curso_id = ? AND anio = ?
+            ");
+            $delNotas->execute(array_merge($valid_ids, [$asignatura_id, $periodo_activo, $curso_id, $anio_activo]));
+
+            $delLogros = $conexion->prepare("
+                DELETE FROM logros WHERE estudiante_id IN ($placeholders) AND asignatura_id = ? AND periodo = ? AND anio = ?
+            ");
+            $delLogros->execute(array_merge($valid_ids, [$asignatura_id, $periodo_activo, $anio_activo]));
+
+            $insNota = $conexion->prepare("
+                INSERT INTO notas (estudiante_id, profesor_id, asignatura_id, curso_id, periodo, nota, anio)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            $insLogro = $conexion->prepare("
+                INSERT INTO logros (estudiante_id, asignatura_id, periodo, logro, anio)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+
+            foreach ($valid_ids as $est_id) {
+                $data = $estudiantes_post[$est_id] ?? [];
+                $v = trim((string) ($data[$nota_field] ?? ''));
+                if ($v !== '') {
+                    $insNota->execute([$est_id, $profesor_id, $asignatura_id, $curso_id, $periodo_activo, (int) $v, $anio_activo]);
+                }
+                $logro_texto = trim((string) ($data['logro'] ?? ''));
+                if ($logro_texto !== '') {
+                    $insLogro->execute([$est_id, $asignatura_id, $periodo_activo, $logro_texto, $anio_activo]);
+                }
             }
-        }
 
-        $mensaje = "Notas y logros guardados correctamente.";
-        if ($riesgos > 0) {
-            $mensaje .= " Se generaron {$riesgos} alerta(s) de riesgo académico.";
+            $conexion->commit();
+
+            // Alertas de riesgo académico (período 3), solo para estudiantes del curso
+            $riesgos = 0;
+            if ($periodo_activo === '3') {
+                foreach ($valid_ids as $est_id) {
+                    $riesgos += count(verificarRiesgoAcademico($conexion, $est_id, $curso_id, $periodo_activo, $anio_activo));
+                }
+            }
+
+            $ok = "Notas y logros guardados correctamente (" . count($valid_ids) . " estudiante(s)).";
+            if ($riesgos > 0) {
+                $ok .= " Se generaron {$riesgos} alerta(s) de riesgo académico.";
+            }
+            // Post/Redirect/Get: recargar la página no vuelve a enviar el formulario
+            \App\Base\Session::setSuccess($ok);
+            header("Location: registrar_notas.php?asignacion_id=" . (int) $asignacion_id . "&page=" . (int) $pagina);
+            exit;
         }
     } catch (Exception $e) {
-        $conexion->rollBack();
-        $error = "Error al guardar: " . $e->getMessage();
+        if ($conexion->inTransaction()) $conexion->rollBack();
+        error_log("[registrar_notas] " . $e->getMessage());
+        $error = "No se pudo guardar. Intente de nuevo; si el problema sigue, avise a administración.";
     }
 }
 
@@ -206,7 +226,7 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
                 <h5><i class="ti ti-pencil"></i>
                     <?= $asignacion_seleccionada ? 'Registro de Notas' : 'Seleccionar Curso' ?>
@@ -214,7 +234,7 @@ include "includes/header.php";
                 <p>
                     Panel del Profesor &nbsp;/&nbsp;
                     <?php if ($asignacion_seleccionada): ?>
-                        <a href="registrar_notas.php" style="color:#999;text-decoration:none;">Registrar Notas</a>
+                        <a href="registrar_notas.php" style="color:var(--text-muted);text-decoration:none;">Registrar Notas</a>
                         &nbsp;/&nbsp; <?= htmlspecialchars($asignacion_seleccionada['asignatura_nombre']) ?>
                     <?php else: ?>
                         Calificaciones
@@ -226,13 +246,13 @@ include "includes/header.php";
         <div class="content-area">
 
             <?php if ($mensaje): ?>
-                <div class="alert alert-success border-0 rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4">
-                    <i class="bi bi-check-circle-fill"></i> <?= $mensaje ?>
+                <div class="alert alert-success border-0 rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="status" id="msgGuardado">
+                    <i class="bi bi-check-circle-fill" aria-hidden="true"></i> <?= htmlspecialchars($mensaje) ?>
                 </div>
             <?php endif; ?>
             <?php if ($error): ?>
-                <div class="alert alert-danger border-0 rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4">
-                    <i class="bi bi-exclamation-triangle-fill"></i> <?= $error ?>
+                <div class="alert alert-danger border-0 rounded-3 shadow-sm d-flex align-items-center gap-2 mb-4" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i> <?= htmlspecialchars($error) ?>
                 </div>
             <?php endif; ?>
 
@@ -268,27 +288,27 @@ include "includes/header.php";
                     <div class="mt-3 pt-3" style="border-top:1px solid #f0ede8;">
                         <p class="small text-muted mb-0">
                             <i class="bi bi-info-circle me-1"></i>
-                            Ingresa las notas y logros para cada estudiante, luego haz clic en "Guardar todo".
-                            Usa el icono <i class="bi bi-filetype-pdf" style="color:var(--gold-dark);"></i> para generar el boletín PDF individual.
+                            Escribe la nota (0 a 100) y el logro de cada estudiante y pulsa <strong>"Guardar todo"</strong> al final.
+                            Si sales sin guardar, la página te avisará. Los boletines se generan desde <a href="direccion_grupo.php">Dirección de Grupo</a>.
                         </p>
                     </div>
                 </div>
 
-                <form method="POST">
+                <form method="POST" id="formNotas">
                     <?= campo_csrf() ?>
                     <div class="gca-card">
                         <div class="table-responsive">
                             <table class="table gca-table mb-0">
                                 <thead>
                                     <tr>
-                                        <th style="width:36px;">#</th>
-                                        <th>Estudiante</th>
-                                        <th style="width:52px;font-size:11px;text-align:center;">P1</th>
-                                        <th style="width:52px;font-size:11px;text-align:center;">P2</th>
-                                        <th style="width:52px;font-size:11px;text-align:center;">P3</th>
-                                        <th style="width:52px;font-size:11px;text-align:center;">P4</th>
-                                        <th style="width:60px;font-size:11px;text-align:center;">Prom.</th>
-                                        <th style="min-width:140px;">Logro</th>
+                                        <th scope="col" style="width:36px;">#</th>
+                                        <th scope="col">Estudiante</th>
+                                        <th scope="col" style="width:52px;font-size:11px;text-align:center;"><abbr title="Período 1">P1</abbr></th>
+                                        <th scope="col" style="width:52px;font-size:11px;text-align:center;"><abbr title="Período 2">P2</abbr></th>
+                                        <th scope="col" style="width:52px;font-size:11px;text-align:center;"><abbr title="Período 3">P3</abbr></th>
+                                        <th scope="col" style="width:52px;font-size:11px;text-align:center;"><abbr title="Período 4">P4</abbr></th>
+                                        <th scope="col" style="width:60px;font-size:11px;text-align:center;"><abbr title="Promedio">Prom.</abbr></th>
+                                        <th scope="col" style="min-width:140px;">Logro</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -300,7 +320,7 @@ include "includes/header.php";
                                         <?php $idx = $offset + 1; ?>
                                         <?php foreach ($estudiantes as $est): ?>
                                                         <tr>
-                                                <td style="color:#999;font-size:12px;"><?= $idx++ ?></td>
+                                                <td style="color:var(--text-muted);font-size:12px;"><?= $idx++ ?></td>
                                                 <td>
                                                     <div style="display:flex;align-items:center;gap:8px;">
                                                         <span class="fw-medium"><?= htmlspecialchars($est['nombre']) ?></span>
@@ -310,7 +330,7 @@ include "includes/header.php";
                                                             </span>
                                                         <?php endif; ?>
                                                     </div>
-                                                    <small style="color:#999;display:block;font-size:11px;"><?= htmlspecialchars($est['documento']) ?></small>
+                                                    <small style="color:var(--text-muted);display:block;font-size:11px;"><?= htmlspecialchars($est['documento']) ?></small>
                                                 </td>
                                                 <?php $nota_promedio = $promedios[$est['id']] ?? null; ?>
                                                 <?php for ($p = 1; $p <= 4; $p++):
@@ -322,13 +342,14 @@ include "includes/header.php";
                                                         <?php if ($es_actual): ?>
                                                              <input type="number" name="estudiantes[<?= $est['id'] ?>][nota_<?= $p ?>]"
                                                                 class="form-control form-control-sm grade-input"
-                                                                min="0" max="100"
+                                                                min="0" max="100" step="1" inputmode="numeric"
+                                                                aria-label="Nota del período <?= $p ?> de <?= htmlspecialchars($est['nombre']) ?>"
                                                                 value="<?= $n !== null ? (int)$n : '' ?>"
                                                                 placeholder="–"
                                                                 style="width:52px;text-align:center;font-size:12px;display:inline-block;padding:4px 2px;">
                                                         <?php elseif ($n !== null): ?>
                                                             <span class="badge rounded-pill px-2 py-1"
-                                                                  style="font-size:11px;font-weight:600;background:<?= $n >= 60 ? '#e8f5e9' : ($n >= 40 ? '#fff3e0' : '#ffebee') ?>;color:<?= $n >= 60 ? '#2e7d32' : ($n >= 40 ? '#e65100' : '#c62828') ?>;">
+                                                                  style="font-size:11px;font-weight:600;background:<?= $n >= 80 ? '#e8f5e9' : ($n >= 60 ? '#fff3e0' : '#ffebee') ?>;color:<?= $n >= 80 ? '#1b5e20' : ($n >= 60 ? '#a33f00' : '#b71c1c') ?>;">
                                                                 <?= (int)$n ?>
                                                             </span>
                                                         <?php else: ?>
@@ -339,7 +360,7 @@ include "includes/header.php";
                                                 <td style="text-align:center;vertical-align:middle;">
                                                     <?php if ($nota_promedio !== null): ?>
                                                         <span class="badge rounded-pill px-2 py-1"
-                                                              style="font-size:11px;font-weight:700;background:<?= $nota_promedio >= 60 ? '#1b5e20' : ($nota_promedio >= 40 ? '#e65100' : '#b71c1c') ?>;color:#fff;">
+                                                              style="font-size:11px;font-weight:700;background:<?= $nota_promedio >= 80 ? '#1b5e20' : ($nota_promedio >= 60 ? '#a33f00' : '#b71c1c') ?>;color:#fff;">
                                                             <?= $nota_promedio ?>
                                                         </span>
                                                     <?php else: ?>
@@ -348,7 +369,8 @@ include "includes/header.php";
                                                 </td>
                                                 <td>
                                                     <textarea name="estudiantes[<?= $est['id'] ?>][logro]"
-                                                        class="form-control form-control-sm"
+                                                        class="form-control form-control-sm logro-input"
+                                                        aria-label="Logro de <?= htmlspecialchars($est['nombre']) ?>"
                                                         rows="1"
                                                         placeholder="Logro u observación..."
                                                         style="resize:vertical;min-height:36px;"><?= htmlspecialchars($logros_existentes[$est['id']] ?? '') ?></textarea>
@@ -363,11 +385,11 @@ include "includes/header.php";
 
                     <!-- Pagination + Save -->
                     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mt-4">
-                        <nav>
+                        <nav aria-label="Páginas de estudiantes">
                             <ul class="pagination pagination-sm mb-0">
                                 <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
                                     <li class="page-item <?= $i === $pagina ? 'active' : '' ?>">
-                                        <a class="page-link" href="?asignacion_id=<?= $asignacion_id ?>&page=<?= $i ?>"
+                                        <a class="page-link" href="?asignacion_id=<?= (int) $asignacion_id ?>&page=<?= $i ?>"
                                             style="<?= $i === $pagina ? 'background:var(--bg-dark);border-color:var(--gold);color:var(--gold);' : 'color:#555;' ?>">
                                             <?= $i ?>
                                         </a>
@@ -406,7 +428,6 @@ include "includes/header.php";
                             $curso_key = $asig['curso_id'];
                             $is_new_curso = $curso_key !== $current_curso;
                             if ($is_new_curso) {
-                                if ($current_curso !== null) echo '</div></div></div>';
                                 $current_curso = $curso_key;
                             }
                         ?>
@@ -428,7 +449,7 @@ include "includes/header.php";
                                onmouseout="this.style.background='transparent'">
                                 <i class="bi bi-journal-text" style="color:var(--gold-dark);font-size:14px;"></i>
                                 <span class="fw-medium"><?= htmlspecialchars($asig['asignatura_nombre']) ?></span>
-                                <span style="margin-left:auto;font-size:11px;color:#999;"><?= htmlspecialchars($asig['area']) ?></span>
+                                <span style="margin-left:auto;font-size:11px;color:var(--text-muted);"><?= htmlspecialchars($asig['area']) ?></span>
                                 <i class="bi bi-chevron-right" style="color:#ccc;font-size:12px;"></i>
                             </a>
 
@@ -465,3 +486,25 @@ include "includes/header.php";
     </main>
 
     <?php include "includes/footer.php"; ?>
+    <style>
+        @media (max-width: 768px) {
+            /* 16px evita que iOS haga zoom al tocar la casilla */
+            .grade-input { font-size: 16px !important; width: 64px !important; }
+        }
+    </style>
+    <script>
+    (function () {
+        var form = document.getElementById('formNotas');
+        if (!form) return;
+        var cambios = false;
+        form.addEventListener('input', function (e) {
+            if (e.target.matches('.grade-input, .logro-input')) cambios = true;
+        });
+        form.addEventListener('submit', function () { cambios = false; });
+        window.addEventListener('beforeunload', function (e) {
+            if (cambios) { e.preventDefault(); e.returnValue = ''; }
+        });
+        var msg = document.getElementById('msgGuardado');
+        if (msg) msg.scrollIntoView({ block: 'center' });
+    })();
+    </script>

@@ -80,9 +80,9 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5><i class="ti ti-user-star"></i> Asignar Director de Grupo</h5>
+                <h5 role="heading" aria-level="1"><i class="ti ti-user-star"></i> Asignar Director de Grupo</h5>
                 <p>Panel Administrativo &nbsp;/&nbsp; Asignaciones</p>
             </div>
         </div>
@@ -107,8 +107,8 @@ include "includes/header.php";
                         <form method="POST">
                             <?= campo_csrf() ?>
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Profesor</label>
-                                <select name="profesor_id" class="form-select" required>
+                                <label class="form-label fw-medium" for="f_profesor_id">Profesor</label>
+                                <select id="f_profesor_id" name="profesor_id" class="form-select" required>
                                     <option value="">— Seleccione un profesor —</option>
                                     <?php foreach ($profesores as $p): ?>
                                         <option value="<?= $p["id"] ?>"><?= htmlspecialchars($p["nombre"]) ?></option>
@@ -116,8 +116,8 @@ include "includes/header.php";
                                 </select>
                             </div>
                             <div class="mb-4">
-                                <label class="form-label fw-medium">Curso</label>
-                                <select name="curso_id" class="form-select" required>
+                                <label class="form-label fw-medium" for="f_curso_id">Curso</label>
+                                <select id="f_curso_id" name="curso_id" class="form-select" required>
                                     <option value="">— Seleccione un curso —</option>
                                     <?php foreach ($cursos as $c): ?>
                                         <option value="<?= $c["id"] ?>">
@@ -146,9 +146,9 @@ include "includes/header.php";
                                 <table class="table gca-table mb-0">
                                     <thead>
                                         <tr>
-                                            <th>Profesor</th>
-                                            <th>Curso</th>
-                                            <th style="width:50px;"></th>
+                                            <th scope="col">Profesor</th>
+                                            <th scope="col">Curso</th>
+                                            <th scope="col" style="width:50px;"><span class="visually-hidden">Acciones</span></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -157,10 +157,10 @@ include "includes/header.php";
                                                 <td class="fw-medium"><?= htmlspecialchars($a['profesor']) ?></td>
                                                 <td><?= htmlspecialchars(ucfirst($a['nivel'] ?? '') . ' - ' . $a['grado'] . ' ' . $a['curso']) ?></td>
                                                 <td>
-                                                    <a href="javascript:void(0)" onclick="eliminarDirector(<?= $a['profesor_id'] ?>, <?= $a['curso_id'] ?>)"
-                                                       class="btn-action btn-delete" title="Eliminar">
-                                                        <i class="bi bi-trash"></i>
-                                                    </a>
+                                                    <button type="button" onclick="eliminarDirector(<?= (int) $a['profesor_id'] ?>, <?= (int) $a['curso_id'] ?>)"
+                                                       class="btn-action btn-delete border-0" title="Eliminar" aria-label="Quitar a <?= htmlspecialchars($a['profesor']) ?> como director de grupo">
+                                                        <i class="bi bi-trash" aria-hidden="true"></i>
+                                                    </button>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -176,7 +176,7 @@ include "includes/header.php";
 
     <script>
         function eliminarDirector(profesorId, cursoId) {
-            showConfirm('¿Eliminar esta asignación de director de grupo?', function() {
+            showConfirm('¿Quitar a este profesor como director de grupo? El curso quedará sin director.', function() {
                 const fd = new FormData();
                 fd.append('action', 'eliminar');
                 fd.append('profesor_id', profesorId);
@@ -184,7 +184,11 @@ include "includes/header.php";
                 fd.append('_csrf_token', <?= json_encode(generar_token_csrf()) ?>);
                 fetch('asignar_director.php', { method: 'POST', body: fd })
                     .then(r => r.text())
-                    .then(res => { if (res === 'ok') location.reload(); });
+                    .then(res => {
+                        if (res === 'ok') location.reload();
+                        else alert('No se pudo eliminar la asignación. Intente de nuevo.');
+                    })
+                    .catch(() => alert('No se pudo conectar con el servidor. Intente de nuevo.'));
             });
         }
     </script>

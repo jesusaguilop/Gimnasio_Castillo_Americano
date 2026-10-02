@@ -4,7 +4,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Gimnasio Castillo Americano</title>
+    <title><?= isset($pageTitle) ? htmlspecialchars($pageTitle) . ' | ' : '' ?>Gimnasio Castillo Americano</title>
+    <meta name="description" content="<?= htmlspecialchars($pageDesc ?? 'Gimnasio Castillo Americano, colegio en Valledupar (Cesar): educación inicial, primaria, secundaria y media con formación integral.') ?>">
+    <link rel="icon" type="image/png" href="assets/img/escudo-gca.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
@@ -87,6 +89,11 @@
             max-width: 340px; overflow: hidden; white-space: nowrap;
             transition: max-width .38s cubic-bezier(.22,1,.36,1), opacity .3s ease, font-size .3s ease;
         }
+        /* Portátiles (992–1399px): el menú no deja espacio y el nombre se cortaba
+           ("Gimnasio Castillo Americ"); en dos líneas cabe completo */
+        @media (min-width: 992px) and (max-width: 1399.98px) {
+            .brand-text { white-space: normal; max-width: 150px; font-size: .95rem; }
+        }
         /* Al flotar: se oculta el nombre y queda solo el escudo junto al menú */
         .site-nav.scrolled .brand-text { max-width: 0; opacity: 0; margin: 0; }
         .site-nav.scrolled .navbar-brand { gap: 0; }
@@ -150,9 +157,28 @@
         }
         .nav-cta:hover i { color:#111; transform:translateX(2px); }
 
+        /* Acceso al sistema en celular: mismo trazo dorado que .nav-cta */
+        .nav-login-m {
+            display:inline-flex; align-items:center; justify-content:center;
+            width:40px; height:40px; border-radius:50%;
+            border:1.5px solid var(--gca-gold); color:var(--gca-dark);
+            text-decoration:none; transition: background .28s ease, color .28s ease;
+        }
+        .nav-login-m i { color:var(--gca-gold); font-size:1.15rem; transition: color .28s ease; }
+        .nav-login-m:hover, .nav-login-m:active { background:var(--gca-gold); }
+        .nav-login-m:hover i, .nav-login-m:active i { color:#111; }
+        .nav-login-m:focus-visible { outline:2px solid #876524; outline-offset:2px; }
+
         /* ─────────── Hamburguesa animada ─────────── */
         .navbar-toggler { border:none; padding:6px; box-shadow:none !important; }
         .navbar-toggler:focus { box-shadow:none; }
+        .navbar-toggler:focus-visible { outline:2px solid #876524; outline-offset:2px; }
+        #contenido:focus { outline:none; }
+        .top-bar a.tb-item { color:inherit; text-decoration:none; }
+        .top-bar a.tb-item:hover { text-decoration:underline; }
+        .skip-link:focus { position:fixed !important; top:10px; left:10px; z-index:2000;
+            background:#fff; color:#111; padding:10px 16px; border-radius:8px;
+            box-shadow:0 6px 20px rgba(0,0,0,.25); outline:2px solid #876524; }
         .hamburger { width:26px; height:20px; position:relative; display:inline-block; }
         .hamburger span {
             position:absolute; left:0; width:100%; height:3px; border-radius:3px;
@@ -205,13 +231,15 @@
 </head>
 <body>
 
+<a class="visually-hidden-focusable skip-link" href="#contenido">Saltar al contenido</a>
+
 <div class="top-bar py-2">
     <div class="container">
         <div class="top-bar__ribbon-inner">
-            <span class="tb-item tb-phone">📞 321 654 8235</span>
-            <span class="tb-sep tb-sep--email">|</span>
-            <span class="tb-item tb-email">✉️ gimnasiocastilloamericano@gmail.com</span>
-            <span class="tb-sep">|</span>
+            <a class="tb-item tb-phone" href="tel:+573216548235"><span aria-hidden="true">📞</span> 321 654 8235</a>
+            <span class="tb-sep tb-sep--email" aria-hidden="true">|</span>
+            <a class="tb-item tb-email" href="mailto:gimnasiocastilloamericano@gmail.com"><span aria-hidden="true">✉️</span> gimnasiocastilloamericano@gmail.com</a>
+            <span class="tb-sep" aria-hidden="true">|</span>
             <span class="tb-item tb-slogan">"Educación con excelencia"</span>
         </div>
     </div>
@@ -220,27 +248,32 @@
 <nav class="navbar navbar-expand-lg site-nav">
     <div class="container">
         <a class="navbar-brand" href="index.php">
-            <img src="assets/img/escudo-gca.png" alt="GCA">
+            <img src="assets/img/escudo-gca.png" alt="">
             <span class="brand-text">Gimnasio Castillo Americano</span>
         </a>
 
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-controls="menu" aria-expanded="false" aria-label="Menú">
+        <!-- Acceso visible en celular sin abrir el menú (en escritorio ya está el botón del navbar) -->
+        <a href="login.php" class="nav-login-m d-lg-none ms-auto me-2" aria-label="Acceso al Sistema" title="Acceso al Sistema">
+            <i class="bi bi-person-circle" aria-hidden="true"></i>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-controls="menu" aria-expanded="false" aria-label="Abrir menú">
             <span class="hamburger"><span></span><span></span><span></span></span>
         </button>
 
         <div class="collapse navbar-collapse" id="menu">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item"><a class="nav-link <?= $__page==='index.php'?'active':'' ?>" href="index.php">Inicio</a></li>
-                <li class="nav-item"><a class="nav-link <?= $__page==='institucion.php'?'active':'' ?>" href="institucion.php">Institución</a></li>
-                <li class="nav-item"><a class="nav-link <?= $__page==='admisiones.php'?'active':'' ?>" href="admisiones.php">Admisiones</a></li>
-                <li class="nav-item"><a class="nav-link <?= $__page==='noticias.php'?'active':'' ?>" href="noticias.php">Noticias</a></li>
-                <li class="nav-item"><a class="nav-link <?= $__page==='docentes.php'?'active':'' ?>" href="docentes.php">Docentes</a></li>
-                <li class="nav-item"><a class="nav-link <?= $__page==='calendario.php'?'active':'' ?>" href="calendario.php">Calendario</a></li>
-                <li class="nav-item"><a class="nav-link <?= $__page==='servicios.php'?'active':'' ?>" href="servicios.php">Servicios</a></li>
-                <li class="nav-item"><a class="nav-link <?= $__page==='contacto.php'?'active':'' ?>" href="contacto.php">Contacto</a></li>
+                <li class="nav-item"><a class="nav-link <?= $__page==='index.php'?'active':'' ?>" href="index.php"<?= $__page==='index.php'?' aria-current="page"':'' ?>>Inicio</a></li>
+                <li class="nav-item"><a class="nav-link <?= $__page==='institucion.php'?'active':'' ?>" href="institucion.php"<?= $__page==='institucion.php'?' aria-current="page"':'' ?>>Institución</a></li>
+                <li class="nav-item"><a class="nav-link <?= $__page==='admisiones.php'?'active':'' ?>" href="admisiones.php"<?= $__page==='admisiones.php'?' aria-current="page"':'' ?>>Admisiones</a></li>
+                <li class="nav-item"><a class="nav-link <?= $__page==='noticias.php'?'active':'' ?>" href="noticias.php"<?= $__page==='noticias.php'?' aria-current="page"':'' ?>>Noticias</a></li>
+                <li class="nav-item"><a class="nav-link <?= $__page==='docentes.php'?'active':'' ?>" href="docentes.php"<?= $__page==='docentes.php'?' aria-current="page"':'' ?>>Docentes</a></li>
+                <li class="nav-item"><a class="nav-link <?= $__page==='calendario.php'?'active':'' ?>" href="calendario.php"<?= $__page==='calendario.php'?' aria-current="page"':'' ?>>Calendario</a></li>
+                <li class="nav-item"><a class="nav-link <?= $__page==='servicios.php'?'active':'' ?>" href="servicios.php"<?= $__page==='servicios.php'?' aria-current="page"':'' ?>>Servicios</a></li>
+                <li class="nav-item"><a class="nav-link <?= $__page==='contacto.php'?'active':'' ?>" href="contacto.php"<?= $__page==='contacto.php'?' aria-current="page"':'' ?>>Contacto</a></li>
             </ul>
             <a href="login.php" class="nav-cta">
-                <i class="bi bi-box-arrow-in-right"></i>
+                <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
                 <span>Acceso al Sistema</span>
             </a>
         </div>
@@ -257,4 +290,4 @@
 })();
 </script>
 
-<main>
+<main id="contenido" tabindex="-1">

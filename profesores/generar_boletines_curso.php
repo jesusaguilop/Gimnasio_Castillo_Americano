@@ -3,14 +3,25 @@
 require_once __DIR__ . '/../includes/init.php';
 checkRole('profesor');
 require_once "../lib/boletin_generator.php";
+require_once "../lib/csrf_helper.php";
+
+// Generar en masa cambia datos (y despublica), así que solo por POST con token
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !validar_token_csrf($_POST['_csrf_token'] ?? '')) {
+    header("Location: direccion_grupo.php");
+    exit;
+}
 
 @set_time_limit(300); // generar muchos PDFs puede tardar; evita timeout
 
 $profesor_id = userId();
-$curso_id = (int)($_GET['curso'] ?? 0);
-$periodo  = $_GET['periodo'] ?? (getConfig('periodo_activo') ?? '1');
-$anio     = (int)($_GET['anio'] ?? (getConfig('anio_activo') ?? date('Y')));
-$template = ($_GET['template'] ?? '') === 'v1' ? 'v1' : 'v2';
+$curso_id = (int)($_POST['curso'] ?? 0);
+$periodo  = (string) ($_POST['periodo'] ?? (getConfig('periodo_activo') ?? '1'));
+$anio     = (int)($_POST['anio'] ?? (getConfig('anio_activo') ?? date('Y')));
+$template = ($_POST['template'] ?? '') === 'v1' ? 'v1' : 'v2';
+if (!in_array($periodo, ['1', '2', '3', '4'], true)) {
+    header("Location: direccion_grupo.php");
+    exit;
+}
 
 /* Solo el director de grupo del curso puede generar en masa */
 $chk = $conexion->prepare("
@@ -33,6 +44,7 @@ if ($curso) {
         $r = generarBoletinEstudiante($conexion, (int)$e['id'], $periodo, (int)$profesor_id, $template, $anio);
         if (!empty($r['ok'])) { $generados++; } else { $omitidos++; }
         $resultados[] = [
+            'id'       => (int) $e['id'],
             'nombre'   => $e['nombre'],
             'documento'=> $e['documento'],
             'ok'       => !empty($r['ok']),
@@ -42,6 +54,11 @@ if ($curso) {
             'puesto'   => $r['puesto'] ?? null,
         ];
     }
+
+    // id de cada boletín para enlazar al visor protegido (el PDF no es público)
+    $ids = $conexion->prepare("SELECT estudiante_id, id FROM boletines_pdf WHERE periodo = ? AND year = ? AND estudiante_id IN (SELECT id FROM estudiantes WHERE curso_id = ?)");
+    $ids->execute([$periodo, $anio, $curso_id]);
+    $boletin_ids = $ids->fetchAll(PDO::FETCH_KEY_PAIR);
 }
 
 $pageTitle = "Generar Boletines";
@@ -54,7 +71,7 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
                 <h5><i class="ti ti-files"></i> Generar Boletines</h5>
                 <p>Panel del Profesor &nbsp;/&nbsp; Dirección de Grupo</p>
@@ -87,7 +104,7 @@ include "includes/header.php";
                                 <i class="bi bi-check-circle-fill"></i> <?= $generados ?> generados
                             </span>
                             <?php if ($omitidos > 0): ?>
-                                <span class="badge rounded-pill px-3 py-2" style="background:#fff3e0;color:#e65100;font-size:12px;">
+                                <span class="badge rounded-pill px-3 py-2" style="background:#fff3e0;color:#a33f00;font-size:12px;">
                                     <i class="bi bi-exclamation-circle-fill"></i> <?= $omitidos ?> sin notas
                                 </span>
                             <?php endif; ?>
@@ -116,7 +133,7 @@ include "includes/header.php";
                                         <td style="text-align:center;">
                                             <?php if ($r['ok'] && $r['promedio'] !== null):
                                                 $p = (float)$r['promedio'];
-                                                $bg = $p >= 60 ? '#1b5e20' : ($p >= 40 ? '#e65100' : '#b71c1c'); ?>
+                                                $bg = $p >= 80 ? '#1b5e20' : ($p >= 60 ? '#a33f00' : '#b71c1c'); ?>
                                                 <span class="badge rounded-pill px-2 py-1" style="background:<?= $bg ?>;color:#fff;font-size:12px;"><?= $p ?></span>
                                             <?php else: ?><span class="text-muted">—</span><?php endif; ?>
                                         </td>
@@ -125,12 +142,13 @@ include "includes/header.php";
                                             <?php if ($r['ok']): ?>
                                                 <span style="color:#2e7d32;font-size:12px;font-weight:600;"><i class="bi bi-check-circle-fill"></i> Generado</span>
                                             <?php else: ?>
-                                                <span style="color:#e65100;font-size:12px;"><i class="bi bi-dash-circle"></i> <?= $r['motivo'] === 'Sin notas' ? 'Sin notas' : htmlspecialchars($r['motivo'] ?? 'Omitido') ?></span>
+                                                <span style="color:#a33f00;font-size:12px;"><i class="bi bi-dash-circle" aria-hidden="true"></i> <?= $r['motivo'] === 'Sin notas' ? 'Sin notas' : htmlspecialchars($r['motivo'] ?? 'Omitido') ?></span>
                                             <?php endif; ?>
                                         </td>
                                         <td style="text-align:center;">
-                                            <?php if ($r['ok'] && $r['ruta']): ?>
-                                                <a href="../<?= htmlspecialchars($r['ruta']) ?>" target="_blank" class="btn-action btn-edit" title="Ver PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                                            <?php if ($r['ok'] && isset($boletin_ids[$r['id']])): ?>
+                                                <a href="../boletin_descargar.php?id=<?= (int) $boletin_ids[$r['id']] ?>" target="_blank" rel="noopener" class="btn-action btn-edit" title="Ver PDF"
+                                                   aria-label="Ver boletín de <?= htmlspecialchars($r['nombre']) ?> (se abre en otra pestaña)"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i></a>
                                             <?php else: ?><span class="text-muted">—</span><?php endif; ?>
                                         </td>
                                     </tr>

@@ -109,9 +109,9 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5>Editar Asignatura</h5>
+                <h5 role="heading" aria-level="1">Editar Asignatura</h5>
                 <p>Panel Administrativo &nbsp;/&nbsp; Editar Asignatura</p>
             </div>
         </div>
@@ -130,16 +130,18 @@ include "includes/header.php";
                         <?php if ($mensaje): ?>
                             <div class="alert alert-<?= $tipo ?> alert-dismissible fade show" role="alert">
                                 <?= htmlspecialchars($mensaje) ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                             </div>
                         <?php endif; ?>
 
                         <form method="POST" autocomplete="off">
                             <?= campo_csrf() ?>
+                            <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
+                            <?= campo_csrf() ?>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Área</label>
-                                <select name="area_id" class="form-select" required>
+                                <label class="form-label fw-medium" for="f_area_id">Área <span class="req" aria-hidden="true">*</span></label>
+                                <select id="f_area_id" name="area_id" class="form-select" required>
                                     <option value="">Seleccione el área</option>
                                     <?php $currentAreaId = $_POST["area_id"] ?? $asignatura["area_id"]; ?>
                                     <?php foreach ($areas as $a): ?>
@@ -151,8 +153,8 @@ include "includes/header.php";
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Nivel</label>
-                                <select name="nivel" class="form-select" required>
+                                <label class="form-label fw-medium" for="f_nivel">Nivel <span class="req" aria-hidden="true">*</span></label>
+                                <select id="f_nivel" name="nivel" class="form-select" required>
                                     <option value="">Seleccione el nivel</option>
                                     <?php $currentNivel = $_POST["nivel"] ?? $asignatura["nivel"]; ?>
                                     <option value="preescolar" <?= $currentNivel === "preescolar" ? "selected" : "" ?>>Preescolar</option>
@@ -162,10 +164,10 @@ include "includes/header.php";
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Grados donde se dicta</label>
-                                <div id="gradosContainer">
+                                <p class="form-label fw-medium mb-2" id="gradosTitulo">Grados donde se dicta</p>
+                                <div id="gradosContainer" role="group" aria-labelledby="gradosTitulo">
                                     <div class="grado-group" data-nivel="preescolar" style="display:none;">
-                                        <label class="form-label text-muted" style="font-size:12px;">Preescolar</label>
+                                        <p class="form-label text-muted mb-1" style="font-size:12px;">Preescolar</p>
                                         <div class="d-flex flex-wrap gap-2 mb-2">
                                             <?php $gradosPost = $_POST["grados"] ?? $gradosAsignados; ?>
                                             <?php foreach (['maternal','prejardin','jardin','transicion'] as $g): ?>
@@ -182,7 +184,7 @@ include "includes/header.php";
                                         </div>
                                     </div>
                                     <div class="grado-group" data-nivel="primaria" style="display:none;">
-                                        <label class="form-label text-muted" style="font-size:12px;">Primaria</label>
+                                        <p class="form-label text-muted mb-1" style="font-size:12px;">Primaria</p>
                                         <div class="d-flex flex-wrap gap-2 mb-2">
                                             <?php foreach (['primero','segundo','tercero','cuarto','quinto'] as $g): ?>
                                                 <div class="form-check form-check-inline">
@@ -198,7 +200,7 @@ include "includes/header.php";
                                         </div>
                                     </div>
                                     <div class="grado-group" data-nivel="secundaria" style="display:none;">
-                                        <label class="form-label text-muted" style="font-size:12px;">Secundaria</label>
+                                        <p class="form-label text-muted mb-1" style="font-size:12px;">Secundaria</p>
                                         <div class="d-flex flex-wrap gap-2 mb-2">
                                             <?php foreach (['sexto','septimo','octavo','noveno','decimo','once'] as $g): ?>
                                                 <div class="form-check form-check-inline">
@@ -218,8 +220,8 @@ include "includes/header.php";
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Nombre de la asignatura</label>
-                                <input type="text" name="nombre" class="form-control"
+                                <label class="form-label fw-medium" for="f_nombre">Nombre de la asignatura <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_nombre" type="text" name="nombre" class="form-control"
                                     value="<?= htmlspecialchars($_POST["nombre"] ?? $asignatura["nombre"]) ?>" required
                                     placeholder="Ej. Matemáticas">
                             </div>

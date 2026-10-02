@@ -8,9 +8,24 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
 
 $token = trim($_POST["token"] ?? "");
 $passwordPlano = $_POST["password"] ?? "";
+$confirmacion = $_POST["password_confirm"] ?? $passwordPlano;
 
-if ($token === "" || strlen($passwordPlano) < 6) {
-    die("Datos inválidos. La contraseña debe tener al menos 6 caracteres.");
+// Los errores vuelven al formulario (con su diseño) en vez de una página en blanco
+function volverAlFormulario(string $token, string $error): never
+{
+    header("Location: ../reset_password.php?token=" . urlencode($token) . "&error=" . $error);
+    exit;
+}
+
+if ($token === "") {
+    header("Location: ../forgot_password.php");
+    exit;
+}
+if (strlen($passwordPlano) < 6) {
+    volverAlFormulario($token, "corta");
+}
+if (!hash_equals($passwordPlano, $confirmacion)) {
+    volverAlFormulario($token, "distintas");
 }
 
 $password = password_hash($passwordPlano, PASSWORD_DEFAULT);
@@ -28,7 +43,9 @@ $stmt->execute();
 $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$usuario) {
-    die("Token inválido");
+    // reset_password.php muestra "El enlace es inválido o ha expirado"
+    header("Location: ../reset_password.php?token=" . urlencode($token));
+    exit;
 }
 
 /* Actualizar contraseña */

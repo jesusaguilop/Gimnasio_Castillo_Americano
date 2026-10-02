@@ -13,7 +13,11 @@ $stats = $conexion->query("
         (SELECT COUNT(*) FROM estudiantes) AS total_estudiantes,
         (SELECT COUNT(*) FROM usuarios WHERE rol = 'padre') AS total_padres,
         (SELECT COUNT(*) FROM cursos) AS total_cursos,
-        (SELECT COUNT(*) FROM asignaturas) AS total_asignaturas
+        (SELECT COUNT(*) FROM asignaturas) AS total_asignaturas,
+        (SELECT COUNT(*) FROM boletines_pdf WHERE publicado = FALSE) AS bol_pendientes,
+        (SELECT COUNT(*) FROM estudiantes WHERE padre_id IS NULL) AS sin_padre,
+        (SELECT COUNT(*) FROM estudiantes WHERE curso_id IS NULL) AS sin_curso,
+        (SELECT COUNT(*) FROM alertas WHERE para_rol = 'admin' AND leido = FALSE) AS alertas_sin_leer
 ")->fetch(PDO::FETCH_ASSOC);
 $total_usuarios = $stats['total_usuarios'];
 $total_profesores = $stats['total_profesores'];
@@ -276,11 +280,11 @@ include "includes/header.php";
     <main id="main">
 
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()" title="Toggle sidebar">
-                <i class="bi bi-list"></i>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar">
+                <i class="bi bi-list" aria-hidden="true"></i>
             </button>
             <div class="breadcrumb-bar">
-                <h5>Panel Administrativo</h5>
+                <h5 role="heading" aria-level="1">Panel Administrativo</h5>
                 <p>Gimnasio Castillo Americano &nbsp;/&nbsp; Inicio</p>
             </div>
         </div>
@@ -309,6 +313,7 @@ include "includes/header.php";
                     </div>
                 </div>
                 <div class="col-sm-6 col-lg-4 col-xl-2">
+                    <a href="ver_profesores.php" class="stat-link">
                     <div class="stat-card" style="--accent:#d4af37; animation-delay:.10s">
                         <div class="stat-icon profesores"><i class="bi bi-person-workspace"></i></div>
                         <div>
@@ -316,8 +321,10 @@ include "includes/header.php";
                             <div class="stat-value" data-count="<?= (int)$total_profesores ?>">0</div>
                         </div>
                     </div>
+                    </a>
                 </div>
                 <div class="col-sm-6 col-lg-4 col-xl-2">
+                    <a href="ver_estudiantes.php" class="stat-link">
                     <div class="stat-card" style="--accent:#198754; animation-delay:.16s">
                         <div class="stat-icon estudiantes"><i class="bi bi-mortarboard-fill"></i></div>
                         <div>
@@ -326,8 +333,10 @@ include "includes/header.php";
                             <div style="font-size:11px;color:var(--text-muted);"><?= (int)$total_estudiantes_usuarios ?> con cuenta</div>
                         </div>
                     </div>
+                    </a>
                 </div>
                 <div class="col-sm-6 col-lg-4 col-xl-2">
+                    <a href="ver_padres.php" class="stat-link">
                     <div class="stat-card" style="--accent:#0d6efd; animation-delay:.22s">
                         <div class="stat-icon padres"><i class="bi bi-person-heart"></i></div>
                         <div>
@@ -335,8 +344,10 @@ include "includes/header.php";
                             <div class="stat-value" data-count="<?= (int)$total_padres ?>">0</div>
                         </div>
                     </div>
+                    </a>
                 </div>
                 <div class="col-sm-6 col-lg-4 col-xl-2">
+                    <a href="ver_cursos.php" class="stat-link">
                     <div class="stat-card" style="--accent:#6f42c1; animation-delay:.28s">
                         <div class="stat-icon cursos"><i class="bi bi-journal-check"></i></div>
                         <div>
@@ -344,8 +355,10 @@ include "includes/header.php";
                             <div class="stat-value" data-count="<?= (int)$total_cursos ?>">0</div>
                         </div>
                     </div>
+                    </a>
                 </div>
                 <div class="col-sm-6 col-lg-4 col-xl-2">
+                    <a href="ver_asignaturas.php" class="stat-link">
                     <div class="stat-card" style="--accent:#fd7e14; animation-delay:.34s">
                         <div class="stat-icon asignaturas"><i class="bi bi-book-fill"></i></div>
                         <div>
@@ -353,6 +366,7 @@ include "includes/header.php";
                             <div class="stat-value" data-count="<?= (int)$total_asignaturas ?>">0</div>
                         </div>
                     </div>
+                    </a>
                 </div>
             </div>
 
@@ -364,9 +378,11 @@ include "includes/header.php";
                 <a href="crear_padre.php" class="quick-action"><i class="bi bi-heart"></i><span>Nuevo Padre</span></a>
                 <a href="crear_curso.php" class="quick-action"><i class="bi bi-plus-square"></i><span>Nuevo Curso</span></a>
                 <a href="crear_asignatura.php" class="quick-action"><i class="bi bi-bookmark-plus"></i><span>Nueva Asignatura</span></a>
-                <a href="asignar_profesor.php" class="quick-action"><i class="bi bi-link-45deg"></i><span>Asignar Materia</span></a>
-                <a href="asignar_padre.php" class="quick-action"><i class="bi bi-people"></i><span>Asignar Hijo</span></a>
-                <a href="plataforma.php" class="quick-action"><i class="bi bi-display"></i><span>Plataforma</span></a>
+                <a href="asignar_profesor.php" class="quick-action"><i class="bi bi-link-45deg"></i><span>Asignar materias a profesores</span></a>
+                <a href="asignar_padre.php" class="quick-action"><i class="bi bi-people"></i><span>Vincular padre con estudiante</span></a>
+                <a href="enviar_boletin.php" class="quick-action"><i class="bi bi-file-earmark-check"></i><span>Boletines</span></a>
+                <a href="crear_noticia.php" class="quick-action"><i class="bi bi-newspaper"></i><span>Nueva Noticia</span></a>
+                <a href="plataforma.php" class="quick-action"><i class="bi bi-display"></i><span>Periodo y notas</span></a>
             </div>
 
             <div class="row g-4">
@@ -396,17 +412,24 @@ include "includes/header.php";
                 </div>
 
                 <div class="col-lg-6">
-                    <div class="section-title"><i class="bi bi-info-circle"></i> Resumen del sistema</div>
+                    <div class="section-title"><i class="bi bi-list-check"></i> Pendientes</div>
                     <div class="recent-card">
-                        <div class="list-item"><span class="item-name">Versión del sistema</span><span class="sum-value">v3.0</span></div>
-                        <div class="list-item"><span class="item-name">Total de usuarios en plataforma</span><span class="sum-value"><?= (int)$total_usuarios ?></span></div>
-                        <div class="list-item"><span class="item-name">Cursos activos</span><span class="sum-value"><?= (int)$total_cursos ?></span></div>
-                        <div class="list-item"><span class="item-name">Asignaturas registradas</span><span class="sum-value"><?= (int)$total_asignaturas ?></span></div>
-                        <div class="list-item"><span class="item-name">Estudiantes en plataforma</span><span class="sum-value"><?= (int)$total_estudiantes ?></span></div>
-                        <div class="list-item">
-                            <span class="item-name">Relación estudiante/profesor</span>
-                            <span class="sum-value"><?= $total_profesores > 0 ? round($total_estudiantes / $total_profesores, 1) . ':1' : '—' ?></span>
-                        </div>
+                        <?php
+                        // Lo que el administrador tiene que resolver, con el enlace para hacerlo
+                        $pendientes = [
+                            ['Boletines por publicar a los padres', (int) $stats['bol_pendientes'], 'enviar_boletin.php'],
+                            ['Estudiantes sin padre o acudiente vinculado', (int) $stats['sin_padre'], 'asignar_padre.php'],
+                            ['Estudiantes sin curso asignado', (int) $stats['sin_curso'], 'asignar_estudiante.php'],
+                            ['Alertas sin leer', (int) $stats['alertas_sin_leer'], 'alertas.php'],
+                        ];
+                        foreach ($pendientes as [$texto, $cantidad, $url]): ?>
+                            <a href="<?= $url ?>" class="list-item" style="text-decoration:none;color:inherit;">
+                                <span class="item-name"><?= $texto ?></span>
+                                <span class="sum-value" style="<?= $cantidad > 0 ? '' : 'color:var(--text-muted);' ?>">
+                                    <?= $cantidad > 0 ? $cantidad : '<i class="bi bi-check-circle" aria-hidden="true"></i><span class="visually-hidden">Ninguno</span>' ?>
+                                </span>
+                            </a>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </div>

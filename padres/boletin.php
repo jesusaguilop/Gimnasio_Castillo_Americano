@@ -34,28 +34,35 @@ if (isset($_GET["poll"])) {
     exit;
 }
 
-/* ── Get available periods ── */
-$periodos = $conexion->prepare("
-    SELECT n.periodo
-    FROM notas n
-    WHERE n.estudiante_id = ? AND n.anio = ?
-    GROUP BY n.periodo
-    ORDER BY
-        CASE n.periodo
-            WHEN '1' THEN 1 WHEN '2' THEN 2 WHEN '3' THEN 3 WHEN '4' THEN 4
-            WHEN '1er Periodo' THEN 1 WHEN '2do Periodo' THEN 2 WHEN '3er Periodo' THEN 3 WHEN '4to Periodo' THEN 4
-            ELSE 5
-        END
+/* ── Boletines PUBLICADOS por el admin ──
+ * Es la compuerta: el padre no ve notas de un período hasta que el colegio
+ * publica su boletín. Antes las notas salían de `notas` directamente y el
+ * padre veía calificaciones a medio digitar. */
+$boletines_pdf = $conexion->prepare("
+    SELECT id, periodo, year
+    FROM boletines_pdf
+    WHERE estudiante_id = ? AND year = ? AND publicado = TRUE
+    ORDER BY periodo
 ");
-$periodos->execute([$estudiante_id, $anio_activo]);
-$periodos = $periodos->fetchAll(PDO::FETCH_COLUMN);
+$boletines_pdf->execute([$estudiante_id, $anio_activo]);
+$boletines_pdf = $boletines_pdf->fetchAll(PDO::FETCH_ASSOC);
+$boletines_por_periodo = [];
+foreach ($boletines_pdf as $bp) {
+    $boletines_por_periodo[(string) $bp['periodo']] = $bp;
+}
+$periodos = array_keys($boletines_por_periodo);
 
-$selected_periodo = $_GET["periodo"] ?? ($periodos[0] ?? null);
+// Por defecto, el período publicado más reciente
+$selected_periodo = isset($_GET["periodo"]) ? (string) $_GET["periodo"] : (end($periodos) ?: null);
+if ($selected_periodo !== null && !isset($boletines_por_periodo[$selected_periodo])) {
+    $selected_periodo = end($periodos) ?: null;
+}
 
-/* ── Get grades for selected period ── */
+/* ── Notas del período seleccionado (solo si está publicado) ── */
 $notas = [];
 $promedio = null;
-if ($selected_periodo) {
+$puesto = null;
+if ($selected_periodo !== null) {
     $stmt = $conexion->prepare("
         SELECT a.nombre AS asignatura, n.nota
         FROM notas n
@@ -71,27 +78,22 @@ if ($selected_periodo) {
         require_once __DIR__ . '/../lib/rank_helper.php';
         $promedio = calcularPromedioGeneralEstudiante($conexion, $estudiante_id, $selected_periodo, $anio_activo);
         if ($promedio === null) $promedio = 0;
+        $puesto = calcularPuestoCurso($conexion, $estudiante_id, $selected_periodo, $anio_activo);
     }
 }
 
-/* ── Check available PDF boletines ── */
-$boletines_pdf = $conexion->prepare("
-    SELECT id, periodo, year
-    FROM boletines_pdf
-    WHERE estudiante_id = ? AND year = ? AND publicado = TRUE
-    ORDER BY year, periodo
-");
-$boletines_pdf->execute([$estudiante_id, $anio_activo]);
-$boletines_pdf = $boletines_pdf->fetchAll(PDO::FETCH_ASSOC);
-$boletines_por_periodo = [];
-foreach ($boletines_pdf as $bp) {
-    $boletines_por_periodo[$bp['periodo']] = $bp;
+/* Misma escala que el boletín: Superior ≥90, Alto 80-89, Básico 60-79, Bajo <60 */
+function gradeClass($nota) {
+    if ($nota >= 80) return 'high';
+    if ($nota >= 60) return 'medium';
+    return 'low';
 }
 
-function gradeClass($nota) {
-    if ($nota >= 60) return 'high';
-    if ($nota >= 40) return 'medium';
-    return 'low';
+function desempeno($nota) {
+    if ($nota >= 90) return 'Superior';
+    if ($nota >= 80) return 'Alto';
+    if ($nota >= 60) return 'Básico';
+    return 'Bajo';
 }
 
 $pageTitle = $estudiante['nombre'];
@@ -102,13 +104,13 @@ include "includes/header.php";
 
 <header class="app-header">
     <a href="dashboard.php" class="app-header-brand">
-        <i class="bi bi-arrow-left" style="color:var(--gold);font-size:20px;margin-right:4px;"></i>
-        <span>Boletín</span>
+        <i class="bi bi-arrow-left" style="color:var(--gold);font-size:20px;margin-right:4px;" aria-hidden="true"></i>
+        <span>Boletín</span><span class="visually-hidden"> — volver a mis hijos</span>
     </a>
     <div class="header-actions">
-        <a href="#" class="btn-header" id="dmToggle" title="Modo oscuro" onclick="document.body.classList.toggle('dark-mode');document.documentElement.setAttribute('data-bs-theme',document.body.classList.contains('dark-mode')?'dark':'');localStorage.setItem('gca-dark-mode',document.body.classList.contains('dark-mode'));this.querySelector('i').className=document.body.classList.contains('dark-mode')?'bi bi-sun':'bi bi-moon-stars';">
-            <i class="bi bi-moon-stars"></i>
-        </a>
+        <button type="button" class="btn-header" id="dmToggle" aria-label="Cambiar modo oscuro" aria-pressed="false" onclick="var on=document.body.classList.toggle('dark-mode');document.documentElement.setAttribute('data-bs-theme',on?'dark':'');localStorage.setItem('gca-dark-mode',on);this.setAttribute('aria-pressed',on);this.querySelector('i').className=on?'bi bi-sun':'bi bi-moon-stars';">
+            <i class="bi bi-moon-stars" aria-hidden="true"></i>
+        </button>
         <a href="../auth/logout.php" class="btn-header logout">
             <i class="bi bi-box-arrow-right"></i> Salir
         </a>
@@ -119,7 +121,7 @@ include "includes/header.php";
 
     <div class="student-header">
         <div class="big-avatar">
-            <?= strtoupper(substr($estudiante['nombre'], 0, 2)) ?>
+            <?= htmlspecialchars(mb_strtoupper(mb_substr($estudiante['nombre'], 0, 2))) ?>
         </div>
         <h4><?= htmlspecialchars($estudiante['nombre']) ?></h4>
         <p>
@@ -129,37 +131,32 @@ include "includes/header.php";
     </div>
 
     <?php if (count($periodos) > 0): ?>
-        <div class="period-tabs mb-4">
+        <nav class="period-tabs mb-4" aria-label="Períodos publicados">
             <?php foreach ($periodos as $p): ?>
-                <a href="boletin.php?estudiante=<?= $estudiante_id ?>&periodo=<?= urlencode($p) ?>"
-                   class="period-tab <?= $p === $selected_periodo ? 'active' : '' ?>">
-                    <i class="bi bi-calendar3"></i> <?= htmlspecialchars($p) ?>
+                <a href="boletin.php?estudiante=<?= (int) $estudiante_id ?>&periodo=<?= urlencode($p) ?>"
+                   class="period-tab <?= $p === $selected_periodo ? 'active' : '' ?>"
+                   <?= $p === $selected_periodo ? 'aria-current="page"' : '' ?>>
+                    <i class="bi bi-calendar3" aria-hidden="true"></i> Período <?= htmlspecialchars($p) ?>
                 </a>
-                <?php if (isset($boletines_por_periodo[$p])): ?>
-                    <a href="../boletin_descargar.php?id=<?= (int) $boletines_por_periodo[$p]['id'] ?>" target="_blank"
-                       style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:#2e7d32;background:#e8f5e9;padding:3px 8px;border-radius:20px;text-decoration:none;font-weight:600;white-space:nowrap;">
-                        <i class="bi bi-file-pdf-fill"></i> PDF
-                    </a>
-                <?php endif; ?>
             <?php endforeach; ?>
-        </div>
+        </nav>
     <?php endif; ?>
 
-    <?php if (!$selected_periodo): ?>
+    <?php if ($selected_periodo === null): ?>
         <div class="app-card">
             <div class="empty-state">
-                <i class="bi bi-journal-x"></i>
-                <h5>Sin calificaciones</h5>
-                <p>Este estudiante aún no tiene notas registradas.</p>
+                <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+                <h2 class="h5">Aún no hay boletines publicados</h2>
+                <p>Cuando el colegio publique el boletín de un período, aparecerá aquí con sus calificaciones.</p>
             </div>
         </div>
 
     <?php elseif (count($notas) === 0): ?>
         <div class="app-card">
             <div class="empty-state">
-                <i class="bi bi-inbox"></i>
-                <h5>Sin notas en <?= htmlspecialchars($selected_periodo) ?></h5>
-                <p>Las calificaciones de este período aún no han sido publicadas.</p>
+                <i class="bi bi-inbox" aria-hidden="true"></i>
+                <h2 class="h5">Sin notas en el período <?= htmlspecialchars($selected_periodo) ?></h2>
+                <p>El boletín está publicado, pero no tiene calificaciones registradas. Puedes verlo abajo.</p>
             </div>
         </div>
 
@@ -180,8 +177,8 @@ include "includes/header.php";
                 <?php foreach ($notas as $n): ?>
                     <div class="grade-card">
                         <span class="subject-name"><?= htmlspecialchars($n['asignatura']) ?></span>
-                        <div class="grade-badge <?= gradeClass($n['nota']) ?>">
-                            <?= (int) $n['nota'] ?>
+                        <div class="grade-badge <?= gradeClass($n['nota']) ?>" title="Desempeño <?= desempeno($n['nota']) ?>">
+                            <?= (int) $n['nota'] ?><span class="visually-hidden"> — desempeño <?= desempeno($n['nota']) ?></span>
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -196,30 +193,22 @@ include "includes/header.php";
                 <div class="avg-pill <?= gradeClass($promedio) ?>">
                     <?= $promedio ?>
                 </div>
-                <?php if ($promedio >= 60): ?>
-                    <p style="font-size:13px;color:#198754;margin-top:10px;font-weight:500;">
-                        <i class="bi bi-emoji-smile-fill"></i> ¡Excelente rendimiento!
-                    </p>
-                <?php elseif ($promedio >= 40): ?>
-                    <p style="font-size:13px;color:#997404;margin-top:10px;font-weight:500;">
-                        <i class="bi bi-emoji-neutral-fill"></i> Puedes mejorar
-                    </p>
-                <?php else: ?>
-                    <p style="font-size:13px;color:#dc3545;margin-top:10px;font-weight:500;">
-                        <i class="bi bi-emoji-frown-fill"></i> Necesita refuerzo
-                    </p>
-                <?php endif; ?>
-                <?php
-                require_once __DIR__ . '/../lib/rank_helper.php';
-                $puesto = calcularPuestoCurso($conexion, $estudiante_id, $selected_periodo, $anio_activo);
-                if ($puesto):
-                ?>
+                <p class="desempeno-msg <?= gradeClass($promedio) ?>">
+                    <?php if ($promedio >= 80): ?>
+                        <i class="bi bi-emoji-smile-fill" aria-hidden="true"></i> Desempeño <?= desempeno($promedio) ?>. ¡Muy bien!
+                    <?php elseif ($promedio >= 60): ?>
+                        <i class="bi bi-emoji-neutral-fill" aria-hidden="true"></i> Desempeño Básico. Puede mejorar.
+                    <?php else: ?>
+                        <i class="bi bi-emoji-frown-fill" aria-hidden="true"></i> Desempeño Bajo. Necesita refuerzo.
+                    <?php endif; ?>
+                </p>
+                <?php if ($puesto): ?>
                     <p style="font-size:13px;color:var(--gold-dark);margin-top:10px;margin-bottom:0;font-weight:700;">
-                        <i class="bi bi-trophy-fill"></i> Puesto en el curso: <?= $puesto ?>
+                        <i class="bi bi-trophy-fill" aria-hidden="true"></i> Puesto en el curso: <?= (int) $puesto ?>
                     </p>
                 <?php endif; ?>
                 <p style="font-size:11px;color:var(--text-muted);margin-top:8px;margin-bottom:0;">
-                    Escala de calificación: 0 a 100
+                    Escala 0 a 100 · Superior 90+ · Alto 80-89 · Básico 60-79 · Bajo menos de 60
                 </p>
             </div>
         </div>
@@ -239,10 +228,10 @@ include "includes/header.php";
                 </span>
                 <div class="boletin-preview-acciones">
                     <a href="<?= $urlBoletin ?>" target="_blank" rel="noopener">
-                        <i class="bi bi-arrows-fullscreen"></i> Pantalla completa
+                        <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i> Ver en pantalla completa
                     </a>
-                    <a href="<?= $urlBoletin ?>" target="_blank" rel="noopener" class="btn-gca-pdf">
-                        <i class="bi bi-download"></i> Descargar
+                    <a href="<?= $urlBoletin ?>&amp;descargar=1" class="btn-gca-pdf">
+                        <i class="bi bi-download" aria-hidden="true"></i> Descargar
                     </a>
                 </div>
             </div>
@@ -277,21 +266,29 @@ include "includes/header.php";
 
 </main>
 
+<div id="nuevoBoletin" class="nuevo-boletin" role="status" hidden>
+    Hay cambios en los boletines publicados.
+    <button type="button" onclick="location.reload()">Actualizar</button>
+</div>
+
 <script>
 (function () {
-    // Actualización en vivo: si el admin publica/oculta un boletín, la vista se refresca sola.
+    // Si el admin publica u oculta un boletín se avisa, en vez de recargar
+    // la página mientras el padre está leyendo.
     var initial = <?= json_encode(array_map('strval', array_keys($boletines_por_periodo))) ?>;
     var pollUrl = 'boletin.php?estudiante=<?= (int) $estudiante_id ?>&poll=1';
     var baseKey = initial.slice().sort().join('|');
+    var aviso = document.getElementById('nuevoBoletin');
     setInterval(function () {
+        if (document.hidden || !aviso.hidden) return;
         fetch(pollUrl, { cache: 'no-store' })
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 var now = (d.boletines || []).map(function (b) { return String(b.periodo); }).sort().join('|');
-                if (now !== baseKey) location.reload();
+                if (now !== baseKey) aviso.hidden = false;
             })
             .catch(function () {});
-    }, 10000);
+    }, 15000);
 })();
 </script>
 

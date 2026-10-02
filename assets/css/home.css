@@ -7,6 +7,7 @@
 
 :root{
     --hm-gold:#c9a24d; --hm-gold2:#e7c877; --hm-gold-deep:#a87f2e;
+    --hm-gold-text:#876524; /* oro para texto: 5.4:1 sobre blanco */
     --hm-ink:#15161f; --hm-ink2:#2a2c3a; --hm-muted:#5c5f70;
     --hm-cream:#faf6ec; --hm-paper:#ffffff;
 }
@@ -19,7 +20,7 @@
 .hm-kicker{
     display:inline-flex; align-items:center; gap:8px;
     font-family:'Poppins',sans-serif; font-weight:700; font-size:.74rem;
-    text-transform:uppercase; letter-spacing:2px; color:var(--hm-gold-deep);
+    text-transform:uppercase; letter-spacing:2px; color:var(--hm-gold-text);
     background:rgba(201,162,77,.12); border:1px solid rgba(201,162,77,.32);
     padding:6px 14px; border-radius:999px; margin-bottom:18px;
 }
@@ -82,7 +83,7 @@
 .hm-float-card{ position:absolute; left:-14px; bottom:-22px; z-index:2; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.92); backdrop-filter:blur(8px); padding:12px 20px 12px 14px; border-radius:18px; box-shadow:0 18px 40px rgba(0,0,0,.2); border:1px solid rgba(201,162,77,.3); }
 .hm-float-card img{ height:46px; }
 .hm-float-card strong{ display:block; font-family:'Poppins',sans-serif; font-weight:800; color:var(--hm-ink); font-size:1.05rem; line-height:1; }
-.hm-float-card span{ font-size:.82rem; color:var(--hm-gold-deep); font-style:italic; }
+.hm-float-card span{ font-size:.82rem; color:var(--hm-gold-text); font-style:italic; }
 
 /* ════════ Banner interior (páginas secundarias) ════════ */
 .hm-page-hero{
@@ -122,7 +123,7 @@
 .hm-feature:hover{ transform:translateY(-8px); box-shadow:0 26px 56px rgba(168,127,46,.22); }
 .hm-feature:hover::before{ transform:scaleX(1); }
 .hm-feature-icon{ width:58px; height:58px; border-radius:16px; display:grid; place-items:center; font-size:1.5rem; color:#1a1400; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); box-shadow:0 10px 24px rgba(201,162,77,.4); margin-bottom:18px; }
-.hm-feature h4{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.2rem; margin:0 0 10px; }
+.hm-feature h3,.hm-feature h4{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.2rem; margin:0 0 10px; }
 .hm-feature p{ color:var(--hm-muted); font-size:.97rem; line-height:1.7; margin:0; }
 .hm-feature.center{ text-align:center; }
 .hm-feature.center .hm-feature-icon{ margin-inline:auto; }
@@ -138,23 +139,27 @@
 /* ── Panel lateral con acento ── */
 .hm-infopanel{ position:relative; background:linear-gradient(135deg,var(--hm-cream),#f3ecdb); border-radius:22px; padding:34px; height:100%; border:1px solid #efe7d5; overflow:hidden; }
 .hm-infopanel::before{ content:''; position:absolute; top:0; left:0; width:5px; height:100%; background:linear-gradient(180deg,var(--hm-gold2),var(--hm-gold)); }
-.hm-infopanel h4{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.2rem; margin:0 0 12px; }
+.hm-infopanel h3,.hm-infopanel h4{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.2rem; margin:0 0 12px; }
 .hm-infopanel p{ color:var(--hm-muted); font-size:.97rem; line-height:1.75; margin:0 0 20px; }
 
 /* ── Formularios ── */
-.hm-input{ width:100%; border-radius:14px; border:1.5px solid #e6ddc9; padding:12px 16px; font-size:.95rem; background:#fff; transition:border-color .2s ease, box-shadow .2s ease; font-family:inherit; color:var(--hm-ink); }
+.hm-input{ width:100%; border-radius:14px; border:1.5px solid #9a8f78; padding:12px 16px; font-size:.95rem; background:#fff; transition:border-color .2s ease, box-shadow .2s ease; font-family:inherit; color:var(--hm-ink); }
 .hm-input:focus{ outline:none; border-color:var(--hm-gold); box-shadow:0 0 0 3px rgba(201,162,77,.15); }
-.hm-input::placeholder{ color:#b6b0a3; }
+.hm-input:focus-visible{ outline:2px solid var(--hm-gold-text); outline-offset:1px; }
+.hm-input[aria-invalid="true"]{ border-color:#b91c1c; }
+.hm-input::placeholder{ color:#857d6e; }
 .hm-label{ font-family:'Poppins',sans-serif; font-weight:600; font-size:.86rem; color:var(--hm-ink2); margin-bottom:6px; display:block; }
 
 /* ── Tarjeta de contacto (icono + texto) ── */
 .hm-contact{ display:flex; align-items:flex-start; gap:15px; background:#fff; border-radius:18px; padding:20px 24px; margin-bottom:14px; border:1px solid #efe7d5; box-shadow:0 6px 20px rgba(21,22,31,.05); transition:transform .3s ease, box-shadow .3s ease; }
 .hm-contact:hover{ transform:translateY(-3px); box-shadow:0 14px 34px rgba(201,162,77,.15); }
 .hm-contact .ic{ width:48px; height:48px; border-radius:14px; flex-shrink:0; display:grid; place-items:center; font-size:1.2rem; color:#1a1400; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); box-shadow:0 6px 16px rgba(201,162,77,.3); }
-.hm-contact h6{ font-family:'Poppins',sans-serif; font-weight:700; margin:0 0 3px; font-size:.95rem; color:#222; }
+.hm-contact h3,.hm-contact h6{ font-family:'Poppins',sans-serif; font-weight:700; margin:0 0 3px; font-size:.95rem; color:#222; }
 .hm-contact p{ margin:0; font-size:.9rem; color:#666; line-height:1.6; }
 .hm-contact p a{ color:#666; text-decoration:none; }
-.hm-contact p a:hover{ color:var(--hm-gold-deep); }
+.hm-contact p a:hover{ color:var(--hm-gold-text); }
+.hm-contact>div{ min-width:0; }
+.hm-contact p{ overflow-wrap:anywhere; }
 
 /* ════════ CTA / banda oscura ════════ */
 .hm-cta{ position:relative; overflow:hidden; padding:clamp(64px,9vw,110px) 0; text-align:center; background:radial-gradient(120% 140% at 50% 0%, #26262f 0%, #15161f 60%, #0d0e14 100%); color:#fff; }
@@ -171,7 +176,7 @@
 .hm-card-date{ position:absolute; top:14px; right:14px; z-index:2; font-size:.72rem; font-weight:600; color:#fff; background:rgba(0,0,0,.5); backdrop-filter:blur(4px); padding:5px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:5px; }
 .hm-card-ph{ width:100%; height:100%; display:grid; place-items:center; background:linear-gradient(135deg,#f4efe4,#eadfc6); color:var(--hm-gold); font-size:2.5rem; }
 .hm-card-foot{ padding:0 26px 22px; }
-.hm-card-foot small{ display:flex; align-items:center; gap:6px; color:#9a9488; font-size:.78rem; border-top:1px solid #f0ebe0; padding-top:14px; }
+.hm-card-foot small{ display:flex; align-items:center; gap:6px; color:#6b7280; font-size:.78rem; border-top:1px solid #f0ebe0; padding-top:14px; }
 
 /* ── Tarjeta de docente ── */
 .hm-teacher{ position:relative; cursor:pointer; display:flex; flex-direction:column; background:#fff; border-radius:22px; overflow:hidden; height:100%; border:1px solid #efe7d5; box-shadow:0 12px 34px rgba(21,22,31,.07); transition:transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease; text-align:center; }
@@ -180,10 +185,10 @@
 .hm-teacher-img,.hm-teacher-ph{ width:118px; height:118px; border-radius:50%; object-fit:cover; margin:0 auto; border:4px solid #fff; box-shadow:0 8px 22px rgba(0,0,0,.15); outline:3px solid var(--hm-gold); outline-offset:2px; display:block; }
 .hm-teacher-ph{ display:grid; place-items:center; font-size:2.6rem; color:#fff; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); outline-color:var(--hm-gold2); }
 .hm-teacher-body{ padding:20px 22px 28px; flex:1 1 auto; display:flex; flex-direction:column; }
-.hm-teacher-body h5{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.08rem; margin:0 0 8px; overflow-wrap:anywhere; }
-.hm-teacher .spec{ display:inline-block; font-family:'Poppins',sans-serif; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--hm-gold-deep); background:rgba(201,162,77,.12); border:1px solid rgba(201,162,77,.3); padding:4px 12px; border-radius:999px; margin-bottom:12px; overflow-wrap:anywhere; }
+.hm-teacher-body h2,.hm-teacher-body h3,.hm-teacher-body h5{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.08rem; margin:0 0 8px; overflow-wrap:anywhere; }
+.hm-teacher .spec{ display:inline-block; font-family:'Poppins',sans-serif; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--hm-gold-text); background:rgba(201,162,77,.12); border:1px solid rgba(201,162,77,.3); padding:4px 12px; border-radius:999px; margin-bottom:12px; overflow-wrap:anywhere; }
 .hm-teacher-body p{ color:var(--hm-muted); font-size:.9rem; line-height:1.6; margin:0 0 16px; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
-.hm-teacher-more{ margin-top:auto; display:inline-flex; align-items:center; justify-content:center; gap:6px; font-family:'Poppins',sans-serif; font-weight:700; font-size:.85rem; color:var(--hm-gold-deep); }
+.hm-teacher-more{ margin-top:auto; display:inline-flex; align-items:center; justify-content:center; gap:6px; font-family:'Poppins',sans-serif; font-weight:700; font-size:.85rem; color:var(--hm-gold-text); }
 .hm-teacher-more i{ transition:transform .25s ease; }
 .hm-teacher:hover{ transform:translateY(-8px); border-color:rgba(201,162,77,.5); }
 .hm-teacher:hover .hm-teacher-more i{ transform:translateX(4px); }
@@ -205,7 +210,7 @@
 .hm-dm-name{ position:relative; z-index:1; color:#fff; font-family:'Poppins',sans-serif; font-weight:800; font-size:1.5rem; letter-spacing:-.02em; margin:18px 0 10px; overflow-wrap:anywhere; }
 .hm-dm-spec{ position:relative; z-index:1; display:inline-block; font-family:'Poppins',sans-serif; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#1a1400; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); padding:5px 15px; border-radius:999px; }
 .hm-dm-body{ padding:28px 32px 32px; background:#fff; }
-.hm-dm-body .lbl{ font-family:'Poppins',sans-serif; font-weight:700; font-size:.72rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--hm-gold-deep); margin-bottom:8px; }
+.hm-dm-body .lbl{ font-family:'Poppins',sans-serif; font-weight:700; font-size:.72rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--hm-gold-text); margin-bottom:8px; }
 .hm-dm-body .desc{ color:var(--hm-muted); line-height:1.8; font-size:1rem; margin:0 0 22px; overflow-wrap:anywhere; }
 .hm-dm-email{ display:inline-flex; align-items:center; gap:8px; font-family:'Poppins',sans-serif; font-weight:700; font-size:.92rem; color:#1a1400; text-decoration:none; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); padding:11px 22px; border-radius:999px; box-shadow:0 10px 26px rgba(201,162,77,.4); transition:transform .25s ease, box-shadow .25s ease; overflow-wrap:anywhere; }
 .hm-dm-email:hover{ transform:translateY(-2px); box-shadow:0 16px 34px rgba(201,162,77,.55); color:#1a1400; }
@@ -215,19 +220,19 @@
 @media (prefers-reduced-motion:reduce){ .hm-dm.fade .modal-dialog{ transition:none; transform:none; } .hm-dm-close:hover{ transform:none; } }
 
 /* ── Tarjeta de descarga (PDF) ── */
-.hm-download{ display:flex; align-items:center; gap:16px; background:#fff; border-radius:16px; padding:18px 22px; border:1px solid #efe7d5; box-shadow:0 6px 20px rgba(21,22,31,.05); text-decoration:none; transition:transform .3s ease, box-shadow .3s ease; }
+.hm-download{ display:flex; flex-wrap:wrap; align-items:center; gap:16px; background:#fff; border-radius:16px; padding:18px 22px; border:1px solid #efe7d5; box-shadow:0 6px 20px rgba(21,22,31,.05); text-decoration:none; transition:transform .3s ease, box-shadow .3s ease; }
 .hm-download:hover{ transform:translateY(-4px); box-shadow:0 16px 38px rgba(21,22,31,.1); }
 .hm-download .ic{ width:50px; height:50px; border-radius:14px; flex-shrink:0; display:grid; place-items:center; font-size:1.4rem; color:#1a1400; background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); }
-.hm-download .info{ flex:1; }
-.hm-download .info h6{ font-family:'Poppins',sans-serif; font-weight:700; margin:0 0 2px; color:#222; font-size:.98rem; }
-.hm-download .info small{ color:#999; font-size:.78rem; }
+.hm-download .info{ flex:1; min-width:150px; }
+.hm-download .info h3,.hm-download .info h6{ font-family:'Poppins',sans-serif; font-weight:700; margin:0 0 2px; color:#222; font-size:.98rem; }
+.hm-download .info small{ color:#6b7280; font-size:.78rem; }
 .hm-download .go{ background:linear-gradient(135deg,var(--hm-gold2),var(--hm-gold)); color:#1a1400; border-radius:999px; padding:8px 20px; font-family:'Poppins',sans-serif; font-weight:700; font-size:.82rem; white-space:nowrap; }
 
 /* ── WhatsApp directo ── */
 .hm-wa{ display:flex; align-items:center; gap:16px; background:linear-gradient(135deg,#f0faf4,#e8f5ee); border:1px solid #c8e6d0; border-radius:18px; padding:18px 22px; text-decoration:none; transition:transform .3s ease, box-shadow .3s ease; }
 .hm-wa:hover{ transform:translateY(-2px); box-shadow:0 10px 26px rgba(37,211,102,.18); }
 .hm-wa .ic{ width:48px; height:48px; border-radius:14px; background:#25d366; color:#fff; display:grid; place-items:center; font-size:1.4rem; flex-shrink:0; }
-.hm-wa h6{ font-family:'Poppins',sans-serif; font-weight:700; margin:0 0 1px; color:#1a5a2e; font-size:.95rem; }
+.hm-wa h3,.hm-wa h6{ font-family:'Poppins',sans-serif; font-weight:700; margin:0 0 1px; color:#1a5a2e; font-size:.95rem; }
 .hm-wa p{ margin:0; font-size:.85rem; color:#3a8a5a; }
 .hm-wa .arrow{ margin-left:auto; color:#25d366; font-size:1.3rem; transition:transform .3s ease; }
 .hm-wa:hover .arrow{ transform:translateX(4px); }
@@ -242,12 +247,21 @@
 
 /* ── Encabezado de sección con línea ── */
 .hm-sechead{ display:flex; align-items:center; gap:14px; margin-bottom:26px; }
-.hm-sechead h3{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.15rem; margin:0; white-space:nowrap; }
+.hm-sechead h2,.hm-sechead h3{ font-family:'Poppins',sans-serif; font-weight:800; font-size:1.15rem; margin:0; white-space:nowrap; }
 .hm-sechead .line{ flex:1; height:2px; background:linear-gradient(90deg,var(--hm-gold),transparent); border-radius:2px; }
 
 /* ── Mapa ── */
 .hm-map{ border-radius:20px; overflow:hidden; box-shadow:0 12px 34px rgba(21,22,31,.08); border:1px solid #efe7d5; }
 .hm-map iframe{ display:block; width:100%; }
+
+/* ── Foco visible (teclado) ── */
+.hm-btn:focus-visible,.hm-back:focus-visible,.hm-download:focus-visible,.hm-wa:focus-visible,
+.hm-wrap a:focus-visible,.hm-more:focus-visible{ outline:2px solid var(--hm-gold-text); outline-offset:3px; }
+
+/* ── "Leer más" de las noticias ── */
+.hm-more{ display:inline-flex; align-items:center; gap:4px; margin-top:10px; padding:4px 0; border:0; background:none;
+    font-family:'Poppins',sans-serif; font-weight:700; font-size:.88rem; color:var(--hm-gold-text); cursor:pointer; }
+.hm-more:hover{ text-decoration:underline; }
 
 /* ── Responsive ── */
 @media (max-width:991.98px){
@@ -261,3 +275,5 @@
     .hm-btn,.hm-frame,.hm-card,.hm-card-media img,.hm-feature,.hm-feature::before,.hm-contact,.hm-numitem{ transition:none !important; }
     .hm-frame{ transform:none !important; }
 }
+.hm-dm-email[hidden],.hm-dm-spec[hidden],#dmDescWrap[hidden]{ display:none !important; }
+.hm-teacher-body h2{ color:var(--hm-ink); }

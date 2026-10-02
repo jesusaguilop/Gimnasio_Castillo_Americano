@@ -18,18 +18,54 @@ if (isset($_SESSION["success_msg"])) {
 // (ver_*.php?id=N&confirmar=1): cualquier enlace o <img> que cargara
 // el admin estando logueado podía eliminar registros.
 $puedeEliminar = $_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["eliminar_id"]);
+
+/**
+ * Cuenta filas que dependen del registro. Las llaves foráneas borran EN
+ * CASCADA (notas, logros, boletines…), así que antes de eliminar se revisa
+ * y, si hay datos, se bloquea con un mensaje en vez de perderlos en silencio.
+ */
+function contarDependencias(PDO $conexion, array $consultas, int $id): array
+{
+    $encontradas = [];
+    foreach ($consultas as $etiqueta => $sql) {
+        $q = $conexion->prepare($sql);
+        $q->execute([$id]);
+        $n = (int) $q->fetchColumn();
+        if ($n > 0) {
+            $encontradas[] = "$n $etiqueta";
+        }
+    }
+    return $encontradas;
+}
+
+$tipo = "success";
 if ($puedeEliminar && !validar_token_csrf($_POST["_csrf_token"] ?? "")) {
     $mensaje = "Error de seguridad. Intenta de nuevo.";
+    $tipo = "danger";
     $puedeEliminar = false;
 }
 if ($puedeEliminar) {
     $id = (int) $_POST["eliminar_id"];
-    try {
-        $stmt = $conexion->prepare("DELETE FROM cursos WHERE id = :id");
-        $stmt->execute([":id" => $id]);
-        $mensaje = "Curso eliminado correctamente";
-    } catch (PDOException $e) {
-        $mensaje = "No se puede eliminar el curso porque tiene dependencias.";
+    // Borrar un curso borraba en cascada todas sus notas
+    $deps = contarDependencias($conexion, [
+        "estudiante(s)"         => "SELECT COUNT(*) FROM estudiantes WHERE curso_id = ?",
+        "nota(s) registrada(s)" => "SELECT COUNT(*) FROM notas WHERE curso_id = ?",
+    ], $id);
+    if ($deps) {
+        $mensaje = "No se eliminó: este curso tiene " . implode(", ", $deps)
+                 . ". Primero pase a los estudiantes a otro curso en «Asignar estudiante a curso».";
+        $tipo = "warning";
+    } else {
+        try {
+            $stmt = $conexion->prepare("DELETE FROM cursos WHERE id = :id");
+            $stmt->execute([":id" => $id]);
+            $mensaje = $stmt->rowCount() ? "Curso eliminado correctamente" : "No se encontró el registro.";
+            $tipo = $stmt->rowCount() ? "success" : "warning";
+        } catch (PDOException $e) {
+            error_log("[ver_cursos] " . $e->getMessage());
+            $mensaje = "No se pudo eliminar el curso.";
+            $tipo = "danger";
+        }
     }
 }
 
@@ -54,9 +90,9 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5>Cursos</h5>
+                <h5 role="heading" aria-level="1">Cursos</h5>
                 <p>Panel Administrativo &nbsp;/&nbsp; Cursos</p>
             </div>
         </div>
@@ -71,9 +107,9 @@ include "includes/header.php";
                 </div>
 
                 <?php if ($mensaje): ?>
-                    <div class="alert alert-info alert-dismissible fade show" role="alert">
-                        <?= $mensaje ?>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <div class="alert alert-<?= $tipo ?? 'success' ?> alert-dismissible fade show" role="alert">
+                        <?= htmlspecialchars($mensaje) ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                     </div>
                 <?php endif; ?>
 
@@ -81,10 +117,10 @@ include "includes/header.php";
                     <table class="table gca-table table-hover align-middle">
                         <thead>
                             <tr>
-                                <th>Nivel</th>
-                                <th>Grado</th>
-                                <th>Curso</th>
-                                <th class="text-end">Acciones</th>
+                                <th scope="col">Nivel</th>
+                                <th scope="col">Grado</th>
+                                <th scope="col">Curso</th>
+                                <th scope="col" class="text-end">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -104,7 +140,7 @@ include "includes/header.php";
                                     <?= campo_csrf() ?>
                                     <input type="hidden" name="eliminar_id" value="<?= $c["id"] ?>">
                                     <button type="button" class="btn-action btn-delete" title="Eliminar"
-                                        onclick="showConfirm('¿Seguro que deseas eliminar este curso?',()=>document.getElementById('delForm<?= $c["id"] ?>').submit());">
+                                        onclick="showConfirm('¿Eliminar este curso? Si tiene estudiantes o notas no se podrá eliminar.',()=>document.getElementById('delForm<?= $c["id"] ?>').submit());">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>

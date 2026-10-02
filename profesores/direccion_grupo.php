@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/init.php';
 checkRole('profesor');
 require_once "../lib/rank_helper.php";
+require_once "../lib/csrf_helper.php";
 
 $profesor_id = userId();
 
@@ -30,7 +31,7 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
                 <h5><i class="ti ti-users"></i> Dirección de Grupo</h5>
                 <p>Panel del Profesor &nbsp;/&nbsp; Vista Consolidada</p>
@@ -124,11 +125,17 @@ include "includes/header.php";
                                                 <i class="bi bi-people-fill me-1" style="color:var(--gold-dark);"></i>
                                                 <?= count($estudiantes) ?> estudiantes &middot; <?= count($materias_curso) ?> materias del plan
                                             </span>
-                                            <a href="generar_boletines_curso.php?curso=<?= $curso['id'] ?>&periodo=<?= urlencode($periodo_activo) ?>&anio=<?= $anio_activo ?>&template=v2"
-                                               class="btn-gca btn-gca-sm"
-                                               onclick="return confirm('¿Generar los boletines de TODOS los estudiantes con notas de este curso?\nSe guardarán con su promedio y puesto.')">
-                                                <i class="bi bi-collection"></i> Generar todos los boletines
-                                            </a>
+                                            <form method="POST" action="generar_boletines_curso.php" class="m-0"
+                                                  onsubmit="return confirm('¿Generar los boletines de TODOS los estudiantes con notas de este curso?\n\nSe guardan con su promedio y puesto. Los boletines que ya estaban publicados vuelven a quedar pendientes hasta que administración los publique de nuevo.')">
+                                                <?= campo_csrf() ?>
+                                                <input type="hidden" name="curso" value="<?= (int) $curso['id'] ?>">
+                                                <input type="hidden" name="periodo" value="<?= htmlspecialchars($periodo_activo) ?>">
+                                                <input type="hidden" name="anio" value="<?= (int) $anio_activo ?>">
+                                                <input type="hidden" name="template" value="v2">
+                                                <button type="submit" class="btn-gca btn-gca-sm">
+                                                    <i class="bi bi-collection" aria-hidden="true"></i> Generar todos los boletines
+                                                </button>
+                                            </form>
                                         </div>
                                     <?php endif; ?>
 
@@ -158,24 +165,24 @@ include "includes/header.php";
                                                                 $completo = ($tot > 0 && $reg >= $tot);
                                                                 $prom = $prom_map[$est['id']] ?? null;
                                                             ?>
-                                                            <span style="margin-left:8px;font-size:10px;font-weight:700;padding:1px 8px;border-radius:20px;white-space:nowrap;<?= $completo ? 'color:#2e7d32;background:rgba(25,135,84,.12);' : 'color:#e65100;background:rgba(230,81,0,.10);' ?>">
+                                                            <span style="margin-left:8px;font-size:10px;font-weight:700;padding:1px 8px;border-radius:20px;white-space:nowrap;<?= $completo ? 'color:#2e7d32;background:rgba(25,135,84,.12);' : 'color:#a33f00;background:rgba(230,81,0,.10);' ?>">
                                                                 <i class="bi bi-journal-check"></i> <?= $reg ?>/<?= $tot ?>
                                                             </span>
                                                             <?php if ($prom !== null): ?>
                                                                 <span style="margin-left:6px;font-size:10px;font-weight:700;color:#1a1a1a;background:rgba(212,175,55,.15);padding:1px 8px;border-radius:20px;white-space:nowrap;">Prom <?= $prom ?></span>
                                                             <?php endif; ?>
-                                                            <span style="margin-left:auto;font-size:11px;color:#999;"><?= htmlspecialchars($est['documento']) ?></span>
+                                                            <span style="margin-left:auto;font-size:11px;color:var(--text-muted);"><?= htmlspecialchars($est['documento']) ?></span>
                                                         </button>
                                                     </h2>
                                                     <div id="collapseEstDir<?= $est['id'] ?>" class="accordion-collapse collapse"
                                                         data-bs-parent="#accordionEstDir<?= $curso['id'] ?>">
                                                         <div class="accordion-body p-0">
                                                             <div style="padding:10px 14px;display:flex;justify-content:flex-end;border-bottom:1px solid #f5f3ee;">
-                                                                <a href="#" class="btn-gca btn-gca-sm btn-gen-boletin"
-                                                                   data-estudiante-id="<?= $est['id'] ?>"
+                                                                <button type="button" class="btn-gca btn-gca-sm btn-gen-boletin"
+                                                                   data-estudiante-id="<?= (int) $est['id'] ?>"
                                                                    data-estudiante-nombre="<?= htmlspecialchars($est['nombre'], ENT_QUOTES) ?>">
-                                                                    <i class="bi bi-file-earmark-pdf"></i> Generar boletín
-                                                                </a>
+                                                                    <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Generar boletín
+                                                                </button>
                                                             </div>
                                                             <div class="table-responsive">
                                                                 <table class="table gca-table mb-0" style="font-size:12px;">
@@ -247,14 +254,15 @@ include "includes/header.php";
     </main>
 
 <!-- ─── Modal Paz y Salvo ─── -->
-<div class="modal fade" id="pazSalvoModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="pazSalvoModal" tabindex="-1" aria-hidden="true" aria-labelledby="pazSalvoTitulo">
     <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
         <div class="modal-content" style="border-radius:16px;border:1px solid var(--border-color);box-shadow:0 20px 60px rgba(0,0,0,.15);">
-            <div class="modal-body text-center py-5 px-4">
+            <div class="modal-body text-center py-5 px-4 position-relative">
+                <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Cancelar"></button>
                 <div class="mb-3" style="font-size:48px;color:var(--gold);">
-                    <i class="bi bi-shield-check"></i>
+                    <i class="bi bi-shield-check" aria-hidden="true"></i>
                 </div>
-                <h5 class="mb-2" style="font-weight:700;">¿Está a paz y salvo?</h5>
+                <h5 class="mb-2" id="pazSalvoTitulo" style="font-weight:700;">¿Está a paz y salvo?</h5>
                 <p id="pazSalvoMsg" class="mb-4" style="font-size:14px;color:var(--text-secondary);line-height:1.5;">
                     ¿El estudiante está a paz y salvo académica y administrativamente?
                 </p>
@@ -266,44 +274,55 @@ include "includes/header.php";
                         <i class="bi bi-check-circle me-1"></i>Sí, está a paz y salvo
                     </button>
                 </div>
-                <small class="d-block mt-3 text-muted" style="font-size:11px;">
-                    Si responde <b>Sí</b> se envía el boletín al padre y al administrador.<br>
-                    Si responde <b>No</b> solo se envía al administrador.
+                <small class="d-block mt-3 text-muted" style="font-size:12px;">
+                    Con cualquiera de las dos respuestas se genera el boletín y queda <b>pendiente</b>
+                    hasta que administración lo publique para el padre. El paz y salvo queda registrado para administración.
                 </small>
             </div>
         </div>
     </div>
 </div>
 
+<!-- El boletín se genera por POST (con token) y se abre en otra pestaña -->
+<form method="POST" action="generar_boletin.php" target="_blank" id="formGenBoletin" class="d-none">
+    <?= campo_csrf() ?>
+    <input type="hidden" name="estudiante" value="">
+    <input type="hidden" name="periodo" value="<?= htmlspecialchars($periodo_activo) ?>">
+    <input type="hidden" name="anio" value="<?= (int) $anio_activo ?>">
+    <input type="hidden" name="template" value="v2">
+    <input type="hidden" name="paz_y_salvo" value="0">
+</form>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var el = document.getElementById('pazSalvoModal');
     if (!el || typeof bootstrap === 'undefined') return;
-    var modal = new bootstrap.Modal(el, { backdrop: 'static', keyboard: false });
-    var periodo = <?= json_encode($periodo_activo) ?>;
-    var anio = <?= json_encode((string)$anio_activo) ?>;
-    var pendingUrl = '';
+    var modal = new bootstrap.Modal(el);
+    var form = document.getElementById('formGenBoletin');
+    var pendiente = '';
 
     document.querySelectorAll('.btn-gen-boletin').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-            e.preventDefault();
-            var id = this.dataset.estudianteId;
-            var nombre = this.dataset.estudianteNombre;
-            pendingUrl = 'generar_boletin.php?estudiante=' + id + '&periodo=' + encodeURIComponent(periodo) + '&anio=' + encodeURIComponent(anio) + '&template=v2';
-            document.getElementById('pazSalvoMsg').innerHTML =
-                '¿El estudiante <b>' + nombre + '</b> está a paz y salvo académica y administrativamente?';
+        btn.addEventListener('click', function () {
+            pendiente = this.dataset.estudianteId;
+            // textContent: el nombre nunca se interpreta como HTML
+            var msg = document.getElementById('pazSalvoMsg');
+            var b = document.createElement('b');
+            b.textContent = this.dataset.estudianteNombre;
+            msg.textContent = '¿El estudiante ';
+            msg.append(b, ' está a paz y salvo académica y administrativamente?');
             modal.show();
         });
     });
 
-    document.getElementById('pazSalvoSi').addEventListener('click', function () {
+    function generar(paz) {
         modal.hide();
-        if (pendingUrl) window.open(pendingUrl + '&paz_y_salvo=1', '_blank');
-    });
-    document.getElementById('pazSalvoNo').addEventListener('click', function () {
-        modal.hide();
-        if (pendingUrl) window.open(pendingUrl + '&paz_y_salvo=0', '_blank');
-    });
+        if (!pendiente) return;
+        form.elements.estudiante.value = pendiente;
+        form.elements.paz_y_salvo.value = paz;
+        form.submit();
+    }
+    document.getElementById('pazSalvoSi').addEventListener('click', function () { generar('1'); });
+    document.getElementById('pazSalvoNo').addEventListener('click', function () { generar('0'); });
 });
 </script>
 

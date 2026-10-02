@@ -1195,6 +1195,7 @@ section[id] {
     display: flex;
     flex-direction: column;
 }
+.teacher-card .teacher-body h2,
 .teacher-card .teacher-body h5 {
     font-weight: 800;
     margin-bottom: 4px;
@@ -1203,7 +1204,7 @@ section[id] {
 }
 .teacher-card .teacher-body .specialty {
     font-size: 12px;
-    color: var(--gca-gold);
+    color: #876524;
     font-weight: 700;
     display: inline-block;
     background: rgba(201,162,77,.1);
@@ -1216,7 +1217,7 @@ section[id] {
 }
 .teacher-card .teacher-body p {
     font-size: 13.5px;
-    color: #888;
+    color: #6b7280;
     margin-top: 14px;
     line-height: 1.6;
     flex: 1;
@@ -1229,7 +1230,7 @@ section[id] {
     margin-top: 12px;
     padding: 8px 20px;
     font-size: 13px;
-    color: #fff;
+    color: #1a1400;
     background: var(--gca-gold);
     font-weight: 600;
     text-decoration: none;

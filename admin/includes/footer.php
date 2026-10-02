@@ -24,30 +24,42 @@
 
         const isOpen = submenu.classList.contains('open');
         document.querySelectorAll('.nav-submenu.open').forEach(s => s.classList.remove('open'));
-        document.querySelectorAll('.nav-parent.open').forEach(p => p.classList.remove('open'));
+        document.querySelectorAll('.nav-parent.open').forEach(p => {
+            p.classList.remove('open');
+            if (p.hasAttribute('aria-expanded')) p.setAttribute('aria-expanded', 'false');
+        });
         if (!isOpen) {
             submenu.classList.add('open');
             el.classList.add('open');
         }
+        el.setAttribute('aria-expanded', String(!isOpen));
     }
 
     function toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         const main = document.getElementById('main');
         const overlay = document.getElementById('overlay');
+        let abierto;
         if (window.innerWidth <= 768) {
-            sidebar.classList.toggle('open');
+            abierto = sidebar.classList.toggle('open');
             overlay.classList.toggle('show');
         } else {
-            sidebar.classList.toggle('collapsed');
+            abierto = !sidebar.classList.toggle('collapsed');
             main.classList.toggle('expanded');
         }
+        document.querySelectorAll('.toggle-btn').forEach(b => b.setAttribute('aria-expanded', String(abierto)));
     }
 
     function closeSidebar() {
         document.getElementById('sidebar').classList.remove('open');
         document.getElementById('overlay').classList.remove('show');
+        document.querySelectorAll('.toggle-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
     }
+
+    // Estado inicial del botón de menú (en móvil el menú arranca cerrado)
+    document.querySelectorAll('.toggle-btn').forEach(b => {
+        b.setAttribute('aria-expanded', String(window.innerWidth > 768));
+    });
 
     // Highlight active sub-item and open parent menu
     const currentPath = window.location.pathname;
@@ -67,7 +79,9 @@
                 if (parent && parent.classList.contains('nav-parent')) {
                     parent.classList.add('open');
                     parent.classList.add('active');
+                    if (parent.hasAttribute('aria-expanded')) parent.setAttribute('aria-expanded', 'true');
                 }
+                link.setAttribute('aria-current', 'page');
             }
         }
     });
@@ -96,6 +110,7 @@
             const dark = document.body.classList.contains('dark-mode');
             icon.className = dark ? 'bi bi-sun' : 'bi bi-moon-stars';
             label.textContent = dark ? 'Modo claro' : 'Modo oscuro';
+            toggle.setAttribute('aria-pressed', String(dark));
         }
 
         updateUI();
@@ -108,15 +123,25 @@
     })();
 
     // ── Confirm Modal ──
-    function showConfirm(message, callback) {
+    // onclick (y no addEventListener) para que cada confirmación reemplace a
+    // la anterior: antes, cancelar dejaba el callback viejo enganchado y se
+    // ejecutaba junto con el siguiente que sí se confirmaba.
+    function showConfirm(message, callback, textoBoton) {
         const modal = document.getElementById('gcaConfirmModal');
         if (!modal) return;
         document.getElementById('gcaConfirmMsg').textContent = message;
         const btn = document.getElementById('gcaConfirmBtn');
-        const handler = function() { callback(); hideConfirm(); };
-        btn.removeEventListener('click', handler);
-        btn.addEventListener('click', handler);
-        new bootstrap.Modal(modal, { backdrop: 'static', keyboard: false }).show();
+        btn.textContent = textoBoton || 'Sí, eliminar';
+        btn.onclick = function() {
+            btn.onclick = null;
+            hideConfirm();
+            callback();
+        };
+        modal.addEventListener('hidden.bs.modal', function() { btn.onclick = null; }, { once: true });
+        modal.addEventListener('shown.bs.modal', function() {
+            modal.querySelector('[data-bs-dismiss]').focus();
+        }, { once: true });
+        bootstrap.Modal.getOrCreateInstance(modal, { backdrop: 'static', keyboard: true }).show();
     }
     function hideConfirm() {
         const modal = document.getElementById('gcaConfirmModal');
@@ -125,12 +150,12 @@
 </script>
 
 <!-- ── Confirm Modal ── -->
-<div class="modal fade" id="gcaConfirmModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="gcaConfirmModal" tabindex="-1" aria-hidden="true" role="alertdialog" aria-labelledby="gcaConfirmMsg">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content" style="border-radius:16px;border:1px solid var(--border-color);box-shadow:0 20px 60px rgba(0,0,0,.15);">
             <div class="modal-body text-center py-5 px-4">
                 <div class="mb-3" style="font-size:48px;color:var(--gold);">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
                 </div>
                 <p id="gcaConfirmMsg" class="mb-4" style="font-size:16px;font-weight:500;color:var(--text-primary);line-height:1.5;">¿Seguro?</p>
                 <div class="d-flex gap-2 justify-content-center">

@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/vendor/autoload.php';
+\App\Base\Session::start();
 require_once __DIR__ . '/lib/csrf_helper.php';
 ?>
 <!DOCTYPE html>
@@ -8,6 +9,8 @@ require_once __DIR__ . '/lib/csrf_helper.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recuperar contraseña | Gimnasio Castillo Americano</title>
+    <meta name="description" content="Recupera el acceso al sistema académico del Gimnasio Castillo Americano.">
+    <link rel="icon" type="image/png" href="assets/img/escudo-gca.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/auth.css">
@@ -22,28 +25,28 @@ require_once __DIR__ . '/lib/csrf_helper.php';
 
         <div class="text-center mb-4">
             <div class="auth-logo">
-                <img src="assets/img/escudo-gca.png" alt="Escudo GCA">
+                <img src="assets/img/escudo-gca.png" alt="">
             </div>
             <h1 class="auth-title">Recuperar contraseña</h1>
             <p class="auth-sub">Gimnasio Castillo Americano</p>
-            <p class="auth-hint"><i class="bi bi-shield-lock me-1"></i>Te enviaremos un enlace para restablecerla</p>
+            <p class="auth-hint"><i class="bi bi-shield-lock me-1" aria-hidden="true"></i>Te enviaremos un enlace para restablecerla</p>
         </div>
 
         <?php if (isset($_GET["ok"])): ?>
-            <div class="auth-alert ok mb-4">
-                <i class="bi bi-check-circle-fill"></i>
+            <div class="auth-alert ok mb-4" role="status">
+                <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
                 <span>Si el correo existe, se enviará un enlace de recuperación.</span>
             </div>
         <?php endif; ?>
         <?php if (isset($_GET["error"])): ?>
-            <div class="auth-alert err mb-4">
-                <i class="bi bi-exclamation-triangle-fill"></i>
+            <div class="auth-alert err mb-4" role="alert">
+                <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
                 <span>Ocurrió un error. Intenta nuevamente.</span>
             </div>
         <?php endif; ?>
         <?php if (isset($_GET["sincorreo"])): ?>
-            <div class="auth-alert err mb-4">
-                <i class="bi bi-envelope-slash-fill"></i>
+            <div class="auth-alert err mb-4" role="alert">
+                <i class="bi bi-envelope-slash-fill" aria-hidden="true"></i>
                 <span>El envío de correos no está configurado todavía. Comunícate con el colegio para restablecer tu contraseña.</span>
             </div>
         <?php endif; ?>
@@ -54,18 +57,18 @@ require_once __DIR__ . '/lib/csrf_helper.php';
                 <label class="auth-label" for="emailInput">Correo electrónico</label>
                 <div class="field">
                     <input type="email" name="email" id="emailInput" class="form-control"
-                           placeholder="usuario@correo.com" required autofocus>
-                    <i class="bi bi-envelope input-icon"></i>
+                           placeholder="usuario@correo.com" required autofocus autocomplete="email" inputmode="email">
+                    <i class="bi bi-envelope input-icon" aria-hidden="true"></i>
                 </div>
             </div>
 
             <button type="submit" class="btn-auth">
-                <i class="bi bi-envelope-check"></i> Enviar enlace de recuperación
+                <i class="bi bi-envelope-check" aria-hidden="true"></i> Enviar enlace de recuperación
             </button>
         </form>
 
         <div class="auth-links text-center mt-4 pt-1">
-            <a href="login.php"><i class="bi bi-arrow-left"></i> Volver al inicio de sesión</a>
+            <a href="login.php"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al inicio de sesión</a>
         </div>
 
     </div>

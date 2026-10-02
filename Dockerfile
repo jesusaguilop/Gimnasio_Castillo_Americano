@@ -18,7 +18,7 @@ FROM php:8.3-apache
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev libzip-dev libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
     && docker-php-ext-configure gd --with-jpeg --with-freetype \
-    && docker-php-ext-install -j"$(nproc)" pdo_pgsql pgsql gd zip \
+    && docker-php-ext-install -j"$(nproc)" pdo_pgsql pgsql gd zip calendar \
     && a2enmod rewrite headers expires deflate \
     && rm -rf /var/lib/apt/lists/*
 
@@ -71,7 +71,16 @@ RUN printf '%s\n' \
     && a2enconf gca
 
 # Railway inyecta $PORT; Apache viene fijado al 80.
+# El volumen se monta encima de assets/uploads al arrancar (vacío y de root),
+# así que las subcarpetas y los permisos se rehacen aquí y no en el build.
+# En Railway aparece más de un MPM habilitado y Apache se niega a arrancar;
+# mod_php exige prefork, así que se dejan fuera event y worker.
 CMD ["sh", "-c", "\
+    rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* && \
+    ln -sf ../mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load && \
+    ln -sf ../mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf && \
+    mkdir -p assets/uploads/boletines assets/uploads/docentes assets/uploads/noticias && \
+    chown -R www-data:www-data assets/uploads && \
     sed -i \"s/^Listen 80$/Listen ${PORT:-80}/\" /etc/apache2/ports.conf && \
     sed -i \"s/:80>/:${PORT:-80}>/\" /etc/apache2/sites-available/000-default.conf && \
     exec apache2-foreground"]

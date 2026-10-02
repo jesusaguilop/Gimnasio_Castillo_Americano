@@ -1,4 +1,8 @@
-<?php include "header.php"; ?>
+<?php
+$pageTitle = 'Institución';
+$pageDesc = 'Misión, visión y valores del Gimnasio Castillo Americano, colegio en Valledupar.';
+include "header.php";
+?>
 
 <div class="hm-wrap">
 
@@ -46,22 +50,22 @@
             <div class="row g-4">
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
                     <div class="hm-feature center">
-                        <div class="hm-feature-icon"><i class="bi bi-bullseye"></i></div>
-                        <h4>Misión</h4>
+                        <div class="hm-feature-icon"><i class="bi bi-bullseye" aria-hidden="true"></i></div>
+                        <h3>Misión</h3>
                         <p>Formar estudiantes íntegros, responsables y críticos, con una sólida preparación académica y valores éticos que les permitan aportar positivamente a la sociedad.</p>
                     </div>
                 </div>
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
                     <div class="hm-feature center">
-                        <div class="hm-feature-icon"><i class="bi bi-eye-fill"></i></div>
-                        <h4>Visión</h4>
+                        <div class="hm-feature-icon"><i class="bi bi-eye-fill" aria-hidden="true"></i></div>
+                        <h3>Visión</h3>
                         <p>Ser reconocidos como una institución educativa de excelencia, líder en innovación académica, calidad humana y compromiso social.</p>
                     </div>
                 </div>
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
                     <div class="hm-feature center">
-                        <div class="hm-feature-icon"><i class="bi bi-gem"></i></div>
-                        <h4>Valores</h4>
+                        <div class="hm-feature-icon"><i class="bi bi-gem" aria-hidden="true"></i></div>
+                        <h3>Valores</h3>
                         <p>Respeto, disciplina, responsabilidad, honestidad, compromiso y trabajo en equipo como pilares fundamentales de nuestra comunidad educativa.</p>
                     </div>
                 </div>
@@ -80,7 +84,7 @@
                 sembramos conocimiento con valores y construimos futuro
                 a través de la excelencia académica.
             </p>
-            <a href="index.php" class="hm-btn hm-btn-primary hm-btn-lg"><i class="bi bi-arrow-left-short"></i> Volver al inicio</a>
+            <a href="index.php" class="hm-btn hm-btn-primary hm-btn-lg"><i class="bi bi-arrow-left-short" aria-hidden="true"></i> Volver al inicio</a>
         </div>
     </section>
 

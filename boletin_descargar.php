@@ -87,7 +87,9 @@ $nombre = sprintf(
 );
 
 header('Content-Type: application/pdf');
-header('Content-Disposition: inline; filename="' . $nombre . '"');
+// ?descargar=1 baja el archivo; sin él se abre en el visor del navegador
+$disposicion = isset($_GET['descargar']) ? 'attachment' : 'inline';
+header('Content-Disposition: ' . $disposicion . '; filename="' . $nombre . '"');
 header('Content-Length: ' . filesize($ruta));
 header('Cache-Control: private, no-store');
 header('X-Content-Type-Options: nosniff');

@@ -1,11 +1,7 @@
 <?php
-session_start();
-require_once "../config/database.php";
+require_once __DIR__ . '/../includes/init.php';
+checkRole('profesor');
 
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "profesor") {
-    header("Location: ../login.php");
-    exit;
-}
 
 $profesor_id = $_SESSION["id"];
 
@@ -30,7 +26,7 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
                 <h5><i class="ti ti-chart-bar"></i> Ver Promedios</h5>
                 <p>Panel del Profesor &nbsp;/&nbsp; Rendimiento Académico</p>
@@ -60,11 +56,13 @@ include "includes/header.php";
                     JOIN profesor_curso_asignatura pca
                          ON pca.curso_id = n.curso_id
                          AND pca.asignatura_id = n.asignatura_id
-                    WHERE n.curso_id IN ($placeholders) AND pca.profesor_id = ?
+                    WHERE n.curso_id IN ($placeholders) AND pca.profesor_id = ? AND n.anio = ?
                     GROUP BY n.curso_id, e.id, a.id
                     ORDER BY e.nombre, a.nombre
                 ");
-                $stmtP->execute(array_merge($curso_ids, [$profesor_id]));
+                $anioQ = $conexion->query("SELECT valor FROM configuraciones WHERE clave = 'anio_activo'");
+                $anio_activo = (int) (($anioQ ? $anioQ->fetchColumn() : null) ?: date('Y'));
+                $stmtP->execute(array_merge($curso_ids, [$profesor_id, $anio_activo]));
                 foreach ($stmtP->fetchAll(PDO::FETCH_ASSOC) as $row) {
                     $promedios_por_curso[$row['curso_id']][] = $row;
                 }

@@ -1,5 +1,5 @@
 # Proteger archivos sensibles
-<FilesMatch "\.(env|sql|md|log|lock|phar)$">
+<FilesMatch "\.(env|sql|md|log|lock|phar|py)$">
     Require all denied
 </FilesMatch>
 

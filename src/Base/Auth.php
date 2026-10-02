@@ -61,6 +61,8 @@ class Auth
     public static function login(int $id, string $name, string $role): void
     {
         Session::start();
+        // ID de sesión nuevo al autenticarse: evita la fijación de sesión.
+        session_regenerate_id(true);
         Session::set('id', $id);
         Session::set('nombre', $name);
         Session::set('rol', $role);

@@ -7,12 +7,16 @@ if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
 }
 
 require_once "../config/database.php";
+require_once __DIR__ . "/../lib/csrf_helper.php";
 require_once "../lib/rank_helper.php";
 
 $mensaje = "";
 $tipo = "";
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !validar_token_csrf($_POST["_csrf_token"] ?? "")) {
+    $mensaje = "Error de seguridad. Recargue la página e intente de nuevo.";
+    $tipo = "danger";
+} elseif ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $nombre_curso = trim($_POST["nombre_curso"] ?? "");
     $grado = trim($_POST["grado"] ?? "");
@@ -48,9 +52,9 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
-                <h5>Crear Curso</h5>
+                <h5 role="heading" aria-level="1">Crear Curso</h5>
                 <p>Panel Administrativo &nbsp;/&nbsp; Nuevo Grado/Curso</p>
             </div>
         </div>
@@ -69,14 +73,16 @@ include "includes/header.php";
                         <?php if ($mensaje): ?>
                             <div class="alert alert-<?= $tipo ?> alert-dismissible fade show" role="alert">
                                 <?= htmlspecialchars($mensaje) ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
                             </div>
                         <?php endif; ?>
 
                         <form method="POST" autocomplete="off">
+                            <?= campo_csrf() ?>
+                            <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
                             <div class="mb-3">
-                                <label class="form-label fw-medium">Grado</label>
-                                <select name="grado" class="form-select" required>
+                                <label class="form-label fw-medium" for="f_grado">Grado <span class="req" aria-hidden="true">*</span></label>
+                                <select id="f_grado" name="grado" class="form-select" required>
                                     <option value="">Seleccione</option>
                                     <optgroup label="Preescolar">
                                         <option value="maternal" <?= ($_POST["grado"] ?? "") == "maternal" ? "selected" : "" ?>>Maternal</option>
@@ -103,8 +109,8 @@ include "includes/header.php";
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label fw-medium">Nombre del curso (ej. A, B)</label>
-                                <input type="text" name="nombre_curso" class="form-control"
+                                <label class="form-label fw-medium" for="f_nombre_curso">Nombre del curso (ej. A, B) <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_nombre_curso" type="text" name="nombre_curso" class="form-control"
                                     value="<?= htmlspecialchars($_POST["nombre_curso"] ?? "") ?>" required
                                     placeholder="Ej. A">
                             </div>

@@ -4,6 +4,18 @@ require_once __DIR__ . '/../includes/init.php';
 checkRole('padre');
 
 $padre_id = userId();
+
+/* ── Marcar una alerta como leída (solo las dirigidas a este padre) ── */
+require_once __DIR__ . '/../lib/csrf_helper.php';
+require_once __DIR__ . '/../lib/alertas_helper.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_leida'])) {
+    if (validar_token_csrf($_POST['_csrf_token'] ?? '')) {
+        marcarAlertaLeida($conexion, (int) ($_POST['alerta_id'] ?? 0), $padre_id, 'padre');
+    }
+    header('Location: dashboard.php');
+    exit;
+}
+
 $nombre_padre = $_SESSION["nombre"] ?? "Padre de Familia";
 
 /* ── Get children ── */
@@ -39,9 +51,10 @@ if (count($hijos_ids) > 0) {
         FROM boletines_pdf bp
         JOIN estudiantes e ON bp.estudiante_id = e.id
         WHERE bp.estudiante_id IN ($placeholders)
+          AND bp.publicado = TRUE AND bp.year = ?
         ORDER BY bp.estudiante_id, bp.periodo
     ");
-    $stmtB->execute($hijos_ids);
+    $stmtB->execute(array_merge($hijos_ids, [(int)(getConfig('anio_activo') ?? date('Y'))]));
     foreach ($stmtB->fetchAll(PDO::FETCH_ASSOC) as $b) {
         $boletines_disponibles[$b['estudiante_id']][] = $b;
     }
@@ -57,16 +70,16 @@ include "includes/header.php";
 
 <header class="app-header">
     <a href="dashboard.php" class="app-header-brand">
-        <img src="../assets/img/logo_gca.png" alt="GCA">
+        <img src="../assets/img/logo_gca.png" alt="">
         <div>
             <span>Familia GCA</span>
             <small>Panel de Padres</small>
         </div>
     </a>
     <div class="header-actions">
-        <a href="#" class="btn-header" id="dmToggle" title="Modo oscuro" onclick="document.body.classList.toggle('dark-mode');document.documentElement.setAttribute('data-bs-theme',document.body.classList.contains('dark-mode')?'dark':'');localStorage.setItem('gca-dark-mode',document.body.classList.contains('dark-mode'));this.querySelector('i').className=document.body.classList.contains('dark-mode')?'bi bi-sun':'bi bi-moon-stars';">
-            <i class="bi bi-moon-stars"></i>
-        </a>
+        <button type="button" class="btn-header" id="dmToggle" aria-label="Cambiar modo oscuro" aria-pressed="false" onclick="var on=document.body.classList.toggle('dark-mode');document.documentElement.setAttribute('data-bs-theme',on?'dark':'');localStorage.setItem('gca-dark-mode',on);this.setAttribute('aria-pressed',on);this.querySelector('i').className=on?'bi bi-sun':'bi bi-moon-stars';">
+            <i class="bi bi-moon-stars" aria-hidden="true"></i>
+        </button>
         <a href="../auth/logout.php" class="btn-header logout">
             <i class="bi bi-box-arrow-right"></i> Salir
         </a>
@@ -125,13 +138,21 @@ include "includes/header.php";
     <?php if (count($alertas_padre) > 0): ?>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
             <?php foreach ($alertas_padre as $al): ?>
-                <div style="background:var(--alert-bg);border-left:4px solid var(--alert-color);border-radius:10px;padding:10px 14px;">
+                <div role="note" style="background:var(--alert-bg);border-left:4px solid var(--alert-color);border-radius:10px;padding:10px 14px;">
                     <div class="d-flex align-items-start gap-2">
-                        <i class="bi bi-exclamation-triangle-fill" style="color:var(--alert-color);font-size:16px;margin-top:1px;"></i>
-                        <div>
+                        <i class="bi bi-exclamation-triangle-fill" style="color:var(--alert-color);font-size:16px;margin-top:1px;" aria-hidden="true"></i>
+                        <div style="flex:1;min-width:0;">
                             <strong style="font-size:13px;color:var(--text-primary);"><?= htmlspecialchars($al['titulo']) ?></strong>
                             <p style="font-size:12px;color:var(--text-secondary);margin:2px 0 0;"><?= nl2br(htmlspecialchars($al['mensaje'])) ?></p>
                         </div>
+                        <form method="POST" style="margin:0;">
+                            <?= campo_csrf() ?>
+                            <input type="hidden" name="alerta_id" value="<?= (int) $al['id'] ?>">
+                            <button type="submit" name="marcar_leida" class="alerta-ok"
+                                    aria-label="Marcar como leída: <?= htmlspecialchars($al['titulo']) ?>">
+                                Entendido
+                            </button>
+                        </form>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -159,7 +180,7 @@ include "includes/header.php";
                         </span>
                     <?php endif; ?>
                     <div class="student-avatar">
-                        <?= strtoupper(substr($h['nombre'], 0, 2)) ?>
+                        <?= htmlspecialchars(mb_strtoupper(mb_substr($h['nombre'], 0, 2))) ?>
                     </div>
                     <div class="student-info">
                         <h6><?= htmlspecialchars($h['nombre']) ?></h6>

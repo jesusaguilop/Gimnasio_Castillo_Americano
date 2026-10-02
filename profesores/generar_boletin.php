@@ -3,6 +3,7 @@ session_start();
 require_once "../config/database.php";
 require_once "../lib/boletin_generator.php";
 require_once "../lib/mail_helper.php";
+require_once "../lib/csrf_helper.php";
 
 /**
  * Muestra una página de mensaje con estilo (en vez de un die() en texto plano)
@@ -42,11 +43,19 @@ if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "profesor") {
     exit;
 }
 
-$profesor_id = $_SESSION["id"];
-$estudiante_id = $_GET['estudiante'] ?? null;
-$periodo = $_GET['periodo'] ?? null;
+// Generar cambia datos (y despublica el boletín), así que solo por POST con token
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    boletinMensaje('Usa el botón "Generar boletín"', 'Los boletines se generan desde "Dirección de Grupo", con el botón de cada estudiante.', 'bi-info-circle');
+}
+if (!validar_token_csrf($_POST['_csrf_token'] ?? '')) {
+    boletinMensaje('Sesión vencida', 'Recarga la página de Dirección de Grupo e inténtalo de nuevo.', 'bi-shield-exclamation');
+}
 
-if (!$estudiante_id || !$periodo) {
+$profesor_id = $_SESSION["id"];
+$estudiante_id = (int) ($_POST['estudiante'] ?? 0);
+$periodo = (string) ($_POST['periodo'] ?? '');
+
+if (!$estudiante_id || !in_array($periodo, ['1', '2', '3', '4'], true)) {
     boletinMensaje('Faltan datos', 'No se recibió el estudiante o el período. Vuelve a intentarlo desde la lista de estudiantes.', 'bi-exclamation-triangle');
 }
 
@@ -65,9 +74,9 @@ if (!$estudiante) {
 }
 
 // Generar el boletín (lógica compartida: guarda en disco + registra + calcula promedio/puesto)
-$template = ($_GET['template'] ?? '') === 'v1' ? 'v1' : 'v2';
-$anio = (int)($_GET['anio'] ?? date('Y'));
-$pazBool = (($_GET['paz_y_salvo'] ?? '') === '1');
+$template = ($_POST['template'] ?? '') === 'v1' ? 'v1' : 'v2';
+$anio = (int)($_POST['anio'] ?? date('Y'));
+$pazBool = (($_POST['paz_y_salvo'] ?? '') === '1');
 $res = generarBoletinEstudiante($conexion, (int)$estudiante_id, $periodo, (int)$profesor_id, $template, $anio, $pazBool);
 
 if (!$res['ok']) {

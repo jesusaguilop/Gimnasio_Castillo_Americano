@@ -11,13 +11,13 @@
             <div class="row align-items-center g-5">
                 <div class="col-lg-6" data-aos="fade-up">
                     <span class="hm-eyebrow">
-                        <img src="assets/img/escudo-gca.png" alt="GCA">
+                        <img src="assets/img/escudo-gca.png" alt="">
                         Gimnasio Castillo Americano
                     </span>
                     <h1 class="hm-title">Bienvenidos a<br><span class="hm-title-grad">nuestro Castillo</span></h1>
                     <p class="hm-sub">Educación con carácter, valores y excelencia académica.</p>
                     <div class="hm-actions">
-                        <a href="login.php" class="hm-btn hm-btn-primary">Acceso al Sistema Académico <i class="bi bi-arrow-right-short"></i></a>
+                        <a href="login.php" class="hm-btn hm-btn-primary">Acceso al Sistema Académico <i class="bi bi-arrow-right-short" aria-hidden="true"></i></a>
                         <a href="institucion.php" class="hm-btn hm-btn-outline">Conócenos</a>
                     </div>
                 </div>
@@ -27,7 +27,7 @@
                             <img src="assets/img/colegio.png" alt="Gimnasio Castillo Americano">
                         </div>
                         <div class="hm-float-card">
-                            <img src="assets/img/escudo-gca.png" alt="Escudo GCA">
+                            <img src="assets/img/escudo-gca.png" alt="">
                             <div><strong>Cultivar</strong><span>para cosechar</span></div>
                         </div>
                     </div>
@@ -76,8 +76,8 @@
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
                     <article class="hm-card">
                         <div class="hm-card-media">
-                            <img src="assets/img/colegio.png" alt="Valores y Disciplina">
-                            <span class="hm-card-icon"><i class="bi bi-shield-check"></i></span>
+                            <img src="assets/img/colegio.png" alt="">
+                            <span class="hm-card-icon"><i class="bi bi-shield-check" aria-hidden="true"></i></span>
                         </div>
                         <div class="hm-card-body">
                             <h3 class="hm-card-title">Valores y Disciplina</h3>
@@ -90,7 +90,7 @@
                     <article class="hm-card">
                         <div class="hm-card-media">
                             <img src="assets/img/img2.png" alt="Excelencia Académica">
-                            <span class="hm-card-icon"><i class="bi bi-mortarboard-fill"></i></span>
+                            <span class="hm-card-icon"><i class="bi bi-mortarboard-fill" aria-hidden="true"></i></span>
                         </div>
                         <div class="hm-card-body">
                             <h3 class="hm-card-title">Excelencia Académica</h3>
@@ -103,7 +103,7 @@
                     <article class="hm-card">
                         <div class="hm-card-media">
                             <img src="assets/img/img3.png" alt="Comunidad Educativa">
-                            <span class="hm-card-icon"><i class="bi bi-people-fill"></i></span>
+                            <span class="hm-card-icon"><i class="bi bi-people-fill" aria-hidden="true"></i></span>
                         </div>
                         <div class="hm-card-body">
                             <h3 class="hm-card-title">Comunidad Educativa</h3>
@@ -125,7 +125,7 @@
                 Educamos con visión de futuro, formando personas
                 capaces de transformar su entorno con valores y conocimiento.
             </p>
-            <a href="login.php" class="hm-btn hm-btn-primary hm-btn-lg">Ingresar al Sistema <i class="bi bi-arrow-right-short"></i></a>
+            <a href="login.php" class="hm-btn hm-btn-primary hm-btn-lg">Ingresar al Sistema <i class="bi bi-arrow-right-short" aria-hidden="true"></i></a>
         </div>
     </section>
 

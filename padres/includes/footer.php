@@ -15,7 +15,7 @@
             if (isDark) {
                 document.body.classList.add('dark-mode');
                 document.documentElement.setAttribute('data-bs-theme', 'dark');
-                if (dmToggle) dmToggle.querySelector('i').className = 'bi bi-sun';
+                if (dmToggle) { dmToggle.querySelector('i').className = 'bi bi-sun'; dmToggle.setAttribute('aria-pressed', 'true'); }
             } else {
                 if (dmToggle) dmToggle.querySelector('i').className = 'bi bi-moon-stars';
             }

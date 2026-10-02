@@ -1,17 +1,15 @@
 <?php
-session_start();
-require_once "../config/database.php";
+require_once __DIR__ . '/../includes/init.php';
+checkRole('profesor');
 require_once "../lib/alertas_helper.php";
+require_once "../lib/csrf_helper.php";
 
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "profesor") {
-    header("Location: ../login.php");
-    exit;
-}
 
 $usuario_id = $_SESSION["id"];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_leida'])) {
-    marcarAlertaLeida($conexion, $_POST['alerta_id']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_leida'])
+    && validar_token_csrf($_POST['_csrf_token'] ?? '')) {
+    marcarAlertaLeida($conexion, $_POST['alerta_id'] ?? 0, $usuario_id, 'profesor');
     header("Location: alertas.php");
     exit;
 }
@@ -28,7 +26,7 @@ include "includes/header.php";
 
     <main id="main">
         <div class="topbar">
-            <button class="toggle-btn" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <button class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
             <div class="breadcrumb-bar">
                 <h5><i class="ti ti-bell"></i> Notificaciones</h5>
                 <p>Panel del Profesor &nbsp;/&nbsp; Alertas</p>
@@ -59,7 +57,7 @@ include "includes/header.php";
                                         <?= nl2br(htmlspecialchars($a['mensaje'])) ?>
                                     </p>
                                     <div class="d-flex align-items-center gap-3">
-                                        <small style="color:#999;">
+                                        <small style="color:var(--text-muted);">
                                             <i class="bi bi-clock me-1"></i><?= date("d/m/Y H:i", strtotime($a['created_at'])) ?>
                                         </small>
                                         <?php if ($a['tipo'] === 'riesgo_academico'): ?>
@@ -67,7 +65,8 @@ include "includes/header.php";
                                         <?php endif; ?>
                                         <?php if (!$a['leido']): ?>
                                             <form method="POST" style="display:inline;">
-                                                <input type="hidden" name="alerta_id" value="<?= $a['id'] ?>">
+                                                <?= campo_csrf() ?>
+                                                <input type="hidden" name="alerta_id" value="<?= (int) $a['id'] ?>">
                                                 <button type="submit" name="marcar_leida" class="btn btn-sm btn-link text-decoration-none p-0"
                                                     style="font-size:11px;color:var(--gold-dark);">Marcar como leída</button>
                                             </form>
