@@ -25,6 +25,7 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/escudo.css">
     <link rel="stylesheet" href="assets/css/login.css">
+    <link rel="stylesheet" href="assets/css/login-intro.css">
 </head>
 <body class="lg-body">
 
@@ -35,10 +36,23 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
         <a href="index.php" class="lg-volver"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al sitio</a>
 
         <div class="lg-marca__centro">
-            <span class="escudo lg-escudo" data-ruge aria-hidden="true">
-                <img class="escudo-base" src="assets/img/escudo/escudo-base.png" alt="" width="226" height="337">
+            <!-- Escudo oficial en piezas (assets/img/escudo/): la intro solo las mueve
+                 hasta su sitio; al terminar queda idéntico al escudo oficial. -->
+            <span class="escudo lg-escudo lg-intro" aria-hidden="true">
+                <img class="escudo-pieza escudo-bajo" src="assets/img/escudo/pieza-escudo-bajo.png" alt="" width="226" height="337">
+                <img class="escudo-pieza chevrones" src="assets/img/escudo/pieza-chevrones.png" alt="" width="226" height="337">
+                <img class="escudo-pieza estandartes" src="assets/img/escudo/pieza-estandartes.png" alt="" width="226" height="337">
+                <img class="escudo-pieza torre" src="assets/img/escudo/pieza-torre.png" alt="" width="226" height="337">
+                <img class="escudo-pieza almenas" src="assets/img/escudo/pieza-almenas.png" alt="" width="226" height="337">
+                <img class="escudo-pieza hojas" src="assets/img/escudo/pieza-hojas.png" alt="" width="226" height="337">
+                <img class="escudo-letra g" src="assets/img/escudo/letra-g.png" alt="" width="226" height="337">
+                <img class="escudo-letra a" src="assets/img/escudo/letra-a.png" alt="" width="226" height="337">
+                <img class="escudo-letra c" src="assets/img/escudo/letra-c.png" alt="" width="226" height="337">
                 <img class="escudo-leon izq" src="assets/img/escudo/leon-izq.png" alt="" width="226" height="337">
                 <img class="escudo-leon der" src="assets/img/escudo/leon-der.png" alt="" width="226" height="337">
+                <span class="lg-impacto g"></span><span class="lg-impacto a"></span><span class="lg-impacto c"></span>
+                <span class="lg-onda izq n1"></span><span class="lg-onda izq n2"></span><span class="lg-onda izq n3"></span>
+                <span class="lg-onda der n1"></span><span class="lg-onda der n2"></span><span class="lg-onda der n3"></span>
             </span>
             <p class="lg-marca__kicker">Gimnasio</p>
             <p class="lg-marca__nombre">Castillo Americano</p>
