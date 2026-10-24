@@ -36,3 +36,5 @@ padres_vinculos*.csv
 
 # Caché de métricas de fuentes que dompdf genera al renderizar
 /lib/lib/fonts/*.afm.json
+/lib/lib/fonts/carlito_*
+/lib/lib/fonts/installed-fonts.json
