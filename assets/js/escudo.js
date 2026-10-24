@@ -4,10 +4,11 @@
 
     var quieto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    /* ── Header: los leones rugen una vez al cargar ──
+    /* ── Los leones rugen una vez al cargar (header o escudo con data-ruge) ──
        La clase se quita al terminar para que el rugido del hover vuelva a funcionar. */
     function rugirHeader() {
-        var e = document.querySelector('.navbar-brand .escudo');
+        // El del header, o cualquier escudo marcado con data-ruge (p. ej. el del login)
+        var e = document.querySelector('.navbar-brand .escudo, .escudo[data-ruge]');
         if (!e || quieto) return;
         setTimeout(function () {
             e.classList.add('ruge');

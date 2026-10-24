@@ -12,7 +12,7 @@ require_once __DIR__ . '/lib/csrf_helper.php';
     <meta name="description" content="Recupera el acceso al sistema académico del Gimnasio Castillo Americano.">
     <link rel="icon" type="image/png" href="assets/img/escudo-gca.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/auth.css">
 </head>
 <body class="auth-body">
@@ -25,7 +25,7 @@ require_once __DIR__ . '/lib/csrf_helper.php';
 
         <div class="text-center mb-4">
             <div class="auth-logo">
-                <img src="assets/img/escudo-gca.png" alt="">
+                <img src="assets/img/escudo/escudo.png" alt="">
             </div>
             <h1 class="auth-title">Recuperar contraseña</h1>
             <p class="auth-sub">Gimnasio Castillo Americano</p>
@@ -35,7 +35,7 @@ require_once __DIR__ . '/lib/csrf_helper.php';
         <?php if (isset($_GET["ok"])): ?>
             <div class="auth-alert ok mb-4" role="status">
                 <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
-                <span>Si el correo existe, se enviará un enlace de recuperación.</span>
+                <span>Si ese correo tiene una cuenta en el colegio, en unos minutos te llegará un enlace (revisa también Spam o Promociones). Si no llega, pide en el colegio que verifiquen con qué correo está registrada tu cuenta.</span>
             </div>
         <?php endif; ?>
         <?php if (isset($_GET["error"])): ?>

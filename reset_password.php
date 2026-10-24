@@ -22,7 +22,7 @@ $errorReset = $_GET["error"] ?? "";
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="assets/img/escudo-gca.png">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/auth.css">
 </head>
 <body class="auth-body">
@@ -35,7 +35,7 @@ $errorReset = $_GET["error"] ?? "";
 
         <div class="text-center mb-4">
             <div class="auth-logo">
-                <img src="assets/img/escudo-gca.png" alt="">
+                <img src="assets/img/escudo/escudo.png" alt="">
             </div>
             <h1 class="auth-title">Nueva contraseña</h1>
             <p class="auth-sub">Gimnasio Castillo Americano</p>
