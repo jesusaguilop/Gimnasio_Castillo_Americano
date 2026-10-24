@@ -25,3 +25,14 @@ __pycache__/
 /.settings/
 composer.phar
 *.zip
+
+# Datos personales / subidas de usuarios: NUNCA al repositorio (es público)
+/assets/uploads/
+/database/colegio_db*.sql
+*credenciales*.csv
+padres_vinculos*.csv
+/MODELO BOLETIN.pdf
+/Captura de pantalla*.png
+
+# Caché de métricas de fuentes que dompdf genera al renderizar
+/lib/lib/fonts/*.afm.json
