@@ -22,9 +22,10 @@ $nombre_padre = $_SESSION["nombre"] ?? "Padre de Familia";
 $hijos = $conexion->prepare("
     SELECT e.id, e.nombre, e.documento,
            c.grado, c.nombre AS curso_nombre
-    FROM estudiantes e
+    FROM estudiante_acudientes ea
+    JOIN estudiantes e ON e.id = ea.estudiante_id
     LEFT JOIN cursos c ON e.curso_id = c.id
-    WHERE e.padre_id = ?
+    WHERE ea.padre_id = ?
     ORDER BY e.nombre
 ");
 $hijos->execute([$padre_id]);

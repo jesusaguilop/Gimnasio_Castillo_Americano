@@ -14,7 +14,9 @@ if ($estudiante_id) {
         SELECT e.id, e.nombre, c.grado, c.nombre AS curso_nombre
         FROM estudiantes e
         LEFT JOIN cursos c ON e.curso_id = c.id
-        WHERE e.id = ? AND e.padre_id = ?
+        WHERE e.id = ?
+          AND EXISTS (SELECT 1 FROM estudiante_acudientes ea
+                      WHERE ea.estudiante_id = e.id AND ea.padre_id = ?)
     ");
     $stmt->execute([$estudiante_id, $padre_id]);
     $estudiante = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -63,22 +65,14 @@ $notas = [];
 $promedio = null;
 $puesto = null;
 if ($selected_periodo !== null) {
-    $stmt = $conexion->prepare("
-        SELECT a.nombre AS asignatura, n.nota
-        FROM notas n
-        JOIN asignaturas a ON n.asignatura_id = a.id
-        WHERE n.estudiante_id = ? AND n.periodo = ? AND n.anio = ?
-        ORDER BY a.nombre
-    ");
-    $stmt->execute([$estudiante_id, $selected_periodo, $anio_activo]);
-    $notas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Notas + área + porcentaje del grado en UNA consulta; promedio y puesto con el
+    // MISMO cálculo que el boletín (rank_helper). Antes eran 6 consultas.
+    require_once __DIR__ . '/../lib/rank_helper.php';
+    $notas = obtenerNotasPonderadas($conexion, $estudiante_id, $selected_periodo, $anio_activo);
 
     if (count($notas) > 0) {
-        // Promedio general ponderado (mismo cálculo que el boletín y el puesto)
-        require_once __DIR__ . '/../lib/rank_helper.php';
-        $promedio = calcularPromedioGeneralEstudiante($conexion, $estudiante_id, $selected_periodo, $anio_activo);
-        if ($promedio === null) $promedio = 0;
-        $puesto = calcularPuestoCurso($conexion, $estudiante_id, $selected_periodo, $anio_activo);
+        $promedio = calcularDefinitivas($notas)['general'];   // null si solo hay Comportamiento
+        $puesto = calcularPuestoCurso($conexion, $estudiante_id, $selected_periodo, $anio_activo, (int) $notas[0]['curso_id']);
     }
 }
 
@@ -185,13 +179,14 @@ include "includes/header.php";
             </div>
         </div>
 
+        <?php if ($promedio !== null): ?>
         <div class="app-card">
             <div class="app-card-body" style="text-align:center;">
                 <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">
                     <i class="bi bi-star-fill" style="color:var(--gold);"></i> Promedio General
                 </p>
                 <div class="avg-pill <?= gradeClass($promedio) ?>">
-                    <?= $promedio ?>
+                    <?= number_format((float) $promedio, 1) ?>
                 </div>
                 <p class="desempeno-msg <?= gradeClass($promedio) ?>">
                     <?php if ($promedio >= 80): ?>
@@ -204,7 +199,7 @@ include "includes/header.php";
                 </p>
                 <?php if ($puesto): ?>
                     <p style="font-size:13px;color:var(--gold-dark);margin-top:10px;margin-bottom:0;font-weight:700;">
-                        <i class="bi bi-trophy-fill" aria-hidden="true"></i> Puesto en el curso: <?= (int) $puesto ?>
+                        <i class="bi bi-trophy-fill" aria-hidden="true"></i> Puesto en el curso: <?= htmlspecialchars(str_replace('/', ' de ', $puesto)) ?>
                     </p>
                 <?php endif; ?>
                 <p style="font-size:11px;color:var(--text-muted);margin-top:8px;margin-bottom:0;">
@@ -212,6 +207,7 @@ include "includes/header.php";
                 </p>
             </div>
         </div>
+        <?php endif; ?>
     <?php endif; ?>
 
     <?php if ($selected_periodo && isset($boletines_por_periodo[$selected_periodo])):
