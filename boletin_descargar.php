@@ -17,6 +17,12 @@
 
 require_once __DIR__ . '/includes/init.php';
 
+// Misma validez de sesión que el resto del sitio (usuario borrado,
+// rol cambiado, clave restablecida o sesión inactiva → fuera).
+if (App\Base\Auth::check() && !App\Base\Auth::sesionValida()) {
+    App\Base\Auth::logout();
+}
+
 $rol = userRole();
 $uid = userId();
 $id  = (int) ($_GET['id'] ?? 0);
@@ -55,8 +61,12 @@ $permitido = false;
 if ($rol === 'admin') {
     $permitido = true;
 } elseif ($rol === 'padre') {
-    // Solo sus hijos, y solo lo que el admin haya publicado
-    $permitido = ((int) $boletin['padre_id'] === (int) $uid) && $boletin['publicado'];
+    // Solo sus hijos (cualquiera de sus acudientes), y solo lo que el admin haya publicado
+    $esAcudiente = db()->fetch(
+        "SELECT 1 FROM estudiante_acudientes WHERE estudiante_id = ? AND padre_id = ?",
+        [$boletin['estudiante_id'], $uid]
+    );
+    $permitido = $esAcudiente && $boletin['publicado'];
 } elseif ($rol === 'profesor') {
     // Solo el director de grupo del curso al que pertenece el estudiante
     $esDirector = db()->fetch(

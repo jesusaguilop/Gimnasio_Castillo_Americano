@@ -214,7 +214,10 @@ if (!function_exists('config')) {
         $config = [
             'app.name'    => env('APP_NAME', 'Sistema Académico'),
             'app.env'     => env('APP_ENV', 'production'),
-            'app.debug'   => env('APP_DEBUG', false),
+            // "false" en una variable de Railway es un texto (verdadero en PHP):
+            // se interpreta como booleano, y en producción nunca hay depuración.
+            'app.debug'   => env('APP_ENV', 'production') !== 'production'
+                             && filter_var(env('APP_DEBUG', false), FILTER_VALIDATE_BOOLEAN),
             'app.url'     => app_url_base(),
             'db.host'     => $dbHost,
             'db.port'     => $dbPort,

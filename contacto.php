@@ -21,9 +21,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar'])
     $asunto = trim($_POST['asunto'] ?? '');
     $mensaje = trim($_POST['mensaje'] ?? '');
 
-    if ($nombre && $email && $mensaje && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    // Límite: 5 mensajes por IP cada hora (el envío gasta la cuota de Brevo,
+    // la misma que usan los boletines y la recuperación de contraseña).
+    $ip = \App\Controllers\AuthController::ipCliente();
+    $limitado = false;
+    try {
+        $db = \App\Base\Database::getInstance();
+        $n = $db->fetch("SELECT COUNT(*) AS n FROM login_intentos
+                         WHERE email = 'contacto' AND ip = ? AND creado_en > now() - interval '1 hour'", [$ip]);
+        $limitado = $n && $n['n'] >= 5;
+    } catch (Throwable $ex) {
+        error_log('[contacto] límite no disponible: ' . $ex->getMessage());
+    }
+
+    if ($limitado) {
+        $error_envio = 'Ya recibimos varios mensajes desde tu conexión. Intenta de nuevo en una hora o escríbenos por WhatsApp.';
+    } elseif (mb_strlen($nombre) > 120 || mb_strlen($email) > 160 || mb_strlen($telefono) > 40
+        || mb_strlen($asunto) > 160 || mb_strlen($mensaje) > 5000) {
+        $error_envio = 'El mensaje es demasiado largo.';
+    } elseif ($nombre && $email && $mensaje && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error_envio = 'Escribe un correo electrónico válido.';
     } elseif ($nombre && $email && $mensaje) {
+        try {
+            $db->query("INSERT INTO login_intentos (ip, email) VALUES (?, 'contacto')", [$ip]);
+        } catch (Throwable) {
+        }
         require_once __DIR__ . '/lib/mail_helper.php';
 
         // mail() no sirve en el contenedor (no hay servidor de correo), así

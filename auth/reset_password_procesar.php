@@ -1,5 +1,5 @@
 <?php
-require_once "../config/database.php";
+require_once __DIR__ . "/../includes/init.php";
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     header("Location: ../login.php");
@@ -21,26 +21,18 @@ if ($token === "") {
     header("Location: ../forgot_password.php");
     exit;
 }
-if (strlen($passwordPlano) < 6) {
+if (mb_strlen($passwordPlano) < 8) {
     volverAlFormulario($token, "corta");
 }
 if (!hash_equals($passwordPlano, $confirmacion)) {
     volverAlFormulario($token, "distintas");
 }
 
-$password = password_hash($passwordPlano, PASSWORD_DEFAULT);
-
-/* Validar token */
-$sql = "
-    SELECT id 
-    FROM usuarios 
-    WHERE reset_token = :token 
-    AND reset_expires > NOW()
-";
-$stmt = $conexion->prepare($sql);
-$stmt->bindParam(":token", $token);
-$stmt->execute();
-$usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+/* Validar token (en la BD está su SHA-256) */
+$usuario = db()->fetch(
+    "SELECT id FROM usuarios WHERE reset_token = ? AND reset_expires > NOW()",
+    [hash("sha256", $token)]
+);
 
 if (!$usuario) {
     // reset_password.php muestra "El enlace es inválido o ha expirado"
@@ -48,18 +40,20 @@ if (!$usuario) {
     exit;
 }
 
-/* Actualizar contraseña */
-$sql = "
-    UPDATE usuarios 
-    SET password = :password,
-        reset_token = NULL,
-        reset_expires = NULL
-    WHERE id = :id
-";
-$stmt = $conexion->prepare($sql);
-$stmt->bindParam(":password", $password);
-$stmt->bindParam(":id", $usuario["id"]);
-$stmt->execute();
+/* Actualizar contraseña. Al cambiar el hash, las sesiones abiertas con la
+   clave anterior dejan de valer (Auth::sesionValida compara su huella). */
+db()->query(
+    "UPDATE usuarios SET password = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?",
+    [password_hash($passwordPlano, PASSWORD_BCRYPT, ["cost" => 12]), $usuario["id"]]
+);
+
+// Quien elige su propia clave ya no necesita cambiar la provisional.
+// Aparte, para no romper el restablecimiento si la columna aún no existe.
+try {
+    db()->query("UPDATE usuarios SET debe_cambiar_clave = FALSE WHERE id = ?", [$usuario["id"]]);
+} catch (Throwable $e) {
+    error_log("[reset] " . $e->getMessage());
+}
 
 header("Location: ../login.php?reset=1");
 exit;

@@ -421,6 +421,8 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
                     <?= match ($error) {
                         'empty'    => 'Escribe tu correo y tu contraseña.',
                         'expirado' => 'La página estuvo abierta mucho tiempo. Vuelve a intentarlo.',
+                        'bloqueado' => 'Demasiados intentos fallidos. Espera 15 minutos o usa «¿Olvidaste tu contraseña?».',
+                        'sesion'   => 'Tu sesión terminó. Vuelve a iniciar sesión.',
                         default    => 'Correo o contraseña incorrectos. Verifica e intenta de nuevo.',
                     } ?>
                 </span>

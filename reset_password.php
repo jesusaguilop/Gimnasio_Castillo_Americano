@@ -7,9 +7,9 @@ $stmt = $conexion->prepare("
     SELECT id FROM usuarios
     WHERE reset_token = :token AND reset_expires > NOW()
 ");
-$stmt->bindParam(":token", $token);
-$stmt->execute();
-$tokenValido = (bool) $stmt->fetch();
+// En la BD se guarda el SHA-256 del token, no el token
+$stmt->execute([":token" => hash("sha256", (string) $token)]);
+$tokenValido = $token !== "" && (bool) $stmt->fetch();
 
 $errorReset = $_GET["error"] ?? "";
 ?>
@@ -55,11 +55,11 @@ $errorReset = $_GET["error"] ?? "";
                     <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
                     <span><?= $errorReset === "distintas"
                         ? "Las dos contraseñas no coinciden. Escríbelas de nuevo."
-                        : "La contraseña debe tener al menos 6 caracteres." ?></span>
+                        : "La contraseña debe tener al menos 8 caracteres." ?></span>
                 </div>
             <?php endif; ?>
 
-            <p class="auth-hint text-center mb-4" id="passHint"><i class="bi bi-key me-1" aria-hidden="true"></i>Elige una contraseña de al menos 6 caracteres</p>
+            <p class="auth-hint text-center mb-4" id="passHint"><i class="bi bi-key me-1" aria-hidden="true"></i>Elige una contraseña de al menos 8 caracteres</p>
 
             <form action="auth/reset_password_procesar.php" method="POST" class="stagger" id="resetForm">
                 <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
@@ -68,7 +68,7 @@ $errorReset = $_GET["error"] ?? "";
                     <label class="auth-label" for="passInput">Nueva contraseña</label>
                     <div class="field">
                         <input type="password" name="password" id="passInput" class="form-control"
-                               placeholder="••••••••" minlength="6" required autofocus
+                               placeholder="••••••••" minlength="8" required autofocus
                                autocomplete="new-password" aria-describedby="passHint">
                         <i class="bi bi-lock input-icon" aria-hidden="true"></i>
                         <button type="button" class="toggle-pass" id="togglePass" aria-label="Mostrar contraseña" aria-pressed="false" aria-controls="passInput">
@@ -81,7 +81,7 @@ $errorReset = $_GET["error"] ?? "";
                     <label class="auth-label" for="passConfirm">Repite la contraseña</label>
                     <div class="field">
                         <input type="password" name="password_confirm" id="passConfirm" class="form-control"
-                               placeholder="••••••••" minlength="6" required autocomplete="new-password">
+                               placeholder="••••••••" minlength="8" required autocomplete="new-password">
                         <i class="bi bi-lock input-icon" aria-hidden="true"></i>
                     </div>
                 </div>

@@ -55,6 +55,7 @@ function getColombianHolidays(int $year): array
 
 $mes = (int)($_GET["mes"] ?? date("m"));
 $anio = (int)($_GET["anio"] ?? date("Y"));
+if ($anio < 1971 || $anio > 2037) $anio = (int) date("Y");   // rango de easter_date()
 if ($mes < 1) { $mes = 12; $anio--; }
 if ($mes > 12) { $mes = 1; $anio++; }
 
