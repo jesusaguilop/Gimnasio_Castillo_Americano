@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
-
-require_once "../config/database.php";
 require_once "../lib/rank_helper.php";
 require_once "../lib/csrf_helper.php";
 
@@ -24,7 +19,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $nombre = trim($_POST["nombre"] ?? "");
         $area_id = trim($_POST["area_id"] ?? "");
         $nivel = trim($_POST["nivel"] ?? "");
-        $grados = $_POST["grados"] ?? [];
+        $grados = array_values(array_intersect((array) ($_POST["grados"] ?? []), ['maternal','prejardin','jardin','transicion','primero','segundo','tercero','cuarto','quinto','sexto','septimo','octavo','noveno','decimo','once']));
         $ih_por_grado = $_POST["ih"] ?? [];
 
         if ($nombre === "" || $area_id === "" || $nivel === "" || empty($grados)) {
@@ -83,23 +78,20 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Crear Asignatura</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Nueva Asignatura</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="row justify-content-center">
                 <div class="col-md-8 col-lg-6">
+                    <a href="ver_asignaturas.php" class="form-back"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a Asignaturas</a>
                     <div class="card card-form p-4 p-md-5">
 
                         <div class="header-box">
-                            <img src="../assets/img/logo_gca.png" alt="GCA">
-                            <h4>Registro de Asignatura</h4>
-                            <span>Gimnasio Castillo Americano</span>
+                            <i class="bi bi-book" aria-hidden="true"></i>
+                            <div>
+                                <h4>Registro de Asignatura</h4>
+                                <span>Defina el área, el nivel y los grados de la asignatura.</span>
+                            </div>
                         </div>
 
                         <?php if ($mensaje): ?>
@@ -140,44 +132,44 @@ include "includes/header.php";
                                 <p class="form-label fw-medium mb-2" id="gradosTitulo">Grados donde se dicta</p>
                                 <div id="gradosContainer" role="group" aria-labelledby="gradosTitulo">
                                     <div class="grado-group" data-nivel="preescolar" style="display:none;">
-                                        <p class="form-label text-muted mb-1" style="font-size:12px;">Preescolar</p>
+                                        <p class="form-section-title mb-2">Preescolar</p>
                                         <div class="d-flex flex-wrap gap-2 mb-2">
                                             <?php $ihPost = $_POST["ih"] ?? []; ?>
                                             <?php foreach (['maternal','prejardin','jardin','transicion'] as $g): ?>
-                                                <div class="grado-item d-flex align-items-center gap-1 p-1 rounded" style="border:1px solid var(--border-color);">
-                                                    <input class="form-check-input mt-0" type="checkbox" name="grados[]" value="<?= $g ?>" id="g_<?= $g ?>"
+                                                <div class="grado-item">
+                                                    <input class="form-check-input" type="checkbox" name="grados[]" value="<?= $g ?>" id="g_<?= $g ?>"
                                                         <?= in_array($g, $_POST["grados"] ?? []) ? 'checked' : '' ?>>
-                                                    <label class="form-check-label" for="g_<?= $g ?>" style="font-size:13px;min-width:65px;"><?= ucfirst($g) ?></label>
-                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm" style="width:55px;" value="<?= htmlspecialchars($ihPost[$g] ?? '0') ?>" min="0" max="40">
-                                                    <small style="font-size:11px;">h</small>
+                                                    <label class="form-check-label" for="g_<?= $g ?>"><?= ucfirst($g) ?></label>
+                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm" aria-label="Horas semanales en <?= ucfirst($g) ?>" value="<?= htmlspecialchars($ihPost[$g] ?? '0') ?>" min="0" max="40">
+                                                    <small class="text-muted">h</small>
                                                 </div>
                                             <?php endforeach; ?>
                                         </div>
                                     </div>
                                     <div class="grado-group" data-nivel="primaria" style="display:none;">
-                                        <p class="form-label text-muted mb-1" style="font-size:12px;">Primaria</p>
+                                        <p class="form-section-title mb-2">Primaria</p>
                                         <div class="d-flex flex-wrap gap-2 mb-2">
                                             <?php foreach (['primero','segundo','tercero','cuarto','quinto'] as $g): ?>
-                                                <div class="grado-item d-flex align-items-center gap-1 p-1 rounded" style="border:1px solid var(--border-color);">
-                                                    <input class="form-check-input mt-0" type="checkbox" name="grados[]" value="<?= $g ?>" id="g_<?= $g ?>"
+                                                <div class="grado-item">
+                                                    <input class="form-check-input" type="checkbox" name="grados[]" value="<?= $g ?>" id="g_<?= $g ?>"
                                                         <?= in_array($g, $_POST["grados"] ?? []) ? 'checked' : '' ?>>
-                                                    <label class="form-check-label" for="g_<?= $g ?>" style="font-size:13px;min-width:65px;"><?= ucfirst($g) ?></label>
-                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm" style="width:55px;" value="<?= htmlspecialchars($ihPost[$g] ?? '0') ?>" min="0" max="40">
-                                                    <small style="font-size:11px;">h</small>
+                                                    <label class="form-check-label" for="g_<?= $g ?>"><?= ucfirst($g) ?></label>
+                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm" aria-label="Horas semanales en <?= ucfirst($g) ?>" value="<?= htmlspecialchars($ihPost[$g] ?? '0') ?>" min="0" max="40">
+                                                    <small class="text-muted">h</small>
                                                 </div>
                                             <?php endforeach; ?>
                                         </div>
                                     </div>
                                     <div class="grado-group" data-nivel="secundaria" style="display:none;">
-                                        <p class="form-label text-muted mb-1" style="font-size:12px;">Secundaria</p>
+                                        <p class="form-section-title mb-2">Secundaria</p>
                                         <div class="d-flex flex-wrap gap-2 mb-2">
                                             <?php foreach (['sexto','septimo','octavo','noveno','decimo','once'] as $g): ?>
-                                                <div class="grado-item d-flex align-items-center gap-1 p-1 rounded" style="border:1px solid var(--border-color);">
-                                                    <input class="form-check-input mt-0" type="checkbox" name="grados[]" value="<?= $g ?>" id="g_<?= $g ?>"
+                                                <div class="grado-item">
+                                                    <input class="form-check-input" type="checkbox" name="grados[]" value="<?= $g ?>" id="g_<?= $g ?>"
                                                         <?= in_array($g, $_POST["grados"] ?? []) ? 'checked' : '' ?>>
-                                                    <label class="form-check-label" for="g_<?= $g ?>" style="font-size:13px;min-width:65px;"><?= ucfirst($g) ?></label>
-                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm" style="width:55px;" value="<?= htmlspecialchars($ihPost[$g] ?? '0') ?>" min="0" max="40">
-                                                    <small style="font-size:11px;">h</small>
+                                                    <label class="form-check-label" for="g_<?= $g ?>"><?= ucfirst($g) ?></label>
+                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm" aria-label="Horas semanales en <?= ucfirst($g) ?>" value="<?= htmlspecialchars($ihPost[$g] ?? '0') ?>" min="0" max="40">
+                                                    <small class="text-muted">h</small>
                                                 </div>
                                             <?php endforeach; ?>
                                         </div>

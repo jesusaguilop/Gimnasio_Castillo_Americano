@@ -1,12 +1,7 @@
 <?php
-session_start();
 
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
-
-require_once "../config/database.php";
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 require_once __DIR__ . "/../lib/csrf_helper.php";
 
 $mensaje = "";
@@ -40,61 +35,93 @@ $grados = $conexion->query("
         END
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-/* ── Procesar la vinculación ── */
+/* ── Vincular / desvincular ──
+   Un estudiante puede tener VARIOS acudientes (papá y mamá): el vínculo vive
+   en estudiante_acudientes. estudiantes.padre_id queda como el acudiente
+   principal (el primero vinculado) para lo que todavía lo lee. */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["estudiante_id"])) {
+    $padre_id      = (int) ($_POST["padre_id"] ?? 0);
+    $estudiante_id = (int) ($_POST["estudiante_id"] ?? 0);
+    $quitar        = isset($_POST["desvincular"]);
+
     if (!validar_token_csrf($_POST["_csrf_token"] ?? "")) {
         $mensaje = "Error de seguridad. Intenta de nuevo.";
         $tipoMensaje = "danger";
+    } elseif ($padre_id <= 0 || $estudiante_id <= 0) {
+        $mensaje = "Elige un padre y un estudiante.";
+        $tipoMensaje = "danger";
     } else {
-        $padre_id      = (int) ($_POST["padre_id"] ?? 0);
-        $estudiante_id = (int) ($_POST["estudiante_id"] ?? 0);
-
-        if ($padre_id <= 0 || $estudiante_id <= 0) {
-            $mensaje = "Elige un padre y un estudiante.";
-            $tipoMensaje = "danger";
-        } else {
-            try {
-                $stmt = $conexion->prepare(
-                    "UPDATE estudiantes SET padre_id = :padre WHERE id = :estudiante"
-                );
-                $stmt->execute([":padre" => $padre_id, ":estudiante" => $estudiante_id]);
-
-                $datos = $conexion->prepare(
-                    "SELECT e.nombre AS estudiante, u.nombre AS padre
-                     FROM estudiantes e JOIN usuarios u ON u.id = e.padre_id
-                     WHERE e.id = ?"
-                );
-                $datos->execute([$estudiante_id]);
-                $d = $datos->fetch(PDO::FETCH_ASSOC);
-
-                $mensaje = $d
-                    ? "{$d['estudiante']} quedó vinculado a {$d['padre']}."
-                    : "Padre asignado correctamente.";
-                $tipoMensaje = "success";
-            } catch (PDOException $e) {
-                error_log("[asignar_padre] " . $e->getMessage());
-                $mensaje = "Error al realizar la asignación.";
-                $tipoMensaje = "danger";
+        try {
+            $conexion->beginTransaction();
+            if ($quitar) {
+                $conexion->prepare("DELETE FROM estudiante_acudientes WHERE estudiante_id = ? AND padre_id = ?")
+                         ->execute([$estudiante_id, $padre_id]);
+                // Si era el principal, pasa a serlo otro acudiente (o ninguno)
+                $conexion->prepare("
+                    UPDATE estudiantes SET padre_id = (
+                        SELECT ea.padre_id FROM estudiante_acudientes ea
+                        WHERE ea.estudiante_id = :e ORDER BY ea.creado_en LIMIT 1)
+                    WHERE id = :e2 AND padre_id = :p
+                ")->execute([":e" => $estudiante_id, ":e2" => $estudiante_id, ":p" => $padre_id]);
+            } else {
+                $esPadre = $conexion->prepare("SELECT 1 FROM usuarios WHERE id = ? AND rol = 'padre'");
+                $esPadre->execute([$padre_id]);
+                if (!$esPadre->fetchColumn()) {
+                    throw new RuntimeException("La cuenta elegida no es de un padre.");
+                }
+                $conexion->prepare("
+                    INSERT INTO estudiante_acudientes (estudiante_id, padre_id) VALUES (?, ?)
+                    ON CONFLICT DO NOTHING
+                ")->execute([$estudiante_id, $padre_id]);
+                $conexion->prepare("UPDATE estudiantes SET padre_id = COALESCE(padre_id, ?) WHERE id = ?")
+                         ->execute([$padre_id, $estudiante_id]);
             }
+            $conexion->commit();
+
+            $datos = $conexion->prepare(
+                "SELECT e.nombre AS estudiante, u.nombre AS padre
+                 FROM estudiantes e, usuarios u WHERE e.id = ? AND u.id = ?"
+            );
+            $datos->execute([$estudiante_id, $padre_id]);
+            $d = $datos->fetch(PDO::FETCH_ASSOC) ?: ["estudiante" => "El estudiante", "padre" => "el padre"];
+
+            $mensaje = $quitar
+                ? "Se quitó el vínculo de {$d['estudiante']} con {$d['padre']}."
+                : "{$d['estudiante']} quedó vinculado a {$d['padre']}.";
+            $tipoMensaje = "success";
+        } catch (Throwable $e) {
+            if ($conexion->inTransaction()) $conexion->rollBack();
+            error_log("[asignar_padre] " . $e->getMessage());
+            $mensaje = $e instanceof RuntimeException ? $e->getMessage() : "Error al realizar la asignación.";
+            $tipoMensaje = "danger";
         }
     }
 }
 
 /* ── Estudiantes del grado elegido (se consulta DESPUÉS de procesar,
-      para que el vínculo recién hecho ya se vea reflejado) ── */
+      para que el vínculo recién hecho ya se vea reflejado) ──
+   `acudientes` = [{id, nombre}, ...] para listarlos y poder quitar vínculos. */
 $estudiantes = [];
 if ($grado !== "") {
     $stmt = $conexion->prepare("
         SELECT e.id, e.nombre, e.documento, c.grado, c.nombre AS curso,
-               up.nombre AS padre_actual
+               string_agg(u.nombre, ', ' ORDER BY ea.creado_en) AS padre_actual,
+               COALESCE(json_agg(json_build_object('id', u.id, 'nombre', u.nombre)
+                        ORDER BY ea.creado_en) FILTER (WHERE u.id IS NOT NULL), '[]') AS acudientes
         FROM estudiantes e
         JOIN cursos c ON c.id = e.curso_id
-        LEFT JOIN usuarios up ON up.id = e.padre_id
+        LEFT JOIN estudiante_acudientes ea ON ea.estudiante_id = e.id
+        LEFT JOIN usuarios u ON u.id = ea.padre_id
         WHERE c.grado = ?
+        GROUP BY e.id, c.grado, c.nombre
         ORDER BY e.nombre
     ");
     $stmt->execute([$grado]);
     $estudiantes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($estudiantes as &$e) {
+        $e["acudientes"] = json_decode($e["acudientes"], true) ?: [];
+    }
+    unset($e);
 }
 
 $sinVincular = count(array_filter($estudiantes, fn($e) => $e['padre_actual'] === null));
@@ -109,23 +136,19 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Asignar Padre</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Vinculación Familiar</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="row justify-content-center">
-                <div class="col-md-8 col-lg-6">
+                <div class="col-lg-9 col-xl-7">
                     <div class="card card-form p-4 p-md-5">
 
                         <div class="header-box">
-                            <img src="../assets/img/logo_gca.png" alt="GCA">
-                            <h4>Asignar Padre a Estudiante</h4>
-                            <span>Gimnasio Castillo Americano</span>
+                            <i class="bi bi-link-45deg" aria-hidden="true"></i>
+                            <div>
+                                <h4>Asignar Padre a Estudiante</h4>
+                                <span>Vincule a un estudiante con su padre o acudiente.</span>
+                            </div>
                         </div>
 
                         <?php if ($mensaje): ?>
@@ -139,10 +162,10 @@ include "includes/header.php";
                         <form method="GET" id="formGrado">
                             <div class="mb-4">
                                 <label class="form-label fw-medium" for="selGrado">
-                                    <span class="badge bg-dark me-1">1</span> Grado
+                                    <span class="step-num" aria-hidden="true">1</span> Grado
                                 </label>
                                 <select name="grado" id="selGrado" class="form-select">
-                                    <option value="">-- Elija un grado --</option>
+                                    <option value="">Elija un grado…</option>
                                     <?php foreach ($grados as $g): ?>
                                         <option value="<?= htmlspecialchars($g["grado"]) ?>"
                                             <?= $g["grado"] === $grado ? "selected" : "" ?>>
@@ -155,13 +178,13 @@ include "includes/header.php";
                         </form>
 
                         <?php if ($grado === ""): ?>
-                            <div class="alert alert-light border" role="alert">
-                                <i class="bi bi-info-circle me-1"></i>
-                                Selecciona un grado arriba para continuar.
+                            <div class="empty-state empty-state-sm">
+                                <i class="bi bi-arrow-up" aria-hidden="true"></i>
+                                <p>Selecciona un grado arriba para continuar.</p>
                             </div>
                         <?php elseif (count($estudiantes) === 0): ?>
-                            <div class="alert alert-warning" role="alert">
-                                <i class="bi bi-exclamation-triangle me-1"></i>
+                            <div class="alert alert-warning alert-icon" role="alert">
+                                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
                                 No hay estudiantes en <?= htmlspecialchars(ucfirst($grado)) ?>.
                             </div>
                         <?php else: ?>
@@ -171,14 +194,14 @@ include "includes/header.php";
 
                                 <div class="mb-3">
                                     <label class="form-label fw-medium" for="f_estudiante_id">
-                                        <span class="badge bg-dark me-1">2</span> Estudiante
+                                        <span class="step-num" aria-hidden="true">2</span> Estudiante
                                         <small class="text-muted">
                                             &middot; <?= count($estudiantes) ?> en <?= htmlspecialchars(ucfirst($grado)) ?>,
                                             <?= $sinVincular ?> sin padre
                                         </small>
                                     </label>
                                     <select id="f_estudiante_id" name="estudiante_id" class="form-select" required>
-                                        <option value="">-- Elija un estudiante --</option>
+                                        <option value="">Elija un estudiante…</option>
                                         <?php foreach ($estudiantes as $e): ?>
                                             <option value="<?= (int) $e["id"] ?>">
                                                 <?= htmlspecialchars($e["nombre"]) ?>
@@ -193,16 +216,16 @@ include "includes/header.php";
                                         <?php endforeach; ?>
                                     </select>
                                     <div class="form-text">
-                                        Los que ya tienen padre lo indican al lado: al asignar uno nuevo, se reemplaza.
+                                        Un estudiante puede tener varios acudientes (papá y mamá): vincular uno nuevo no quita a los anteriores.
                                     </div>
                                 </div>
 
                                 <div class="mb-4">
                                     <label class="form-label fw-medium" for="f_padre_id">
-                                        <span class="badge bg-dark me-1">3</span> Padre
+                                        <span class="step-num" aria-hidden="true">3</span> Padre o acudiente
                                     </label>
                                     <select id="f_padre_id" name="padre_id" class="form-select" required>
-                                        <option value="">-- Elija un padre --</option>
+                                        <option value="">Elija un padre o acudiente…</option>
                                         <?php foreach ($padres as $p): ?>
                                             <option value="<?= (int) $p["id"] ?>">
                                                 <?= htmlspecialchars($p["nombre"]) ?>
@@ -214,15 +237,45 @@ include "includes/header.php";
                                     </select>
                                     <?php if (count($padres) === 0): ?>
                                         <div class="form-text text-danger">
-                                            No hay cuentas de padre. Crea una en Registros &rarr; Nuevo Padre.
+                                            No hay cuentas de padre. <a href="crear_padre.php">Crea una aquí</a>.
                                         </div>
                                     <?php endif; ?>
                                 </div>
 
                                 <button type="submit" class="btn-gca w-100">
-                                    <i class="bi bi-person-check me-2"></i>Vincular Padre
+                                    <i class="bi bi-link-45deg" aria-hidden="true"></i> Vincular acudiente
                                 </button>
                             </form>
+
+                            <?php $vinculados = array_filter($estudiantes, fn($e) => $e["acudientes"]); ?>
+                            <?php if ($vinculados): ?>
+                                <div class="form-section mt-4">
+                                <h2 class="form-section-title">Vínculos actuales en <?= htmlspecialchars(ucfirst($grado)) ?> <span class="count-pill ms-1"><?= array_sum(array_map(fn($x) => count($x["acudientes"]), $vinculados)) ?></span></h2>
+                                <ul class="link-list">
+                                    <?php foreach ($vinculados as $e): ?>
+                                        <?php foreach ($e["acudientes"] as $a): ?>
+                                            <li class="link-item">
+                                                <span class="avatar" aria-hidden="true"><?= htmlspecialchars(mb_strtoupper(mb_substr(trim($e["nombre"]), 0, 1))) ?></span>
+                                                <span class="min-w-0 flex-grow-1">
+                                                    <strong class="d-block text-truncate"><?= htmlspecialchars($e["nombre"]) ?></strong>
+                                                    <small class="text-muted d-block"><i class="bi bi-link-45deg" aria-hidden="true"></i> Acudiente: <?= htmlspecialchars($a["nombre"]) ?></small>
+                                                </span>
+                                                <form method="POST" onsubmit="return confirm('¿Quitar este vínculo?');">
+                                                    <?= campo_csrf() ?>
+                                                    <input type="hidden" name="grado" value="<?= htmlspecialchars($grado) ?>">
+                                                    <input type="hidden" name="estudiante_id" value="<?= (int) $e["id"] ?>">
+                                                    <input type="hidden" name="padre_id" value="<?= (int) $a["id"] ?>">
+                                                    <button type="submit" name="desvincular" value="1" class="btn-soft-danger"
+                                                            aria-label="Quitar vínculo de <?= htmlspecialchars($e["nombre"]) ?> con <?= htmlspecialchars($a["nombre"]) ?>">
+                                                        <i class="bi bi-x-lg" aria-hidden="true"></i> Quitar
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    <?php endforeach; ?>
+                                </ul>
+                                </div>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 </div>

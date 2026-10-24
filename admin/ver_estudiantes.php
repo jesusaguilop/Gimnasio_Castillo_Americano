@@ -92,20 +92,14 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Estudiantes</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Estudiantes</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="gca-card p-4">
                 <div class="section-header">
-                    <h4><i class="bi bi-mortarboard-fill"></i> Estudiantes registrados</h4>
-                    <a href="crear_estudiante.php" class="btn-gca btn-gca-sm">
-                        <i class="bi bi-plus-circle me-1"></i> Nuevo Estudiante
+                    <h4><i class="bi bi-mortarboard" aria-hidden="true"></i> Estudiantes registrados</h4>
+                    <a href="crear_estudiante.php" class="btn-gca">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo estudiante
                     </a>
                 </div>
 
@@ -123,16 +117,20 @@ include "includes/header.php";
                     </div>
                 <?php endif; ?>
 
-                <form method="GET" class="row g-2 mb-3 align-items-end">
-                    <div class="col-md-5">
-                        <label class="form-label fw-medium small mb-1" for="f_q">Buscar por nombre o documento</label>
-                        <input id="f_q" type="text" name="q" class="form-control form-control-sm"
-                            placeholder="Escriba nombre o documento..."
-                            value="<?= htmlspecialchars($search) ?>">
+                <form method="GET" class="filter-bar" role="search" aria-label="Buscar estudiantes">
+                    <div class="ff ff-grow">
+                        <label class="form-label" for="f_q">Buscar por nombre o documento</label>
+                        <div class="search-field mw-100">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input id="f_q" type="search" name="q" class="form-control"
+                                placeholder="Escriba nombre o documento..."
+                                value="<?= htmlspecialchars($search) ?>"
+                                data-live-filter="#tablaEstudiantes" data-live-count="#cuentaEstudiantes" autocomplete="off">
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-medium small mb-1" for="f_grado">Filtrar por grado</label>
-                        <select id="f_grado" name="grado" class="form-select form-select-sm">
+                    <div class="ff">
+                        <label class="form-label" for="f_grado">Grado</label>
+                        <select id="f_grado" name="grado" class="form-select">
                             <option value="">Todos los grados</option>
                             <?php foreach ($grados as $g): ?>
                                 <option value="<?= htmlspecialchars($g) ?>" <?= $grado_filter === $g ? "selected" : "" ?>>
@@ -141,54 +139,57 @@ include "includes/header.php";
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-4 d-flex gap-2">
-                        <button type="submit" class="btn-gca btn-gca-sm flex-fill">
-                            <i class="bi bi-search"></i> Buscar
+                    <div class="ff-actions">
+                        <button type="submit" class="btn-gca">
+                            <i class="bi bi-funnel" aria-hidden="true"></i> Aplicar
                         </button>
-                        <a href="ver_estudiantes.php" class="btn btn-outline-secondary btn-sm flex-fill">
-                            <i class="bi bi-x-circle"></i> Limpiar
-                        </a>
+                        <?php if ($search !== "" || $grado_filter !== ""): ?>
+                            <a href="ver_estudiantes.php" class="btn-outline-gca">
+                                <i class="bi bi-x-lg" aria-hidden="true"></i> Limpiar
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </form>
+                <p class="table-count mb-2" id="cuentaEstudiantes" role="status" aria-live="polite"><?= count($estudiantes) ?> registros</p>
 
                 <div class="table-responsive">
-                        <table class="table gca-table table-hover align-middle">
+                        <table class="table gca-table align-middle" id="tablaEstudiantes">
                             <thead>
                                 <tr>
                                     <th scope="col">Nombre</th>
                                     <th scope="col">Documento</th>
-                                    <th scope="col">Fecha Nac.</th>
+                                    <th scope="col" class="d-none d-md-table-cell">Fecha nac.</th>
                                     <th scope="col">Curso</th>
                                     <th scope="col" class="text-end">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($estudiantes as $e):
-                                    $nivelColor = $e['nivel'] === 'preescolar' ? '#7b1fa2' : ($e['nivel'] === 'primaria' ? '#1565c0' : '#2e7d32');
+                                    $nivelClase = in_array($e['nivel'], ['preescolar', 'primaria'], true) ? 'lvl-' . $e['nivel'] : 'lvl-secundaria';
                                     $cursoLabel = $e['grado'] ? ucfirst($e['grado']) . ' - ' . $e['curso_nombre'] : '—';
                                 ?>
                                     <tr>
-                                        <td><span class="fw-semibold"><?= htmlspecialchars($e["nombre"]) ?></span></td>
+                                        <td class="cell-strong"><?= htmlspecialchars($e["nombre"]) ?></td>
                                         <td><?= htmlspecialchars($e["documento"] ?? "—") ?></td>
-                                        <td><?= htmlspecialchars($e["fecha_nacimiento"] ?? "—") ?></td>
-                                        <td><?php if ($e["grado"]): ?><span style="background:<?= $nivelColor ?>;font-size:11px;" class="badge fw-normal px-2 py-1"><?= htmlspecialchars($cursoLabel) ?></span><?php else: ?>—<?php endif; ?></td>
-                                        <td class="text-end">
-                                            <a href="editar_estudiante.php?eid=<?= $e["id"] ?>" class="btn-action btn-edit me-1" title="Editar">
-                                                <i class="bi bi-pencil-square"></i>
+                                        <td class="d-none d-md-table-cell text-nowrap"><?= htmlspecialchars($e["fecha_nacimiento"] ?? "—") ?></td>
+                                        <td><?php if ($e["grado"]): ?><span class="gca-badge <?= $nivelClase ?>"><?= htmlspecialchars($cursoLabel) ?></span><?php else: ?><span class="gca-badge is-warn">Sin curso</span><?php endif; ?></td>
+                                        <td class="text-end"><div class="row-actions">
+                                            <a href="editar_estudiante.php?eid=<?= $e["id"] ?>" class="btn-action btn-edit" title="Editar" aria-label="Editar a <?= htmlspecialchars($e["nombre"]) ?>">
+                                                <i class="bi bi-pencil" aria-hidden="true"></i>
                                             </a>
-                                            <form method="POST" style="display:inline" id="delForm<?= $e["id"] ?>">
+                                            <form method="POST" id="delForm<?= $e["id"] ?>">
                                             <?= campo_csrf() ?>
                                             <input type="hidden" name="eliminar_id" value="<?= $e["id"] ?>">
-                                            <button type="button" class="btn-action btn-delete" title="Eliminar"
+                                            <button type="button" class="btn-action btn-delete" title="Eliminar" aria-label="Eliminar a <?= htmlspecialchars($e["nombre"]) ?>"
                                                 onclick="showConfirm('¿Eliminar este estudiante? También se borrarán sus notas, logros y boletines. No se puede deshacer.',()=>document.getElementById('delForm<?= $e["id"] ?>').submit());">
-                                                <i class="bi bi-trash"></i>
+                                                <i class="bi bi-trash" aria-hidden="true"></i>
                                             </button>
                                         </form>
-                                        </td>
+                                        </div></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 <?php if (count($estudiantes) === 0): ?>
-                                    <tr><td colspan="5" class="text-center text-muted py-4">No se encontraron estudiantes.</td></tr>
+                                    <tr><td colspan="5"><div class="empty-state empty-state-sm"><i class="bi bi-mortarboard" aria-hidden="true"></i><h3>No se encontraron estudiantes</h3><p>Pruebe con otro nombre, documento o grado.</p></div></td></tr>
                                 <?php endif; ?>
                         </tbody>
                     </table>

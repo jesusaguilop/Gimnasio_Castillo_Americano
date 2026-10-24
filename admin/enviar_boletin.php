@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
-
-require_once "../config/database.php";
 require_once "../lib/csrf_helper.php";
 require_once "../lib/mail_helper.php";
 require_once "../lib/alertas_helper.php";
@@ -134,23 +129,31 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $mensaje = $n ? "$n boletín(es) publicado(s): ya son visibles para los padres." : "No había boletines pendientes en este filtro.";
             $tipo = $n ? "success" : "warning";
         } elseif ($accion === "enviar" && $bid) {
+            // A todos los acudientes del estudiante con correo válido
             $stmt = $conexion->prepare("SELECT bp.ruta_pdf, e.nombre AS estudiante_nombre, u.nombre AS padre_nombre, u.email
                 FROM boletines_pdf bp JOIN estudiantes e ON bp.estudiante_id = e.id
-                JOIN usuarios u ON e.padre_id = u.id WHERE bp.id = ?");
+                JOIN estudiante_acudientes ea ON ea.estudiante_id = e.id
+                JOIN usuarios u ON u.id = ea.padre_id
+                WHERE bp.id = ? AND u.email NOT LIKE '%.invalid'");
             $stmt->execute([$bid]);
-            $b = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($b && $b["email"]) {
-                $ruta = realpath(__DIR__ . "/../" . $b["ruta_pdf"]);
-                if ($ruta && file_exists($ruta) && enviar_boletin_por_email($b["email"], $b["padre_nombre"], $ruta, "Boletín de {$b['estudiante_nombre']}")) {
-                    $mensaje = "Boletín enviado por correo a {$b['padre_nombre']} ({$b['email']}).";
-                    $tipo = "success";
-                } else {
-                    $mensaje = "No se pudo enviar el correo (revisa la configuración de correo).";
-                    $tipo = "danger";
-                }
-            } else {
-                $mensaje = "El padre no tiene correo registrado.";
+            $destinos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $ruta = $destinos ? realpath(__DIR__ . "/../" . $destinos[0]["ruta_pdf"]) : false;
+            if (!$destinos) {
+                $mensaje = "El estudiante no tiene acudientes con correo registrado.";
                 $tipo = "danger";
+            } elseif (!$ruta || !file_exists($ruta)) {
+                $mensaje = "No se encontró el PDF del boletín: hay que volver a generarlo.";
+                $tipo = "danger";
+            } else {
+                $ok = [];
+                foreach ($destinos as $b) {
+                    if (enviar_boletin_por_email($b["email"], $b["padre_nombre"], $ruta, "Boletín de {$b['estudiante_nombre']}")) {
+                        $ok[] = "{$b['padre_nombre']} ({$b['email']})";
+                    }
+                }
+                $mensaje = $ok ? "Boletín enviado por correo a " . implode(", ", $ok) . "."
+                               : "No se pudo enviar el correo (revisa la configuración de correo).";
+                $tipo = $ok ? "success" : "danger";
             }
         }
     }
@@ -168,11 +171,16 @@ function boletinesFilas(PDO $conexion, array $f): array
         SELECT bp.id, bp.periodo, bp.year, bp.ruta_pdf, bp.paz_y_salvo, bp.publicado,
                to_char(bp.publicado_en, 'DD/MM/YYYY HH24:MI') AS publicado_en,
                e.nombre AS estudiante, c.grado, c.nombre AS curso_nombre,
-               u.nombre AS padre_nombre, u.email AS padre_email
+               ac.padre_nombre, ac.padre_email
         FROM boletines_pdf bp
         JOIN estudiantes e ON bp.estudiante_id = e.id
         LEFT JOIN cursos c ON e.curso_id = c.id
-        LEFT JOIN usuarios u ON e.padre_id = u.id
+        LEFT JOIN LATERAL (
+            SELECT string_agg(u.nombre, ', ' ORDER BY u.nombre) AS padre_nombre,
+                   string_agg(u.email,  ', ' ORDER BY u.nombre) AS padre_email
+            FROM estudiante_acudientes ea JOIN usuarios u ON u.id = ea.padre_id
+            WHERE ea.estudiante_id = e.id
+        ) ac ON TRUE
         WHERE $where
         ORDER BY bp.publicado ASC, bp.year DESC, bp.periodo, e.nombre
     ");
@@ -190,14 +198,14 @@ function boletinesTbody(array $filas, array $f): string
     foreach ($filas as $b) {
         $curso = trim(ucfirst((string)($b['grado'] ?? '')) . ' ' . (string)($b['curso_nombre'] ?? '')) ?: '—';
         $paz = $b['paz_y_salvo']
-            ? '<span class="badge rounded-pill" style="background:#e8f5e9;color:#2e7d32;">Sí</span>'
-            : '<span class="badge rounded-pill" style="background:#fdeaea;color:#c62828;">No</span>';
+            ? '<span class="gca-badge is-ok">Sí</span>'
+            : '<span class="gca-badge is-bad">No</span>';
         $pub = $b['publicado'];
         $estado = $pub
-            ? '<span class="badge rounded-pill" style="background:#e8f5e9;color:#1b5e20;"><i class="bi bi-eye-fill" aria-hidden="true"></i> Publicado</span>'
-            : '<span class="badge rounded-pill" style="background:#fff3e0;color:#a33f00;"><i class="bi bi-hourglass-split" aria-hidden="true"></i> Pendiente</span>';
+            ? '<span class="gca-badge is-ok"><i class="bi bi-eye" aria-hidden="true"></i> Publicado</span>'
+            : '<span class="gca-badge is-warn"><i class="bi bi-hourglass-split" aria-hidden="true"></i> Pendiente</span>';
         $padre = htmlspecialchars($b['padre_nombre'] ?? '—');
-        if (!empty($b['padre_email'])) $padre .= '<br><small class="text-muted">' . htmlspecialchars($b['padre_email']) . '</small>';
+        if (!empty($b['padre_email'])) $padre .= '<small class="cell-sub">' . htmlspecialchars($b['padre_email']) . '</small>';
 
         $acc = '';
         // Ver PDF
@@ -207,26 +215,26 @@ function boletinesTbody(array $filas, array $f): string
         // Publicar / Ocultar
         $tog = $pub ? 'ocultar' : 'publicar';
         $togBtn = $pub
-            ? '<button type="submit" class="btn btn-sm" style="background:#fdeaea;color:#c62828;border:none;border-radius:8px;font-size:12px;font-weight:600;padding:5px 12px;"><i class="bi bi-eye-slash"></i> Ocultar</button>'
-            : '<button type="submit" class="btn-gca btn-gca-sm"><i class="bi bi-send-check"></i> Publicar</button>';
-        $acc .= '<form method="POST" style="display:inline-block;margin:2px;">' . campo_csrf() . $campos
+            ? '<button type="submit" class="btn-soft-danger"><i class="bi bi-eye-slash" aria-hidden="true"></i> Ocultar</button>'
+            : '<button type="submit" class="btn-gca btn-gca-sm"><i class="bi bi-send-check" aria-hidden="true"></i> Publicar</button>';
+        $acc .= '<form method="POST" class="d-inline-flex">' . campo_csrf() . $campos
             . '<input type="hidden" name="accion" value="' . $tog . '"><input type="hidden" name="boletin_id" value="' . (int)$b['id'] . '">' . $togBtn . '</form>';
         // Enviar por correo (opcional)
         if (!empty($b['padre_email'])) {
-            $acc .= '<form method="POST" style="display:inline-block;margin:2px;">' . campo_csrf() . $campos
+            $acc .= '<form method="POST" class="d-inline-flex">' . campo_csrf() . $campos
                 . '<input type="hidden" name="accion" value="enviar"><input type="hidden" name="boletin_id" value="' . (int)$b['id'] . '">'
-                . '<button type="submit" class="btn btn-sm btn-outline-gca" title="Enviar por correo" aria-label="Enviar por correo al padre de ' . htmlspecialchars($b['estudiante']) . '" onclick="return confirm(\'¿Enviar el boletín por correo al padre?\')"><i class="bi bi-envelope" aria-hidden="true"></i></button></form>';
+                . '<button type="submit" class="btn-action" title="Enviar por correo" aria-label="Enviar por correo al padre de ' . htmlspecialchars($b['estudiante']) . '" onclick="return confirm(\'¿Enviar el boletín por correo al padre?\')"><i class="bi bi-envelope" aria-hidden="true"></i></button></form>';
         }
 
         $h .= '<tr>'
-            . '<td class="fw-medium">' . htmlspecialchars($b['estudiante']) . '</td>'
+            . '<td class="cell-strong">' . htmlspecialchars($b['estudiante']) . '</td>'
             . '<td>' . htmlspecialchars($curso) . '</td>'
             . '<td class="text-center">' . htmlspecialchars($b['periodo']) . '</td>'
             . '<td class="text-center">' . htmlspecialchars($b['year']) . '</td>'
             . '<td class="text-center">' . $paz . '</td>'
             . '<td>' . $padre . '</td>'
             . '<td class="text-center">' . $estado . '</td>'
-            . '<td class="text-center" style="white-space:nowrap;">' . $acc . '</td>'
+            . '<td class="text-end"><div class="row-actions">' . $acc . '</div></td>'
             . '</tr>';
     }
     return $h;
@@ -274,13 +282,7 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Gestión de Boletines</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Boletines &nbsp;/&nbsp; Publicación al padre</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <?php if ($mensaje): ?>
@@ -292,16 +294,16 @@ include "includes/header.php";
 
             <div class="gca-card p-4">
                 <div class="section-header">
-                    <h4><i class="ti ti-file-certificate"></i> Boletines generados</h4>
-                    <div class="d-flex align-items-center gap-2">
-                        <span id="pendBadge" class="badge rounded-pill px-3 py-2" style="background:#fff3e0;color:#a33f00;font-size:12px;" role="status">
+                    <h4><i class="bi bi-file-earmark-check" aria-hidden="true"></i> Boletines generados</h4>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span id="pendBadge" class="gca-badge is-warn is-lg" role="status">
                             <i class="bi bi-hourglass-split" aria-hidden="true"></i> <span id="pendNum"><?= $pendientes ?></span> pendiente(s)
                         </span>
-                        <span class="badge rounded-pill px-3 py-2" style="background:#e8f5e9;color:#1b5e20;font-size:12px;">
-                            <i class="bi bi-eye-fill" aria-hidden="true"></i> <span id="pubNum"><?= $publicados ?></span> publicado(s)
+                        <span class="gca-badge is-ok is-lg">
+                            <i class="bi bi-eye" aria-hidden="true"></i> <span id="pubNum"><?= $publicados ?></span> publicado(s)
                         </span>
-                        <span class="live-dot" title="Actualización en vivo" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#1b5e20;">
-                            <span class="live-pulse" aria-hidden="true" style="width:8px;height:8px;border-radius:50%;background:#2e7d32;display:inline-block;animation:pulse 1.4s infinite;"></span> EN VIVO
+                        <span class="live-dot" title="La tabla se actualiza sola cada pocos segundos">
+                            <span class="live-pulse" aria-hidden="true"></span> En vivo
                         </span>
                         <form method="POST" id="formPublicarTodos" data-texto="<?= htmlspecialchars($textoPublicar) ?>"
                               onsubmit="event.preventDefault(); var f=this; showConfirm(f.dataset.texto, function(){ f.submit(); }, 'Sí, publicar');">
@@ -309,23 +311,23 @@ include "includes/header.php";
                             <?= boletinFiltrosCampos($filtro) ?>
                             <input type="hidden" name="accion" value="publicar_todos">
                             <button type="submit" class="btn-gca btn-gca-sm" id="btnPublicarTodos" <?= $pendientes ? '' : 'disabled' ?>>
-                                <i class="bi bi-send-check" aria-hidden="true"></i> Publicar pendientes (<span id="pendNum2"><?= $pendientes ?></span>)
+                                <i class="bi bi-send-check" aria-hidden="true"></i> <span>Publicar pendientes (<span id="pendNum2"><?= $pendientes ?></span>)</span>
                             </button>
                         </form>
                     </div>
                 </div>
 
-                <div class="alert" style="background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.25);color:var(--text-primary);font-size:13px;border-radius:12px;">
-                    <i class="bi bi-info-circle-fill me-1"></i>
+                <div class="alert alert-gca alert-icon" role="note">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i><div>
                     El director de grupo genera los boletines y quedan <strong>Pendientes</strong>. Aquí tú decides el
                     <strong>paso al padre</strong>: al <strong>Publicar</strong>, el boletín aparece en el portal del padre.
                     El <strong>paz y salvo</strong> lo marca el director como referencia.
-                </div>
+                </div></div>
 
-                <form method="GET" class="row g-2 align-items-end mb-3" aria-label="Filtrar boletines">
-                    <div class="col-12 col-md-5">
-                        <label for="f_curso" class="form-label small mb-1">Curso</label>
-                        <select id="f_curso" name="curso_id" class="form-select form-select-sm">
+                <form method="GET" class="filter-bar" aria-label="Filtrar boletines">
+                    <div class="ff ff-grow">
+                        <label for="f_curso" class="form-label">Curso</label>
+                        <select id="f_curso" name="curso_id" class="form-select">
                             <option value="0">Todos los cursos</option>
                             <?php foreach ($cursos as $c): ?>
                                 <option value="<?= (int) $c['id'] ?>" <?= (int) $c['id'] === $filtro['curso_id'] ? 'selected' : '' ?>>
@@ -334,9 +336,9 @@ include "includes/header.php";
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-6 col-md-2">
-                        <label for="f_periodo" class="form-label small mb-1">Período</label>
-                        <select id="f_periodo" name="periodo" class="form-select form-select-sm">
+                    <div class="ff">
+                        <label for="f_periodo" class="form-label">Período</label>
+                        <select id="f_periodo" name="periodo" class="form-select">
                             <?php foreach (['1', '2', '3', '4'] as $pp): ?>
                                 <option value="<?= $pp ?>" <?= $filtro['periodo'] === $pp ? 'selected' : '' ?>>
                                     Período <?= $pp ?><?= $pp === $periodo_activo ? ' (activo)' : '' ?>
@@ -345,17 +347,17 @@ include "includes/header.php";
                             <option value="todos" <?= $filtro['periodo'] === 'todos' ? 'selected' : '' ?>>Todos</option>
                         </select>
                     </div>
-                    <div class="col-6 col-md-2">
-                        <label for="f_year" class="form-label small mb-1">Año</label>
-                        <select id="f_year" name="year" class="form-select form-select-sm">
+                    <div class="ff">
+                        <label for="f_year" class="form-label">Año</label>
+                        <select id="f_year" name="year" class="form-select">
                             <?php foreach ($anios as $aa): ?>
                                 <option value="<?= (int) $aa ?>" <?= (int) $aa === $filtro['year'] ? 'selected' : '' ?>><?= (int) $aa ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-12 col-md-3 d-flex gap-2">
-                        <button type="submit" class="btn-gca btn-gca-sm"><i class="bi bi-funnel" aria-hidden="true"></i> Filtrar</button>
-                        <a href="enviar_boletin.php" class="btn-outline-gca btn-gca-sm">Período activo</a>
+                    <div class="ff-actions">
+                        <button type="submit" class="btn-gca"><i class="bi bi-funnel" aria-hidden="true"></i> Filtrar</button>
+                        <a href="enviar_boletin.php" class="btn-outline-gca">Período activo</a>
                     </div>
                 </form>
 
@@ -370,7 +372,7 @@ include "includes/header.php";
                                 <th scope="col" class="text-center">Paz y salvo</th>
                                 <th scope="col">Padre</th>
                                 <th scope="col" class="text-center">Estado</th>
-                                <th scope="col" class="text-center" style="width:200px;">Acciones</th>
+                                <th scope="col" class="text-end">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="boletinesBody"><?= boletinesTbody($filas, $filtro) ?></tbody>
@@ -380,10 +382,6 @@ include "includes/header.php";
         </div>
     </main>
 
-    <style>
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
-        @media (prefers-reduced-motion: reduce){ .live-pulse{ animation:none !important; } }
-    </style>
     <script>
     (function () {
         // Actualización en vivo: refleja boletines recién generados por los directores

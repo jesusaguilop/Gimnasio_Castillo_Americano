@@ -1,13 +1,8 @@
 <?php
-session_start();
-require_once "../config/database.php";
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 require_once "../lib/alertas_helper.php";
 require_once "../lib/csrf_helper.php";
-
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
 
 $usuario_id = $_SESSION["id"];
 
@@ -51,65 +46,61 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1"><i class="ti ti-bell" aria-hidden="true"></i> Alertas del Sistema</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Notificaciones</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
-            <?php if (count($alertas) === 0): ?>
-                <div class="gca-card empty-state p-5">
-                    <i class="bi bi-bell-slash" style="font-size:52px;color:var(--text-muted);" aria-hidden="true"></i>
-                    <h4 style="font-family:'Cormorant Garamond',serif;color:var(--text-primary);font-weight:700;">Sin alertas</h4>
-                    <p class="text-muted mb-0">No hay notificaciones en el sistema.</p>
-                </div>
-            <?php else: ?>
-                <?php if (count(array_filter($alertas, fn($x) => !$x['leido'])) > 0): ?>
-                    <form method="POST" class="mb-3 text-end">
+            <?php $noLeidas = count(array_filter($alertas, fn($x) => !$x['leido'])); ?>
+            <div class="section-header">
+                <h4><i class="bi bi-bell" aria-hidden="true"></i> Notificaciones
+                    <?php if ($noLeidas > 0): ?><span class="gca-badge is-warn"><?= $noLeidas ?> sin leer</span><?php endif; ?>
+                </h4>
+                <?php if ($noLeidas > 0): ?>
+                    <form method="POST">
                         <?= campo_csrf() ?>
-                        <button type="submit" name="marcar_todas" class="btn-outline-gca btn btn-sm">
+                        <button type="submit" name="marcar_todas" class="btn-outline-gca btn-gca-sm">
                             <i class="bi bi-check2-all" aria-hidden="true"></i> Marcar todas como leídas
                         </button>
                     </form>
                 <?php endif; ?>
-                <div style="display:flex;flex-direction:column;gap:12px;">
+            </div>
+
+            <?php if (count($alertas) === 0): ?>
+                <div class="gca-card empty-state">
+                    <i class="bi bi-bell-slash" aria-hidden="true"></i>
+                    <h3>Sin alertas</h3>
+                    <p>No hay notificaciones en el sistema.</p>
+                </div>
+            <?php else: ?>
+                <div class="stack">
                     <?php foreach ($alertas as $a):
-                        $icono = $a['tipo'] === 'riesgo_academico' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill';
-                        $color = $a['tipo'] === 'riesgo_academico' ? '#dc3545' : 'var(--gold-text)';
+                        $esRiesgo = $a['tipo'] === 'riesgo_academico';
+                        $icono = $esRiesgo ? 'bi-exclamation-triangle' : 'bi-info-circle';
                     ?>
-                        <div class="gca-card p-3 <?= $a['leido'] ? '' : '' ?>" style="<?= $a['leido'] ? 'opacity:0.7;' : 'border-left:4px solid ' . $color ?>">
-                            <div class="d-flex align-items-start gap-3">
-                                <i class="bi <?= $icono ?>" style="font-size:20px;color:<?= $color ?>;margin-top:2px;" aria-hidden="true"></i>
-                                <div style="flex:1;min-width:0;">
-                                    <h2 style="font-weight:700;font-size:14px;margin:0 0 2px;color:var(--text-primary);">
-                                        <?= htmlspecialchars($a['titulo']) ?>
-                                        <?php if (!$a['leido']): ?><span class="visually-hidden"> (sin leer)</span><?php endif; ?>
-                                    </h2>
-                                    <p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px;">
-                                        <?= nl2br(htmlspecialchars($a['mensaje'])) ?>
-                                    </p>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <small style="color:var(--text-muted);">
-                                            <i class="bi bi-clock me-1" aria-hidden="true"></i><?= date("d/m/Y H:i", strtotime($a['created_at'])) ?>
-                                        </small>
-                                        <?php if ($a['tipo'] === 'riesgo_academico'): ?>
-                                            <span class="badge bg-danger rounded-pill" style="font-size:10px;">Riesgo</span>
-                                        <?php endif; ?>
-                                        <?php if (!$a['leido']): ?>
-                                            <form method="POST" style="display:inline;">
-                                                <?= campo_csrf() ?>
-                                                <input type="hidden" name="alerta_id" value="<?= $a['id'] ?>">
-                                                <button type="submit" name="marcar_leida" class="btn btn-sm btn-link text-decoration-none p-0"
-                                                    style="font-size:12px;color:var(--gold-text);">Marcar como leída</button>
-                                            </form>
-                                        <?php endif; ?>
-                                    </div>
+                        <article class="gca-card alert-card <?= $a['leido'] ? 'is-read' : 'is-unread' ?> <?= $esRiesgo ? 'is-risk' : '' ?>">
+                            <span class="alert-card-ico" aria-hidden="true"><i class="bi <?= $icono ?>"></i></span>
+                            <div class="flex-grow-1 min-w-0">
+                                <h2>
+                                    <?= htmlspecialchars($a['titulo']) ?>
+                                    <?php if (!$a['leido']): ?><span class="visually-hidden"> (sin leer)</span><?php endif; ?>
+                                </h2>
+                                <p><?= nl2br(htmlspecialchars($a['mensaje'])) ?></p>
+                                <div class="alert-card-meta">
+                                    <span><i class="bi bi-clock me-1" aria-hidden="true"></i><?= date("d/m/Y H:i", strtotime($a['created_at'])) ?></span>
+                                    <?php if ($esRiesgo): ?>
+                                        <span class="gca-badge is-bad">Riesgo académico</span>
+                                    <?php endif; ?>
+                                    <?php if (!$a['leido']): ?>
+                                        <form method="POST" class="d-inline">
+                                            <?= campo_csrf() ?>
+                                            <input type="hidden" name="alerta_id" value="<?= $a['id'] ?>">
+                                            <button type="submit" name="marcar_leida" class="link-btn">Marcar como leída</button>
+                                        </form>
+                                    <?php else: ?>
+                                        <span class="gca-badge">Leída</span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
-                        </div>
+                        </article>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>

@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
-
-require_once "../config/database.php";
 require_once "../lib/csrf_helper.php";
 
 $mensaje = "";
@@ -95,13 +90,7 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Asignar Estudiante</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Matriculación Académica</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="row justify-content-center">
@@ -109,9 +98,11 @@ include "includes/header.php";
                     <div class="card card-form p-4 p-md-5">
 
                         <div class="header-box">
-                            <img src="../assets/img/logo_gca.png" alt="GCA">
-                            <h4>Asignar Estudiante a Curso</h4>
-                            <span>Gimnasio Castillo Americano</span>
+                            <i class="bi bi-diagram-3" aria-hidden="true"></i>
+                            <div>
+                                <h4>Asignar Estudiante a Curso</h4>
+                                <span>Matricule a un estudiante en su curso.</span>
+                            </div>
                         </div>
 
                         <?php if ($mensaje): ?>
@@ -141,15 +132,15 @@ include "includes/header.php";
                         </form>
 
                         <?php if ($grado === ""): ?>
-                            <p class="small text-muted mb-0">Elija primero el grado para ver sus estudiantes.</p>
+                            <div class="empty-state empty-state-sm"><i class="bi bi-arrow-up" aria-hidden="true"></i><p>Elija primero el grado para ver sus estudiantes.</p></div>
                         <?php elseif (count($estudiantes) === 0): ?>
-                            <p class="small text-muted mb-0">No hay estudiantes en este grado.</p>
+                            <div class="empty-state empty-state-sm"><i class="bi bi-people" aria-hidden="true"></i><p>No hay estudiantes en este grado.</p></div>
                         <?php else: ?>
                         <form method="POST">
                             <?= campo_csrf() ?>
                             <input type="hidden" name="grado" value="<?= htmlspecialchars($grado) ?>">
                             <div class="mb-3">
-                                <label class="form-label fw-medium" for="f_estudiante_id">2. Estudiante <span class="text-danger" aria-hidden="true">*</span></label>
+                                <label class="form-label fw-medium" for="f_estudiante_id">2. Estudiante <span class="req" aria-hidden="true">*</span></label>
                                 <select id="f_estudiante_id" name="estudiante_id" class="form-select" required>
                                     <option value="">-- Elija un estudiante --</option>
                                     <?php foreach ($estudiantes as $e):
@@ -161,7 +152,7 @@ include "includes/header.php";
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label fw-medium" for="f_curso_id">3. Nuevo curso <span class="text-danger" aria-hidden="true">*</span></label>
+                                <label class="form-label fw-medium" for="f_curso_id">3. Nuevo curso <span class="req" aria-hidden="true">*</span></label>
                                 <select id="f_curso_id" name="curso_id" class="form-select" required>
                                     <option value="">-- Elija un curso --</option>
                                     <?php foreach ($cursos as $c): ?>
@@ -173,7 +164,7 @@ include "includes/header.php";
                             </div>
 
                             <button type="submit" class="btn-gca w-100">
-                                <i class="bi bi-journal-check me-2" aria-hidden="true"></i>Asignar a Curso
+                                <i class="bi bi-check2" aria-hidden="true"></i> Asignar a curso
                             </button>
                         </form>
                         <?php endif; ?>

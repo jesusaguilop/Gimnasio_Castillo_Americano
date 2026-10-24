@@ -1,12 +1,7 @@
 <?php
-session_start();
-require_once "../config/database.php";
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 require_once __DIR__ . "/../lib/csrf_helper.php";
-
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
 
 $mensaje = "";
 if (isset($_SESSION["success_msg"])) {
@@ -88,20 +83,14 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Profesores</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Profesores</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="gca-card p-4">
                 <div class="section-header">
-                    <h4><i class="bi bi-person-workspace"></i> Profesores registrados</h4>
-                    <a href="crear_profesor.php" class="btn-gca btn-gca-sm">
-                        <i class="bi bi-plus-circle me-1"></i> Nuevo Profesor
+                    <h4><i class="bi bi-person-workspace" aria-hidden="true"></i> Profesores <span class="count-pill"><?= count($profesores) ?></span></h4>
+                    <a href="crear_profesor.php" class="btn-gca">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo profesor
                     </a>
                 </div>
 
@@ -112,59 +101,58 @@ include "includes/header.php";
                     </div>
                 <?php endif; ?>
 
-                <form method="GET" class="row g-2 mb-3 align-items-end" role="search">
-                    <div class="col-md-6">
-                        <label class="form-label fw-medium small mb-1" for="f_q">Buscar por nombre o correo</label>
-                        <input id="f_q" type="search" name="q" class="form-control form-control-sm"
-                            placeholder="Escriba un nombre o correo..."
-                            value="<?= htmlspecialchars($busqueda) ?>">
+                <form method="GET" class="filter-bar" role="search" aria-label="Buscar profesores">
+                    <div class="ff ff-grow">
+                        <label class="form-label" for="f_q">Buscar por nombre o correo</label>
+                        <div class="search-field mw-100">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input id="f_q" type="search" name="q" class="form-control"
+                                placeholder="Escriba un nombre o correo..."
+                                value="<?= htmlspecialchars($busqueda) ?>" data-live-filter="#tablaProfesores" autocomplete="off">
+                        </div>
                     </div>
-                    <div class="col-md-4 d-flex gap-2">
-                        <button type="submit" class="btn-gca btn-gca-sm flex-fill">
-                            <i class="bi bi-search" aria-hidden="true"></i> Buscar
-                        </button>
+                    <div class="ff-actions">
+                        <button type="submit" class="btn-gca"><i class="bi bi-search" aria-hidden="true"></i> Buscar</button>
                         <?php if ($busqueda !== ""): ?>
-                            <a href="ver_profesores.php" class="btn btn-outline-secondary btn-sm flex-fill">
-                                <i class="bi bi-x-circle" aria-hidden="true"></i> Limpiar
-                            </a>
+                            <a href="ver_profesores.php" class="btn-outline-gca"><i class="bi bi-x-lg" aria-hidden="true"></i> Limpiar</a>
                         <?php endif; ?>
                     </div>
                 </form>
-                <p class="small text-muted mb-2" role="status">
+                <p class="table-count mb-2" role="status">
                     <?= count($profesores) ?> resultado(s)<?= $busqueda !== "" ? ' para «' . htmlspecialchars($busqueda) . '»' : '' ?>
                 </p>
 
                 <div class="table-responsive">
-                    <table class="table gca-table table-hover align-middle">
+                    <table class="table gca-table align-middle" id="tablaProfesores">
                         <thead>
                             <tr>
                                 <th scope="col">Nombre</th>
-                                <th scope="col">Email</th>
+                                <th scope="col">Correo</th>
                                 <th scope="col" class="text-end">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($profesores as $p): ?>
                                 <tr>
-                                    <td><span class="fw-semibold"><?= htmlspecialchars($p["nombre"]) ?></span></td>
+                                    <td class="cell-strong"><?= htmlspecialchars($p["nombre"]) ?></td>
                                     <td><?= htmlspecialchars($p["email"]) ?></td>
-                                    <td class="text-end">
-                                        <a href="editar_profesor.php?id=<?= $p["id"] ?>" class="btn-action btn-edit me-1" title="Editar">
-                                            <i class="bi bi-pencil-square"></i>
+                                    <td class="text-end"><div class="row-actions">
+                                        <a href="editar_profesor.php?id=<?= $p["id"] ?>" class="btn-action btn-edit" title="Editar" aria-label="Editar a <?= htmlspecialchars($p["nombre"]) ?>">
+                                            <i class="bi bi-pencil" aria-hidden="true"></i>
                                         </a>
-                                        <form method="POST" style="display:inline" id="delForm<?= $p["id"] ?>">
-                                    <?= campo_csrf() ?>
-                                    <input type="hidden" name="eliminar_id" value="<?= $p["id"] ?>">
-                                    <button type="button" class="btn-action btn-delete" title="Eliminar"
-                                        onclick="showConfirm('¿Eliminar este profesor? Si ya tiene notas, materias o dirección de grupo no se podrá eliminar.',()=>document.getElementById('delForm<?= $p["id"] ?>').submit());">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                    </td>
+                                        <form method="POST" id="delForm<?= $p["id"] ?>">
+                                            <?= campo_csrf() ?>
+                                            <input type="hidden" name="eliminar_id" value="<?= $p["id"] ?>">
+                                            <button type="button" class="btn-action btn-delete" title="Eliminar" aria-label="Eliminar a <?= htmlspecialchars($p["nombre"]) ?>"
+                                                onclick="showConfirm('¿Eliminar este profesor? Si ya tiene notas, materias o dirección de grupo no se podrá eliminar.',()=>document.getElementById('delForm<?= $p["id"] ?>').submit());">
+                                                <i class="bi bi-trash" aria-hidden="true"></i>
+                                            </button>
+                                        </form>
+                                    </div></td>
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (count($profesores) === 0): ?>
-                                <tr><td colspan="3" class="text-center text-muted py-4"><?= $busqueda !== "" ? "No se encontraron profesores con esa búsqueda." : "No hay profesores registrados." ?></td></tr>
+                                <tr><td colspan="3"><div class="empty-state empty-state-sm"><i class="bi bi-person-workspace" aria-hidden="true"></i><p><?= $busqueda !== "" ? "No se encontraron profesores con esa búsqueda." : "No hay profesores registrados." ?></p></div></td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>

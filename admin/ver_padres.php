@@ -1,12 +1,7 @@
 <?php
-session_start();
-require_once "../config/database.php";
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 require_once __DIR__ . "/../lib/csrf_helper.php";
-
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
 
 $mensaje = "";
 if (isset($_SESSION["success_msg"])) {
@@ -48,11 +43,11 @@ if ($puedeEliminar) {
     $id = (int) $_POST["eliminar_id"];
     // Borrar un padre borraba también a sus hijos (y sus notas y boletines)
     $deps = contarDependencias($conexion, [
-        "estudiante(s) vinculado(s)" => "SELECT COUNT(*) FROM estudiantes WHERE padre_id = ?",
+        "estudiante(s) vinculado(s)" => "SELECT COUNT(*) FROM estudiante_acudientes WHERE padre_id = ?",
     ], $id);
     if ($deps) {
         $mensaje = "No se eliminó: este padre tiene " . implode(", ", $deps)
-                 . ". Primero vincule a sus hijos con otro padre o acudiente en «Vincular padre con estudiante».";
+                 . ". Primero quite esos vínculos en «Vincular acudientes».";
         $tipo = "warning";
     } else {
         $stmt = $conexion->prepare("DELETE FROM usuarios WHERE id = :id AND rol = 'padre'");
@@ -85,21 +80,20 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Padres de Familia</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Padres</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="gca-card p-4">
                 <div class="section-header">
-                    <h4><i class="bi bi-person-heart"></i> Padres registrados</h4>
-                    <a href="crear_padre.php" class="btn-gca btn-gca-sm">
-                        <i class="bi bi-plus-circle me-1"></i> Nuevo Padre
-                    </a>
+                    <h4><i class="bi bi-people" aria-hidden="true"></i> Padres y acudientes <span class="count-pill"><?= count($padres) ?></span></h4>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="asignar_padre.php" class="btn-outline-gca">
+                            <i class="bi bi-link-45deg" aria-hidden="true"></i> Vincular a estudiante
+                        </a>
+                        <a href="crear_padre.php" class="btn-gca">
+                            <i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo padre
+                        </a>
+                    </div>
                 </div>
 
                 <?php if ($mensaje): ?>
@@ -109,59 +103,58 @@ include "includes/header.php";
                     </div>
                 <?php endif; ?>
 
-                <form method="GET" class="row g-2 mb-3 align-items-end" role="search">
-                    <div class="col-md-6">
-                        <label class="form-label fw-medium small mb-1" for="f_q">Buscar por nombre o correo</label>
-                        <input id="f_q" type="search" name="q" class="form-control form-control-sm"
-                            placeholder="Escriba un nombre o correo..."
-                            value="<?= htmlspecialchars($busqueda) ?>">
+                <form method="GET" class="filter-bar" role="search" aria-label="Buscar padres">
+                    <div class="ff ff-grow">
+                        <label class="form-label" for="f_q">Buscar por nombre o correo</label>
+                        <div class="search-field mw-100">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input id="f_q" type="search" name="q" class="form-control"
+                                placeholder="Escriba un nombre o correo..."
+                                value="<?= htmlspecialchars($busqueda) ?>" data-live-filter="#tablaPadres" autocomplete="off">
+                        </div>
                     </div>
-                    <div class="col-md-4 d-flex gap-2">
-                        <button type="submit" class="btn-gca btn-gca-sm flex-fill">
-                            <i class="bi bi-search" aria-hidden="true"></i> Buscar
-                        </button>
+                    <div class="ff-actions">
+                        <button type="submit" class="btn-gca"><i class="bi bi-search" aria-hidden="true"></i> Buscar</button>
                         <?php if ($busqueda !== ""): ?>
-                            <a href="ver_padres.php" class="btn btn-outline-secondary btn-sm flex-fill">
-                                <i class="bi bi-x-circle" aria-hidden="true"></i> Limpiar
-                            </a>
+                            <a href="ver_padres.php" class="btn-outline-gca"><i class="bi bi-x-lg" aria-hidden="true"></i> Limpiar</a>
                         <?php endif; ?>
                     </div>
                 </form>
-                <p class="small text-muted mb-2" role="status">
+                <p class="table-count mb-2" role="status">
                     <?= count($padres) ?> resultado(s)<?= $busqueda !== "" ? ' para «' . htmlspecialchars($busqueda) . '»' : '' ?>
                 </p>
 
                 <div class="table-responsive">
-                    <table class="table gca-table table-hover align-middle">
+                    <table class="table gca-table align-middle" id="tablaPadres">
                         <thead>
                             <tr>
                                 <th scope="col">Nombre</th>
-                                <th scope="col">Email</th>
+                                <th scope="col">Correo</th>
                                 <th scope="col" class="text-end">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($padres as $p): ?>
                                 <tr>
-                                    <td><span class="fw-semibold"><?= htmlspecialchars($p["nombre"]) ?></span></td>
+                                    <td class="cell-strong"><?= htmlspecialchars($p["nombre"]) ?></td>
                                     <td><?= htmlspecialchars($p["email"]) ?></td>
-                                    <td class="text-end">
-                                        <a href="editar_padre.php?id=<?= $p["id"] ?>" class="btn-action btn-edit me-1" title="Editar">
-                                            <i class="bi bi-pencil-square"></i>
+                                    <td class="text-end"><div class="row-actions">
+                                        <a href="editar_padre.php?id=<?= $p["id"] ?>" class="btn-action btn-edit" title="Editar" aria-label="Editar a <?= htmlspecialchars($p["nombre"]) ?>">
+                                            <i class="bi bi-pencil" aria-hidden="true"></i>
                                         </a>
-                                        <form method="POST" style="display:inline" id="delForm<?= $p["id"] ?>">
-                                    <?= campo_csrf() ?>
-                                    <input type="hidden" name="eliminar_id" value="<?= $p["id"] ?>">
-                                    <button type="button" class="btn-action btn-delete" title="Eliminar"
-                                        onclick="showConfirm('¿Eliminar este padre? Se borrará su cuenta de acceso. Si tiene hijos vinculados no se podrá eliminar.',()=>document.getElementById('delForm<?= $p["id"] ?>').submit());">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                    </td>
+                                        <form method="POST" id="delForm<?= $p["id"] ?>">
+                                            <?= campo_csrf() ?>
+                                            <input type="hidden" name="eliminar_id" value="<?= $p["id"] ?>">
+                                            <button type="button" class="btn-action btn-delete" title="Eliminar" aria-label="Eliminar a <?= htmlspecialchars($p["nombre"]) ?>"
+                                                onclick="showConfirm('¿Eliminar este padre? Se borrará su cuenta de acceso. Si tiene hijos vinculados no se podrá eliminar.',()=>document.getElementById('delForm<?= $p["id"] ?>').submit());">
+                                                <i class="bi bi-trash" aria-hidden="true"></i>
+                                            </button>
+                                        </form>
+                                    </div></td>
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (count($padres) === 0): ?>
-                                <tr><td colspan="3" class="text-center text-muted py-4"><?= $busqueda !== "" ? "No se encontraron padres con esa búsqueda." : "No hay padres registrados." ?></td></tr>
+                                <tr><td colspan="3"><div class="empty-state empty-state-sm"><i class="bi bi-people" aria-hidden="true"></i><p><?= $busqueda !== "" ? "No se encontraron padres con esa búsqueda." : "No hay padres registrados." ?></p></div></td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>

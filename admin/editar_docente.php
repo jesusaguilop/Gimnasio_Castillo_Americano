@@ -65,52 +65,58 @@ include "includes/header.php";
     <div id="overlay" onclick="closeSidebar()"></div>
     <?php include "includes/sidebar.php"; ?>
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Editar Docente</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Docentes &nbsp;/&nbsp; Editar</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
         <div class="content-area">
-            <?php if ($mensaje): ?>
-                <div class="alert alert-<?= $tipo ?>"><?= htmlspecialchars($mensaje) ?></div>
-            <?php endif; ?>
-            <div class="gca-card card-form">
-                <form method="POST" enctype="multipart/form-data" autocomplete="off">
-                    <?= campo_csrf() ?>
-                    <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label" for="f_nombre">Nombre completo *</label>
-                            <input id="f_nombre" type="text" name="nombre" class="form-control" required value="<?= htmlspecialchars($docente["nombre"]) ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="f_email">Correo electrónico</label>
-                            <input id="f_email" type="email" name="email" class="form-control" value="<?= htmlspecialchars($docente["email"] ?? "") ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="f_especialidad">Especialidad / Área</label>
-                            <input id="f_especialidad" type="text" name="especialidad" class="form-control" value="<?= htmlspecialchars($docente["especialidad"] ?? "") ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="f_foto">Foto</label>
-                            <?php if ($docente["foto"]): ?>
-                                <div class="mb-2"><img src="../<?= htmlspecialchars($docente["foto"]) ?>" alt="Foto actual del docente" style="max-height:80px;border-radius:8px;"></div>
-                            <?php endif; ?>
-                            <input id="f_foto" type="file" name="foto" class="form-control" accept="image/png,image/jpeg,image/webp">
-                            <small class="text-muted">Dejar vacío para mantener la foto actual.</small>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="f_descripcion">Descripción / Formación</label>
-                            <textarea id="f_descripcion" name="descripcion" class="form-control" rows="4"><?= htmlspecialchars($docente["descripcion"] ?? "") ?></textarea>
+            <div class="row justify-content-center">
+                <div class="col-xl-9 col-xxl-8">
+                <a href="ver_docentes.php" class="form-back"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a Docentes del sitio</a>
+                <?php if ($mensaje): ?>
+                    <div class="alert alert-<?= $tipo ?>" role="alert"><?= htmlspecialchars($mensaje) ?></div>
+                <?php endif; ?>
+                <div class="card-form p-4 p-md-5">
+                    <div class="header-box">
+                        <i class="bi bi-person-vcard" aria-hidden="true"></i>
+                        <div>
+                            <h4>Editar docente del sitio</h4>
+                            <span>Ficha pública para la página «Docentes».</span>
                         </div>
                     </div>
-                    <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn-gca">Guardar Cambios</button>
-                        <a href="ver_docentes.php" class="btn btn-outline-secondary px-4" style="border-radius:10px;">Cancelar</a>
-                    </div>
-                </form>
+                    <form method="POST" enctype="multipart/form-data" autocomplete="off">
+                        <?= campo_csrf() ?>
+                        <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="f_nombre">Nombre completo <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_nombre" type="text" name="nombre" class="form-control" required value="<?= htmlspecialchars($docente["nombre"]) ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="f_email">Correo electrónico</label>
+                                <input id="f_email" type="email" name="email" class="form-control" value="<?= htmlspecialchars($docente["email"] ?? "") ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="f_especialidad">Especialidad / Área</label>
+                                <input id="f_especialidad" type="text" name="especialidad" class="form-control" value="<?= htmlspecialchars($docente["especialidad"] ?? "") ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="f_foto">Foto</label>
+                                <?php if ($docente["foto"]): ?>
+                                    <div class="mb-2"><img src="../<?= htmlspecialchars($docente["foto"]) ?>" alt="Foto actual del docente" class="img-preview"></div>
+                                <?php endif; ?>
+                                <input id="f_foto" type="file" name="foto" class="form-control" accept="image/png,image/jpeg,image/webp">
+                                <small class="text-muted">Dejar vacío para mantener la foto actual.</small>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="f_descripcion">Descripción / Formación</label>
+                                <textarea id="f_descripcion" name="descripcion" class="form-control" rows="4"><?= htmlspecialchars($docente["descripcion"] ?? "") ?></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions mt-4">
+                            <button type="submit" class="btn-gca">Guardar Cambios</button>
+                            <a href="ver_docentes.php" class="btn-outline-gca">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+                </div>
             </div>
         </div>
     </main>

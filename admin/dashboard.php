@@ -46,232 +46,6 @@ $pageTitle = "Panel Administrativo";
 include "includes/header.php";
 ?>
 
-<style>
-    /* ─── Welcome banner ─── */
-    .welcome-banner {
-        position: relative;
-        overflow: hidden;
-        background:
-            radial-gradient(600px 200px at 90% -20%, rgba(212,175,55,.22), transparent 70%),
-            linear-gradient(135deg, #0d1b2a 0%, #1b2838 100%);
-        border-radius: 22px;
-        padding: 34px 38px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 20px;
-        margin-bottom: 28px;
-        border: 1px solid rgba(212, 175, 55, 0.18);
-        box-shadow: 0 12px 40px rgba(13, 27, 42, 0.18);
-        animation: gcaFadeUp .55s cubic-bezier(.22,1,.36,1) both;
-    }
-    .welcome-banner::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background-image: radial-gradient(rgba(212,175,55,.10) 1px, transparent 1px);
-        background-size: 22px 22px;
-        opacity: .5;
-        pointer-events: none;
-        mask-image: linear-gradient(90deg, transparent, #000 60%);
-        -webkit-mask-image: linear-gradient(90deg, transparent, #000 60%);
-    }
-    .welcome-banner .wb-left { position: relative; z-index: 1; }
-    .welcome-greet {
-        display: inline-block;
-        font-size: 12px;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        color: #d4af37;
-        background: rgba(212,175,55,.1);
-        border: 1px solid rgba(212,175,55,.22);
-        padding: 4px 12px;
-        border-radius: 30px;
-        margin-bottom: 12px;
-    }
-    .welcome-banner h2 {
-        font-family: 'Cormorant Garamond', serif;
-        font-weight: 700;
-        color: #f0ede6;
-        font-size: 30px;
-        margin: 0 0 6px;
-    }
-    .welcome-banner h2 span {
-        background: linear-gradient(90deg, #d4af37 20%, #f6e4a6 50%, #d4af37 80%);
-        background-size: 200% auto;
-        -webkit-background-clip: text; background-clip: text;
-        -webkit-text-fill-color: transparent; color: transparent;
-        animation: wbShine 5s linear infinite;
-    }
-    @keyframes wbShine { to { background-position: 200% center; } }
-    .welcome-banner p {
-        color: rgba(240, 237, 230, 0.62);
-        margin: 0;
-        font-size: 14px;
-    }
-    .welcome-banner p i { color: #d4af37; margin-right: 6px; }
-    .welcome-icon-wrap {
-        position: relative; z-index: 1;
-        width: 76px; height: 76px; flex-shrink: 0;
-        border-radius: 20px;
-        display: flex; align-items: center; justify-content: center;
-        background: rgba(212,175,55,.12);
-        border: 1px solid rgba(212,175,55,.25);
-        box-shadow: inset 0 0 30px rgba(212,175,55,.1);
-    }
-    .welcome-icon-wrap i { font-size: 38px; color: #d4af37; animation: floaty 3.5s ease-in-out infinite; }
-    @keyframes floaty { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-6px); } }
-
-    /* ─── Stat cards ─── */
-    .stat-card {
-        position: relative;
-        overflow: hidden;
-        background: var(--bg-card);
-        border-radius: 16px;
-        padding: 22px 24px;
-        display: flex;
-        align-items: center;
-        gap: 18px;
-        border: 1px solid var(--border-color);
-        transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s, border-color .25s, background .25s;
-        animation: gcaFadeUp .5s cubic-bezier(.22,1,.36,1) both;
-    }
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: -45%; right: -12%;
-        width: 130px; height: 130px; border-radius: 50%;
-        background: var(--accent, var(--gold));
-        opacity: .06;
-        transition: opacity .28s ease, transform .28s ease;
-    }
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.10);
-        border-color: var(--accent, var(--gold));
-    }
-    .stat-card:hover::before { opacity: .14; transform: scale(1.25); }
-
-    .stat-icon {
-        position: relative; z-index: 1;
-        width: 52px; height: 52px;
-        border-radius: 15px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 24px; flex-shrink: 0;
-        transition: transform .28s cubic-bezier(.22,1,.36,1);
-    }
-    .stat-card:hover .stat-icon { transform: scale(1.1) rotate(-4deg); }
-    .stat-icon.users       { background: rgba(13, 27, 42, 0.09);  color: #0d1b2a; }
-    .dark-mode .stat-icon.users { background: rgba(120,150,190,.12); color: #9db4d4; }
-    .stat-icon.profesores  { background: rgba(212, 175, 55, 0.15); color: #b8962e; }
-    .stat-icon.estudiantes { background: rgba(25, 135, 84, 0.12);  color: #198754; }
-    .stat-icon.padres      { background: rgba(13, 110, 253, 0.12); color: #0d6efd; }
-    .stat-icon.cursos      { background: rgba(111, 66, 193, 0.12); color: #6f42c1; }
-    .stat-icon.asignaturas { background: rgba(253, 126, 20, 0.12); color: #fd7e14; }
-
-    .stat-label {
-        font-size: 12.5px; color: var(--text-muted);
-        text-transform: uppercase; letter-spacing: .5px; font-weight: 500;
-    }
-    .stat-value {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 32px; font-weight: 700; color: var(--text-primary); line-height: 1.1;
-    }
-
-    /* ─── Section titles ─── */
-    .section-title {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 20px; font-weight: 700; color: var(--text-primary);
-        margin: 0 0 16px; display: flex; align-items: center; gap: 10px;
-    }
-    .section-title i { color: var(--gold); font-size: 22px; }
-
-    /* ─── Quick actions ─── */
-    .quick-actions {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(184px, 1fr));
-        gap: 12px; margin-bottom: 32px;
-    }
-    .quick-action {
-        position: relative; overflow: hidden;
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 14px;
-        padding: 16px 18px;
-        text-decoration: none;
-        display: flex; align-items: center; gap: 14px;
-        transition: all .22s cubic-bezier(.22,1,.36,1);
-        color: var(--text-secondary);
-    }
-    .quick-action i {
-        width: 40px; height: 40px; flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 19px; color: var(--gold);
-        background: rgba(212,175,55,.1);
-        border-radius: 11px;
-        transition: all .22s ease;
-    }
-    .quick-action span { font-size: 14px; font-weight: 500; }
-    .quick-action:hover {
-        border-color: var(--gold);
-        transform: translateY(-3px);
-        box-shadow: 0 8px 22px rgba(212, 175, 55, 0.14);
-        color: var(--text-primary);
-    }
-    .quick-action:hover i { background: var(--gold); color: #000; transform: rotate(-6deg) scale(1.05); }
-
-    /* ─── Recent / summary cards ─── */
-    .recent-card {
-        background: var(--bg-card);
-        border-radius: 16px;
-        border: 1px solid var(--border-color);
-        overflow: hidden;
-    }
-    .recent-card .list-item {
-        display: flex; align-items: center; justify-content: space-between;
-        gap: 12px; padding: 13px 20px;
-        border-bottom: 1px solid var(--table-row-border);
-        transition: background 0.15s;
-    }
-    .recent-card .list-item:last-child { border-bottom: none; }
-    .recent-card .list-item:hover { background: var(--bg-card-hover); }
-    .recent-card .li-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
-    .stu-avatar {
-        width: 40px; height: 40px; flex-shrink: 0;
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 16px; color: #000;
-        background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
-        box-shadow: 0 4px 12px rgba(212,175,55,.28);
-    }
-    .recent-card .item-name { font-weight: 600; color: var(--text-primary); font-size: 14.5px; }
-    .recent-card .item-email { font-size: 12.5px; color: var(--text-muted); }
-    .date-badge {
-        font-size: 12px; color: var(--gold-dark);
-        background: rgba(212,175,55,.1);
-        border: 1px solid rgba(212,175,55,.18);
-        padding: 3px 10px; border-radius: 20px; white-space: nowrap;
-    }
-    .sum-value {
-        font-weight: 700; color: var(--text-primary);
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        padding: 3px 12px; border-radius: 20px; font-size: 13px;
-    }
-    .recent-card .empty-message { padding: 32px; text-align: center; color: var(--text-muted); font-size: 14px; }
-
-    @media (max-width: 768px) {
-        .welcome-banner { flex-direction: column; text-align: center; padding: 26px 22px; }
-        .welcome-icon-wrap { display: none; }
-        .quick-actions { grid-template-columns: 1fr 1fr; }
-        .welcome-banner h2 { font-size: 25px; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-        .welcome-banner, .stat-card { animation: none; }
-        .welcome-banner h2 span, .welcome-icon-wrap i { animation: none; }
-    }
-</style>
-
 <body>
     <div id="overlay" onclick="closeSidebar()"></div>
 
@@ -279,171 +53,168 @@ include "includes/header.php";
 
     <main id="main">
 
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar">
-                <i class="bi bi-list" aria-hidden="true"></i>
-            </button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Panel Administrativo</h5>
-                <p>Gimnasio Castillo Americano &nbsp;/&nbsp; Inicio</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
+            <?php
+            // Todo sale de la consulta agregada de arriba ($stats) y de
+            // $ultimos_estudiantes: el panel no añade consultas.
+            $kBolPend  = (int) ($stats['bol_pendientes'] ?? 0);
+            $kSinPadre = (int) ($stats['sin_padre'] ?? 0);
+            $kSinCurso = (int) ($stats['sin_curso'] ?? 0);
+            $kAlertas  = (int) ($num_alertas_admin ?? ($stats['alertas_sin_leer'] ?? 0));
+            $kEst      = (int) $total_estudiantes;
+            $kVinc     = $kEst > 0 ? max(0, $kEst - $kSinPadre) : 0;
+            $kPctVinc  = $kEst > 0 ? (int) round($kVinc * 100 / $kEst) : 0;
+            $totalPend = ($kBolPend > 0) + ($kSinPadre > 0) + ($kSinCurso > 0) + ($kAlertas > 0);
+            ?>
 
-            <div class="welcome-banner">
-                <div class="wb-left">
-                    <span class="welcome-greet"><?= $saludo ?></span>
-                    <h2>Bienvenido, <span><?= $nombre_admin ?></span></h2>
-                    <p><i class="bi bi-calendar3"></i><?= ucfirst($fechaLarga) ?> &middot; Panel de control académico</p>
-                </div>
-                <div class="welcome-icon-wrap">
-                    <i class="bi bi-shield-check"></i>
-                </div>
-            </div>
-
-            <div class="row g-3 mb-4">
-                <div class="col-sm-6 col-lg-4 col-xl-2">
-                    <div class="stat-card" style="--accent:#4a6fa5; animation-delay:.04s">
-                        <div class="stat-icon users"><i class="bi bi-people-fill"></i></div>
-                        <div>
-                            <div class="stat-label">Cuentas</div>
-                            <div class="stat-value" data-count="<?= (int)$total_usuarios ?>">0</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-lg-4 col-xl-2">
-                    <a href="ver_profesores.php" class="stat-link">
-                    <div class="stat-card" style="--accent:#d4af37; animation-delay:.10s">
-                        <div class="stat-icon profesores"><i class="bi bi-person-workspace"></i></div>
-                        <div>
-                            <div class="stat-label">Profesores</div>
-                            <div class="stat-value" data-count="<?= (int)$total_profesores ?>">0</div>
-                        </div>
-                    </div>
-                    </a>
-                </div>
-                <div class="col-sm-6 col-lg-4 col-xl-2">
-                    <a href="ver_estudiantes.php" class="stat-link">
-                    <div class="stat-card" style="--accent:#198754; animation-delay:.16s">
-                        <div class="stat-icon estudiantes"><i class="bi bi-mortarboard-fill"></i></div>
-                        <div>
-                            <div class="stat-label">Estudiantes</div>
-                            <div class="stat-value" data-count="<?= (int)$total_estudiantes ?>">0</div>
-                            <div style="font-size:11px;color:var(--text-muted);"><?= (int)$total_estudiantes_usuarios ?> con cuenta</div>
-                        </div>
-                    </div>
-                    </a>
-                </div>
-                <div class="col-sm-6 col-lg-4 col-xl-2">
-                    <a href="ver_padres.php" class="stat-link">
-                    <div class="stat-card" style="--accent:#0d6efd; animation-delay:.22s">
-                        <div class="stat-icon padres"><i class="bi bi-person-heart"></i></div>
-                        <div>
-                            <div class="stat-label">Padres</div>
-                            <div class="stat-value" data-count="<?= (int)$total_padres ?>">0</div>
-                        </div>
-                    </div>
-                    </a>
-                </div>
-                <div class="col-sm-6 col-lg-4 col-xl-2">
-                    <a href="ver_cursos.php" class="stat-link">
-                    <div class="stat-card" style="--accent:#6f42c1; animation-delay:.28s">
-                        <div class="stat-icon cursos"><i class="bi bi-journal-check"></i></div>
-                        <div>
-                            <div class="stat-label">Cursos</div>
-                            <div class="stat-value" data-count="<?= (int)$total_cursos ?>">0</div>
-                        </div>
-                    </div>
-                    </a>
-                </div>
-                <div class="col-sm-6 col-lg-4 col-xl-2">
-                    <a href="ver_asignaturas.php" class="stat-link">
-                    <div class="stat-card" style="--accent:#fd7e14; animation-delay:.34s">
-                        <div class="stat-icon asignaturas"><i class="bi bi-book-fill"></i></div>
-                        <div>
-                            <div class="stat-label">Asignaturas</div>
-                            <div class="stat-value" data-count="<?= (int)$total_asignaturas ?>">0</div>
-                        </div>
-                    </div>
-                    </a>
-                </div>
-            </div>
-
-            <div class="section-title"><i class="bi bi-lightning-fill"></i> Acciones rápidas</div>
-            <div class="quick-actions">
-                <a href="crear_admin.php" class="quick-action"><i class="bi bi-shield-plus"></i><span>Nuevo Admin</span></a>
-                <a href="crear_profesor.php" class="quick-action"><i class="bi bi-person-plus"></i><span>Nuevo Profesor</span></a>
-                <a href="crear_estudiante.php" class="quick-action"><i class="bi bi-mortarboard"></i><span>Nuevo Estudiante</span></a>
-                <a href="crear_padre.php" class="quick-action"><i class="bi bi-heart"></i><span>Nuevo Padre</span></a>
-                <a href="crear_curso.php" class="quick-action"><i class="bi bi-plus-square"></i><span>Nuevo Curso</span></a>
-                <a href="crear_asignatura.php" class="quick-action"><i class="bi bi-bookmark-plus"></i><span>Nueva Asignatura</span></a>
-                <a href="asignar_profesor.php" class="quick-action"><i class="bi bi-link-45deg"></i><span>Asignar materias a profesores</span></a>
-                <a href="asignar_padre.php" class="quick-action"><i class="bi bi-people"></i><span>Vincular padre con estudiante</span></a>
-                <a href="enviar_boletin.php" class="quick-action"><i class="bi bi-file-earmark-check"></i><span>Boletines</span></a>
-                <a href="crear_noticia.php" class="quick-action"><i class="bi bi-newspaper"></i><span>Nueva Noticia</span></a>
-                <a href="plataforma.php" class="quick-action"><i class="bi bi-display"></i><span>Periodo y notas</span></a>
-            </div>
-
-            <div class="row g-4">
-                <div class="col-lg-6">
-                    <div class="section-title"><i class="bi bi-clock-history"></i> Últimos estudiantes registrados</div>
-                    <div class="recent-card">
-                        <?php if (count($ultimos_estudiantes) > 0): ?>
-                            <?php foreach ($ultimos_estudiantes as $est):
-                                $cursoStr = $est['grado'] ? ucfirst($est['grado']) . ' - ' . $est['curso_nombre'] : '—';
-                                $inicial = strtoupper(mb_substr(trim($est['nombre']), 0, 1));
-                            ?>
-                                <div class="list-item">
-                                    <div class="li-left">
-                                        <div class="stu-avatar"><?= htmlspecialchars($inicial) ?></div>
-                                        <div style="min-width:0;">
-                                            <div class="item-name"><?= htmlspecialchars($est["nombre"]) ?></div>
-                                            <div class="item-email">Doc: <?= htmlspecialchars($est["documento"]) ?> &middot; <?= htmlspecialchars($cursoStr) ?></div>
-                                        </div>
-                                    </div>
-                                    <span class="date-badge"><?= date("d/m/Y", strtotime($est["creado_en"])) ?></span>
-                                </div>
-                            <?php endforeach; ?>
+            <section class="dash-hero" aria-label="Bienvenida">
+                <div>
+                    <span class="dash-kicker"><?= $saludo ?> · <?= ucfirst($fechaLarga) ?></span>
+                    <h2>Hola, <span><?= $nombre_admin ?></span></h2>
+                    <p>
+                        <?php if ($totalPend > 0): ?>
+                            Tiene <?= $totalPend ?> <?= $totalPend === 1 ? 'tarea pendiente' : 'tareas pendientes' ?> en el panel. Las encontrará abajo.
                         <?php else: ?>
-                            <div class="empty-message">No hay estudiantes registrados aún.</div>
+                            Todo está al día. No hay tareas pendientes.
                         <?php endif; ?>
-                    </div>
+                    </p>
                 </div>
+                <div class="dash-hero-actions">
+                    <a href="enviar_boletin.php" class="btn-gca"><i class="bi bi-file-earmark-check" aria-hidden="true"></i> Publicar boletines</a>
+                    <a href="crear_estudiante.php" class="btn-outline-gca"><i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo estudiante</a>
+                </div>
+            </section>
 
-                <div class="col-lg-6">
-                    <div class="section-title"><i class="bi bi-list-check"></i> Pendientes</div>
-                    <div class="recent-card">
+            <h2 class="visually-hidden">Indicadores</h2>
+            <div class="kpi-grid">
+                <a href="ver_estudiantes.php" class="kpi">
+                    <div class="kpi-top"><span class="kpi-label">Estudiantes</span><span class="kpi-icon" aria-hidden="true"><i class="bi bi-mortarboard"></i></span></div>
+                    <div class="kpi-value" data-count="<?= $kEst ?>"><?= $kEst ?></div>
+                    <div class="kpi-foot"><?= $kPctVinc ?>% con acudiente vinculado</div>
+                </a>
+                <a href="ver_profesores.php" class="kpi">
+                    <div class="kpi-top"><span class="kpi-label">Profesores</span><span class="kpi-icon" aria-hidden="true"><i class="bi bi-person-workspace"></i></span></div>
+                    <div class="kpi-value" data-count="<?= (int) $total_profesores ?>"><?= (int) $total_profesores ?></div>
+                    <div class="kpi-foot">Cuentas docentes</div>
+                </a>
+                <a href="ver_padres.php" class="kpi">
+                    <div class="kpi-top"><span class="kpi-label">Acudientes</span><span class="kpi-icon" aria-hidden="true"><i class="bi bi-people"></i></span></div>
+                    <div class="kpi-value" data-count="<?= (int) $total_padres ?>"><?= (int) $total_padres ?></div>
+                    <div class="kpi-foot">Padres con acceso al portal</div>
+                </a>
+                <a href="ver_cursos.php" class="kpi">
+                    <div class="kpi-top"><span class="kpi-label">Cursos</span><span class="kpi-icon" aria-hidden="true"><i class="bi bi-collection"></i></span></div>
+                    <div class="kpi-value" data-count="<?= (int) $total_cursos ?>"><?= (int) $total_cursos ?></div>
+                    <div class="kpi-foot">De preescolar a once</div>
+                </a>
+                <a href="ver_asignaturas.php" class="kpi">
+                    <div class="kpi-top"><span class="kpi-label">Asignaturas</span><span class="kpi-icon" aria-hidden="true"><i class="bi bi-book"></i></span></div>
+                    <div class="kpi-value" data-count="<?= (int) $total_asignaturas ?>"><?= (int) $total_asignaturas ?></div>
+                    <div class="kpi-foot">En el plan de estudios</div>
+                </a>
+                <div class="kpi">
+                    <div class="kpi-top"><span class="kpi-label">Cuentas</span><span class="kpi-icon" aria-hidden="true"><i class="bi bi-person-lock"></i></span></div>
+                    <div class="kpi-value" data-count="<?= (int) $total_usuarios ?>"><?= (int) $total_usuarios ?></div>
+                    <div class="kpi-foot">Usuarios de todos los roles</div>
+                </div>
+            </div>
+
+            <div class="dash-grid">
+                <div class="stack-col">
+                <section class="panel" aria-labelledby="h-pend">
+                    <div class="panel-head">
+                        <h3 id="h-pend"><i class="bi bi-list-check" aria-hidden="true"></i> Pendientes</h3>
+                        <?php if ($totalPend === 0): ?><span class="gca-badge is-ok"><i class="bi bi-check2" aria-hidden="true"></i> Al día</span><?php endif; ?>
+                    </div>
+                    <ul class="todo-list">
                         <?php
                         // Lo que el administrador tiene que resolver, con el enlace para hacerlo
                         $pendientes = [
-                            ['Boletines por publicar a los padres', (int) $stats['bol_pendientes'], 'enviar_boletin.php'],
-                            ['Estudiantes sin padre o acudiente vinculado', (int) $stats['sin_padre'], 'asignar_padre.php'],
-                            ['Estudiantes sin curso asignado', (int) $stats['sin_curso'], 'asignar_estudiante.php'],
-                            ['Alertas sin leer', (int) $stats['alertas_sin_leer'], 'alertas.php'],
+                            ['Boletines por publicar', 'Generados por los directores; el padre aún no los ve.', $kBolPend, 'enviar_boletin.php', 'bi-file-earmark-check'],
+                            ['Estudiantes sin acudiente', 'Sin padre o acudiente vinculado: nadie ve sus boletines.', $kSinPadre, 'asignar_padre.php', 'bi-link-45deg'],
+                            ['Estudiantes sin curso', 'No aparecen en las listas de notas de los profesores.', $kSinCurso, 'asignar_estudiante.php', 'bi-diagram-3'],
+                            ['Alertas sin leer', 'Avisos del sistema, como riesgo académico.', $kAlertas, 'alertas.php', 'bi-bell'],
                         ];
-                        foreach ($pendientes as [$texto, $cantidad, $url]): ?>
-                            <a href="<?= $url ?>" class="list-item" style="text-decoration:none;color:inherit;">
-                                <span class="item-name"><?= $texto ?></span>
-                                <span class="sum-value" style="<?= $cantidad > 0 ? '' : 'color:var(--text-muted);' ?>">
-                                    <?= $cantidad > 0 ? $cantidad : '<i class="bi bi-check-circle" aria-hidden="true"></i><span class="visually-hidden">Ninguno</span>' ?>
-                                </span>
-                            </a>
+                        foreach ($pendientes as [$texto, $detalle, $cantidad, $url, $icono]): ?>
+                            <li>
+                                <a href="<?= $url ?>" class="todo-item <?= $cantidad > 0 ? 'is-pending' : 'is-done' ?>">
+                                    <span class="todo-ico" aria-hidden="true"><i class="bi <?= $cantidad > 0 ? $icono : 'bi-check2' ?>"></i></span>
+                                    <span class="todo-text">
+                                        <strong><?= $texto ?></strong>
+                                        <small><?= $detalle ?></small>
+                                    </span>
+                                    <?php if ($cantidad > 0): ?>
+                                        <span class="todo-num"><?= $cantidad ?></span>
+                                    <?php else: ?>
+                                        <span class="todo-num">Ninguno</span>
+                                    <?php endif; ?>
+                                    <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                                </a>
+                            </li>
                         <?php endforeach; ?>
+                    </ul>
+                </section>
+
+                <section class="panel" aria-labelledby="h-acc">
+                    <div class="panel-head"><h3 id="h-acc"><i class="bi bi-lightning-charge" aria-hidden="true"></i> Accesos rápidos</h3></div>
+                    <div class="quick-grid panel-body">
+                        <a href="crear_estudiante.php" class="quick-action"><i class="bi bi-mortarboard" aria-hidden="true"></i><span>Nuevo estudiante<small>Matrícula</small></span></a>
+                        <a href="asignar_padre.php" class="quick-action"><i class="bi bi-link-45deg" aria-hidden="true"></i><span>Vincular acudiente<small>Padre ↔ estudiante</small></span></a>
+                        <a href="crear_padre.php" class="quick-action"><i class="bi bi-person-heart" aria-hidden="true"></i><span>Nuevo padre<small>Cuenta del portal</small></span></a>
+                        <a href="crear_profesor.php" class="quick-action"><i class="bi bi-person-workspace" aria-hidden="true"></i><span>Nuevo profesor<small>Cuenta docente</small></span></a>
+                        <a href="asignar_profesor.php" class="quick-action"><i class="bi bi-journal-arrow-up" aria-hidden="true"></i><span>Asignar materias<small>Profesor ↔ curso</small></span></a>
+                        <a href="plataforma.php" class="quick-action"><i class="bi bi-sliders" aria-hidden="true"></i><span>Periodo y notas<small>Abrir o cerrar registro</small></span></a>
+                        <a href="mejores_estudiantes.php" class="quick-action"><i class="bi bi-trophy" aria-hidden="true"></i><span>Mejores estudiantes<small>Reporte por grado</small></span></a>
+                        <a href="crear_noticia.php" class="quick-action"><i class="bi bi-newspaper" aria-hidden="true"></i><span>Nueva noticia<small>Sitio web</small></span></a>
                     </div>
+                </section>
                 </div>
+
+                <section class="panel" aria-labelledby="h-rec">
+                    <div class="panel-head">
+                        <h3 id="h-rec"><i class="bi bi-clock-history" aria-hidden="true"></i> Últimos estudiantes registrados</h3>
+                        <a href="ver_estudiantes.php">Ver todos</a>
+                    </div>
+                    <?php if (count($ultimos_estudiantes) > 0): ?>
+                        <ul class="recent-list">
+                            <?php foreach ($ultimos_estudiantes as $est):
+                                $cursoStr = $est['grado'] ? ucfirst($est['grado']) . ' - ' . $est['curso_nombre'] : 'Sin curso';
+                                $inicial = strtoupper(mb_substr(trim($est['nombre']), 0, 1));
+                            ?>
+                                <li class="recent-item">
+                                    <span class="avatar" aria-hidden="true"><?= htmlspecialchars($inicial) ?></span>
+                                    <span class="recent-main">
+                                        <strong><?= htmlspecialchars($est["nombre"]) ?></strong>
+                                        <small>Doc. <?= htmlspecialchars($est["documento"]) ?> · <?= htmlspecialchars($cursoStr) ?></small>
+                                    </span>
+                                    <span class="recent-date"><?= date("d/m/Y", strtotime($est["creado_en"])) ?></span>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php else: ?>
+                        <div class="empty-state empty-state-sm">
+                            <i class="bi bi-mortarboard" aria-hidden="true"></i>
+                            <p>No hay estudiantes registrados aún.</p>
+                        </div>
+                    <?php endif; ?>
+                </section>
             </div>
+
 
         </div>
     </main>
 
     <script>
     (function () {
+        // Cuenta ascendente de los indicadores (el número final ya está en el HTML)
         var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        document.querySelectorAll('.stat-value[data-count]').forEach(function (el) {
+        if (reduce) return;
+        document.querySelectorAll('.kpi-value[data-count]').forEach(function (el) {
             var target = parseInt(el.getAttribute('data-count'), 10) || 0;
-            if (reduce || target === 0) { el.textContent = target; return; }
-            var dur = 1100, start = null;
+            if (target === 0) return;
+            var dur = 900, start = null;
             function step(ts) {
                 if (start === null) start = ts;
                 var p = Math.min((ts - start) / dur, 1);

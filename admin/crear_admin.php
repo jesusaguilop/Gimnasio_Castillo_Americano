@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
-
-require_once "../config/database.php";
 require_once __DIR__ . "/../lib/csrf_helper.php";
 
 $mensaje = "";
@@ -76,23 +71,20 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Crear Administrador</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Nuevo Administrador</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="row justify-content-center">
                 <div class="col-md-8 col-lg-6">
+                    <a href="ver_admins.php" class="form-back"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a Administradores</a>
                     <div class="card card-form p-4 p-md-5">
 
                         <div class="header-box">
-                            <img src="../assets/img/logo_gca.png" alt="GCA">
-                            <h4>Registro de Administrador</h4>
-                            <span>Gimnasio Castillo Americano</span>
+                            <i class="bi bi-shield-plus" aria-hidden="true"></i>
+                            <div>
+                                <h4>Registro de Administrador</h4>
+                                <span>Cree una cuenta con acceso completo al panel.</span>
+                            </div>
                         </div>
 
                         <?php if ($mensaje): ?>

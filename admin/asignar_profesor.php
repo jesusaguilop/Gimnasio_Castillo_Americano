@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
-
-require_once "../config/database.php";
 require_once "../lib/csrf_helper.php";
 
 $mensaje = "";
@@ -102,23 +97,19 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Asignar Materias</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Asignación Académica</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="row">
-                <div class="col-lg-5 mb-4">
-                    <div class="card card-form p-4 p-md-5">
+                <div class="col-xl-5 mb-4">
+                    <div class="card card-form p-4">
 
                         <div class="header-box">
-                            <img src="../assets/img/logo_gca.png" alt="GCA">
-                            <h4>Nueva Asignación</h4>
-                            <span>Gimnasio Castillo Americano</span>
+                            <i class="bi bi-journal-arrow-up" aria-hidden="true"></i>
+                            <div>
+                                <h4>Nueva Asignación</h4>
+                                <span>Asigne a un profesor la asignatura que dicta en un curso.</span>
+                            </div>
                         </div>
 
                         <?php if ($mensaje): ?>
@@ -139,7 +130,7 @@ include "includes/header.php";
                             <div class="mb-3">
                                 <label class="form-label fw-medium" for="f_profesor">Profesor</label>
                                 <select id="f_profesor" name="profesor" class="form-select" required>
-                                    <option value="">-- Seleccionar --</option>
+                                    <option value="">Seleccionar…</option>
                                     <?php foreach ($profesores as $p): ?>
                                         <option value="<?= $p["id"] ?>"><?= htmlspecialchars($p["nombre"]) ?></option>
                                     <?php endforeach; ?>
@@ -149,7 +140,7 @@ include "includes/header.php";
                             <div class="mb-3">
                                 <label class="form-label fw-medium" for="selectCurso">Curso</label>
                                 <select name="curso" id="selectCurso" class="form-select" required>
-                                    <option value="">-- Seleccionar --</option>
+                                    <option value="">Seleccionar…</option>
                                     <?php foreach ($cursos as $c): ?>
                                         <?php
                                             $nivelLabel = match($c['nivel']) {
@@ -168,7 +159,7 @@ include "includes/header.php";
                             <div class="mb-4">
                                 <label class="form-label fw-medium" for="selectAsignatura">Asignatura</label>
                                 <select name="asignatura" id="selectAsignatura" class="form-select" required>
-                                    <option value="">-- Seleccionar --</option>
+                                    <option value="">Seleccionar…</option>
                                     <?php foreach ($asignaturas as $a):
                                         $gradoLabel = $a["grados"] ? ' (' . $a["grados"] . ')' : '';
                                     ?>
@@ -193,17 +184,17 @@ include "includes/header.php";
                     </div>
                 </div>
 
-                <div class="col-lg-7">
+                <div class="col-xl-7">
                     <div class="gca-card p-4">
-                        <h5 style="font-family:'Cormorant Garamond',serif;font-weight:700;margin:0 0 16px;">
-                            <i class="bi bi-list-check" style="color:var(--gold);margin-right:8px;"></i>
-                            Asignaciones Actuales
-                        </h5>
+                        <div class="section-header">
+                            <h4><i class="bi bi-list-check" aria-hidden="true"></i> Asignaciones actuales <span class="count-pill"><?= count($asignaciones) ?></span></h4>
+                        </div>
 
                         <?php if (count($asignaciones) === 0): ?>
-                            <div class="empty-state p-4">
-                                <i class="bi bi-inbox" style="font-size:40px;color:#ddd;"></i>
-                                <p class="text-muted mb-0">No hay asignaciones registradas.</p>
+                            <div class="empty-state">
+                                <i class="bi bi-inbox" aria-hidden="true"></i>
+                                <h3>Sin asignaciones</h3>
+                                <p>Use el formulario para asignar la primera materia a un profesor.</p>
                             </div>
                         <?php else: ?>
                             <div class="table-responsive">
@@ -213,17 +204,17 @@ include "includes/header.php";
                                             <th scope="col">Profesor</th>
                                             <th scope="col">Curso</th>
                                             <th scope="col">Materia</th>
-                                            <th scope="col" style="width:60px;">%</th>
-                                            <th scope="col" style="width:60px;"><span class="visually-hidden">Acciones</span></th>
+                                            <th scope="col" class="text-center">%</th>
+                                            <th scope="col" class="text-end"><span class="visually-hidden">Acciones</span></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach ($asignaciones as $a): ?>
                                             <tr>
-                                                <td><?= htmlspecialchars($a['profesor_nombre']) ?></td>
+                                                <td class="cell-strong"><?= htmlspecialchars($a['profesor_nombre']) ?></td>
                                                 <td>
                                                     <?= htmlspecialchars(ucfirst($a['curso_nombre'])) ?>
-                                                    <small class="text-muted d-block" style="font-size:10px;">
+                                                    <small class="cell-sub">
                                                         <?= match($a['curso_nivel']) {
                                                             'preescolar' => 'Preescolar',
                                                             'primaria'   => 'Primaria',
@@ -234,15 +225,15 @@ include "includes/header.php";
                                                 <td>
                                                     <?= htmlspecialchars($a['asignatura_nombre']) ?>
                                                 </td>
-                                                <td class="text-center"><?= (int)$a['porcentaje'] ?>%</td>
-                                                <td>
+                                                <td class="text-center"><span class="gca-badge"><?= (int)$a['porcentaje'] ?>%</span></td>
+                                                <td class="text-end">
                                                     <form method="POST" id="deleteForm<?= $a['id'] ?>">
                                                         <?= campo_csrf() ?>
                                                         <input type="hidden" name="eliminar" value="<?= $a['id'] ?>">
-                                                        <button type="button" class="btn btn-sm btn-outline-danger border-0"
+                                                        <button type="button" class="btn-action btn-delete" title="Eliminar"
                                                                 onclick="showConfirm('¿Eliminar esta asignación?',()=>document.getElementById('deleteForm<?= $a['id'] ?>').submit());"
-                                                                style="font-size:16px;padding:2px 6px;" aria-label="Eliminar asignación">
-                                                            <i class="bi bi-trash3" aria-hidden="true"></i>
+                                                                aria-label="Eliminar asignación de <?= htmlspecialchars($a['asignatura_nombre']) ?> a <?= htmlspecialchars($a['profesor_nombre']) ?>">
+                                                            <i class="bi bi-trash" aria-hidden="true"></i>
                                                         </button>
                                                     </form>
                                                 </td>

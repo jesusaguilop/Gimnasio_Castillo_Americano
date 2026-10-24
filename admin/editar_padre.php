@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
-
-require_once "../config/database.php";
 require_once __DIR__ . "/../lib/csrf_helper.php";
 
 $mensaje = "";
@@ -91,23 +86,20 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Editar Padre</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Editar Padre</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="row justify-content-center">
                 <div class="col-md-8 col-lg-6">
+                    <a href="ver_padres.php" class="form-back"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a Padres y acudientes</a>
                     <div class="card card-form p-4 p-md-5">
 
                         <div class="header-box">
-                            <img src="../assets/img/logo_gca.png" alt="GCA">
-                            <h4>Editar Padre de Familia</h4>
-                            <span>Gimnasio Castillo Americano</span>
+                            <i class="bi bi-person-heart" aria-hidden="true"></i>
+                            <div>
+                                <h4>Editar Padre de Familia</h4>
+                                <span>Actualice los datos de la cuenta del padre o acudiente.</span>
+                            </div>
                         </div>
 
                         <?php if ($mensaje): ?>

@@ -1,12 +1,7 @@
 <?php
-session_start();
-require_once "../config/database.php";
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 require_once __DIR__ . "/../lib/csrf_helper.php";
-
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
 
 $mensaje = "";
 if (isset($_SESSION["success_msg"])) {
@@ -89,20 +84,14 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Cursos</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Cursos</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="gca-card p-4">
                 <div class="section-header">
-                    <h4><i class="bi bi-journal-check"></i> Cursos registrados</h4>
-                    <a href="crear_curso.php" class="btn-gca btn-gca-sm">
-                        <i class="bi bi-plus-circle me-1"></i> Nuevo Curso
+                    <h4><i class="bi bi-collection" aria-hidden="true"></i> Cursos <span class="count-pill"><?= count($cursos) ?></span></h4>
+                    <a href="crear_curso.php" class="btn-gca">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo curso
                     </a>
                 </div>
 
@@ -114,7 +103,7 @@ include "includes/header.php";
                 <?php endif; ?>
 
                 <div class="table-responsive">
-                    <table class="table gca-table table-hover align-middle">
+                    <table class="table gca-table align-middle">
                         <thead>
                             <tr>
                                 <th scope="col">Nivel</th>
@@ -125,30 +114,30 @@ include "includes/header.php";
                         </thead>
                         <tbody>
                             <?php foreach ($cursos as $c):
-                                $nivelColor = $c['nivel'] === 'preescolar' ? '#7b1fa2' : ($c['nivel'] === 'primaria' ? '#1565c0' : '#2e7d32');
+                                $nivelClase = in_array($c['nivel'], ['preescolar', 'primaria'], true) ? 'lvl-' . $c['nivel'] : 'lvl-secundaria';
                                 $nivelLabel = $c['nivel'] ? ucfirst($c['nivel']) : '—';
                             ?>
                                 <tr>
-                                    <td><span style="background:<?= $nivelColor ?>;font-size:11px;" class="badge fw-normal px-3 py-2"><?= htmlspecialchars($nivelLabel) ?></span></td>
-                                    <td><span class="badge bg-dark fw-normal px-3 py-2"><?= htmlspecialchars(ucfirst($c["grado"])) ?></span></td>
-                                    <td><span class="fw-semibold">Curso <?= htmlspecialchars($c["nombre"]) ?></span></td>
-                                    <td class="text-end">
-                                        <a href="editar_curso.php?id=<?= $c["id"] ?>" class="btn-action btn-edit me-1" title="Editar">
-                                            <i class="bi bi-pencil-square"></i>
+                                    <td><span class="gca-badge <?= $nivelClase ?>"><?= htmlspecialchars($nivelLabel) ?></span></td>
+                                    <td class="cell-strong"><?= htmlspecialchars(ucfirst($c["grado"])) ?></td>
+                                    <td>Curso <?= htmlspecialchars($c["nombre"]) ?></td>
+                                    <td class="text-end"><div class="row-actions">
+                                        <a href="editar_curso.php?id=<?= $c["id"] ?>" class="btn-action btn-edit" title="Editar" aria-label="Editar el curso <?= htmlspecialchars(ucfirst($c["grado"]) . ' ' . $c["nombre"]) ?>">
+                                            <i class="bi bi-pencil" aria-hidden="true"></i>
                                         </a>
-                                        <form method="POST" style="display:inline" id="delForm<?= $c["id"] ?>">
-                                    <?= campo_csrf() ?>
-                                    <input type="hidden" name="eliminar_id" value="<?= $c["id"] ?>">
-                                    <button type="button" class="btn-action btn-delete" title="Eliminar"
-                                        onclick="showConfirm('¿Eliminar este curso? Si tiene estudiantes o notas no se podrá eliminar.',()=>document.getElementById('delForm<?= $c["id"] ?>').submit());">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                    </td>
+                                        <form method="POST" id="delForm<?= $c["id"] ?>">
+                                            <?= campo_csrf() ?>
+                                            <input type="hidden" name="eliminar_id" value="<?= $c["id"] ?>">
+                                            <button type="button" class="btn-action btn-delete" title="Eliminar" aria-label="Eliminar el curso <?= htmlspecialchars(ucfirst($c["grado"]) . ' ' . $c["nombre"]) ?>"
+                                                onclick="showConfirm('¿Eliminar este curso? Si tiene estudiantes o notas no se podrá eliminar.',()=>document.getElementById('delForm<?= $c["id"] ?>').submit());">
+                                                <i class="bi bi-trash" aria-hidden="true"></i>
+                                            </button>
+                                        </form>
+                                    </div></td>
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (count($cursos) === 0): ?>
-                                <tr><td colspan="4" class="text-center text-muted py-4">No hay cursos registrados.</td></tr>
+                                <tr><td colspan="4"><div class="empty-state empty-state-sm"><i class="bi bi-collection" aria-hidden="true"></i><h3>No hay cursos registrados</h3><p>Cree el primer curso para empezar a matricular estudiantes.</p><a href="crear_curso.php" class="btn-gca btn-gca-sm"><i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo curso</a></div></td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>

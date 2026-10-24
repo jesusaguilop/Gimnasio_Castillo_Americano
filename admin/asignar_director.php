@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
-
-require_once "../config/database.php";
 require_once "../lib/csrf_helper.php";
 
 $mensaje = "";
@@ -79,29 +74,25 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1"><i class="ti ti-user-star"></i> Asignar Director de Grupo</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Asignaciones</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="row g-4">
                 <div class="col-lg-5">
-                    <div class="card card-form p-4 p-md-5">
+                    <div class="card card-form p-4">
                         <div class="header-box">
-                            <img src="../assets/img/logo_gca.png" alt="GCA">
-                            <h4>Asignar Director</h4>
-                            <span>Gimnasio Castillo Americano</span>
+                            <i class="bi bi-person-badge" aria-hidden="true"></i>
+                            <div>
+                                <h4>Asignar Director</h4>
+                                <span>Elija el curso y el profesor que será su director de grupo.</span>
+                            </div>
                         </div>
 
                         <?php if ($mensaje): ?>
-                            <div class="alert alert-success border-0 rounded-3"><?= $mensaje ?></div>
+                            <div class="alert alert-success" role="alert"><?= htmlspecialchars($mensaje) ?></div>
                         <?php endif; ?>
                         <?php if ($error): ?>
-                            <div class="alert alert-danger border-0 rounded-3"><?= $error ?></div>
+                            <div class="alert alert-danger" role="alert"><?= htmlspecialchars($error) ?></div>
                         <?php endif; ?>
 
                         <form method="POST">
@@ -127,7 +118,7 @@ include "includes/header.php";
                                 </select>
                             </div>
                             <button type="submit" class="btn-gca w-100 justify-content-center">
-                                <i class="bi bi-plus-circle"></i> Asignar Director
+                                <i class="bi bi-check2" aria-hidden="true"></i> Asignar director
                             </button>
                         </form>
                     </div>
@@ -135,11 +126,14 @@ include "includes/header.php";
 
                 <div class="col-lg-7">
                     <div class="gca-card p-4">
-                        <h6 class="fw-bold mb-3"><i class="bi bi-list-check me-2" style="color:var(--gold);"></i>Directores Asignados</h6>
+                        <div class="section-header">
+                            <h4><i class="bi bi-list-check" aria-hidden="true"></i> Directores asignados <span class="count-pill"><?= count($asignaciones) ?></span></h4>
+                        </div>
                         <?php if (count($asignaciones) === 0): ?>
-                            <div class="empty-state py-4">
-                                <i class="bi bi-inbox"></i>
-                                <p class="mb-0">No hay directores asignados aún.</p>
+                            <div class="empty-state">
+                                <i class="bi bi-person-badge" aria-hidden="true"></i>
+                                <h3>Sin directores de grupo</h3>
+                                <p>No hay directores asignados aún.</p>
                             </div>
                         <?php else: ?>
                             <div class="table-responsive">
@@ -148,17 +142,17 @@ include "includes/header.php";
                                         <tr>
                                             <th scope="col">Profesor</th>
                                             <th scope="col">Curso</th>
-                                            <th scope="col" style="width:50px;"><span class="visually-hidden">Acciones</span></th>
+                                            <th scope="col" class="text-end"><span class="visually-hidden">Acciones</span></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach ($asignaciones as $a): ?>
                                             <tr>
-                                                <td class="fw-medium"><?= htmlspecialchars($a['profesor']) ?></td>
+                                                <td class="cell-strong"><?= htmlspecialchars($a['profesor']) ?></td>
                                                 <td><?= htmlspecialchars(ucfirst($a['nivel'] ?? '') . ' - ' . $a['grado'] . ' ' . $a['curso']) ?></td>
-                                                <td>
+                                                <td class="text-end">
                                                     <button type="button" onclick="eliminarDirector(<?= (int) $a['profesor_id'] ?>, <?= (int) $a['curso_id'] ?>)"
-                                                       class="btn-action btn-delete border-0" title="Eliminar" aria-label="Quitar a <?= htmlspecialchars($a['profesor']) ?> como director de grupo">
+                                                       class="btn-action btn-delete" title="Quitar director" aria-label="Quitar a <?= htmlspecialchars($a['profesor']) ?> como director de grupo">
                                                         <i class="bi bi-trash" aria-hidden="true"></i>
                                                     </button>
                                                 </td>

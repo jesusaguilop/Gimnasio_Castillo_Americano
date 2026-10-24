@@ -57,45 +57,51 @@ include "includes/header.php";
     <div id="overlay" onclick="closeSidebar()"></div>
     <?php include "includes/sidebar.php"; ?>
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Registrar Docente</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Docentes &nbsp;/&nbsp; Nuevo</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
         <div class="content-area">
-            <?php if ($mensaje): ?>
-                <div class="alert alert-<?= $tipo ?>"><?= htmlspecialchars($mensaje) ?></div>
-            <?php endif; ?>
-            <div class="gca-card card-form">
-                <form method="POST" enctype="multipart/form-data" autocomplete="off">
-                    <?= campo_csrf() ?>
-                    <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label" for="f_nombre">Nombre completo *</label>
-                            <input id="f_nombre" type="text" name="nombre" class="form-control" required value="<?= htmlspecialchars($_POST["nombre"] ?? '') ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="f_email">Correo electrónico</label>
-                            <input id="f_email" type="email" name="email" class="form-control" value="<?= htmlspecialchars($_POST["email"] ?? '') ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="f_especialidad">Especialidad / Área</label>
-                            <input id="f_especialidad" type="text" name="especialidad" class="form-control" placeholder="Ej: Matemáticas, Ciencias..." value="<?= htmlspecialchars($_POST["especialidad"] ?? '') ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="f_foto">Foto</label>
-                            <input id="f_foto" type="file" name="foto" class="form-control" accept="image/png,image/jpeg,image/webp">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="f_descripcion">Descripción / Formación</label>
-                            <textarea id="f_descripcion" name="descripcion" class="form-control" rows="4" placeholder="Breve descripción del docente..."><?= htmlspecialchars($_POST["descripcion"] ?? '') ?></textarea>
+            <div class="row justify-content-center">
+                <div class="col-xl-9 col-xxl-8">
+                <a href="ver_docentes.php" class="form-back"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a Docentes del sitio</a>
+                <?php if ($mensaje): ?>
+                    <div class="alert alert-<?= $tipo ?>" role="alert"><?= htmlspecialchars($mensaje) ?></div>
+                <?php endif; ?>
+                <div class="card-form p-4 p-md-5">
+                    <div class="header-box">
+                        <i class="bi bi-person-vcard" aria-hidden="true"></i>
+                        <div>
+                            <h4>Nuevo docente del sitio</h4>
+                            <span>Ficha pública para la página «Docentes».</span>
                         </div>
                     </div>
-                    <button type="submit" class="btn-gca w-100 mt-4">Registrar Docente</button>
-                </form>
+                    <form method="POST" enctype="multipart/form-data" autocomplete="off">
+                        <?= campo_csrf() ?>
+                        <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="f_nombre">Nombre completo <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_nombre" type="text" name="nombre" class="form-control" required value="<?= htmlspecialchars($_POST["nombre"] ?? '') ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="f_email">Correo electrónico</label>
+                                <input id="f_email" type="email" name="email" class="form-control" value="<?= htmlspecialchars($_POST["email"] ?? '') ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="f_especialidad">Especialidad / Área</label>
+                                <input id="f_especialidad" type="text" name="especialidad" class="form-control" placeholder="Ej: Matemáticas, Ciencias..." value="<?= htmlspecialchars($_POST["especialidad"] ?? '') ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="f_foto">Foto</label>
+                                <input id="f_foto" type="file" name="foto" class="form-control" accept="image/png,image/jpeg,image/webp">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="f_descripcion">Descripción / Formación</label>
+                                <textarea id="f_descripcion" name="descripcion" class="form-control" rows="4" placeholder="Breve descripción del docente..."><?= htmlspecialchars($_POST["descripcion"] ?? '') ?></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-gca w-100 mt-4">Registrar Docente</button>
+                    </form>
+                </div>
+                </div>
             </div>
         </div>
     </main>

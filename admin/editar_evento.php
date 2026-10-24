@@ -56,56 +56,62 @@ include "includes/header.php";
     <div id="overlay" onclick="closeSidebar()"></div>
     <?php include "includes/sidebar.php"; ?>
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Editar Evento</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Eventos &nbsp;/&nbsp; Editar</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
         <div class="content-area">
-            <?php if ($mensaje): ?>
-                <div class="alert alert-<?= $tipo ?>"><?= htmlspecialchars($mensaje) ?></div>
-            <?php endif; ?>
-            <div class="gca-card card-form">
-                <form method="POST" autocomplete="off">
-                    <?= campo_csrf() ?>
-                    <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label" for="f_titulo">Título *</label>
-                            <input id="f_titulo" type="text" name="titulo" class="form-control" required value="<?= htmlspecialchars($evento["titulo"]) ?>">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="f_fecha_evento">Fecha *</label>
-                            <input id="f_fecha_evento" type="date" name="fecha_evento" class="form-control" required value="<?= $evento["fecha_evento"] ?>">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="f_hora_evento">Hora</label>
-                            <input id="f_hora_evento" type="time" name="hora_evento" class="form-control" value="<?= $evento["hora_evento"] ?? "" ?>">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="f_tipo">Tipo</label>
-                            <select id="f_tipo" name="tipo" class="form-control no-ts">
-                                <?php foreach (["General","Cultural","Deportivo","Académico","Reunión","Festivo"] as $t): ?>
-                                <option value="<?= $t ?>" <?= $evento["tipo"] === $t ? "selected" : "" ?>><?= $t ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" for="f_color">Color</label>
-                            <input id="f_color" type="color" name="color" class="form-control form-control-color" value="<?= htmlspecialchars($evento["color"]) ?>">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="f_descripcion">Descripción</label>
-                            <textarea id="f_descripcion" name="descripcion" class="form-control" rows="4"><?= htmlspecialchars($evento["descripcion"] ?? "") ?></textarea>
+            <div class="row justify-content-center">
+                <div class="col-xl-9 col-xxl-8">
+                <a href="ver_eventos.php" class="form-back"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a Eventos</a>
+                <?php if ($mensaje): ?>
+                    <div class="alert alert-<?= $tipo ?>" role="alert"><?= htmlspecialchars($mensaje) ?></div>
+                <?php endif; ?>
+                <div class="card-form p-4 p-md-5">
+                    <div class="header-box">
+                        <i class="bi bi-calendar-event" aria-hidden="true"></i>
+                        <div>
+                            <h4>Editar evento</h4>
+                            <span>Los cambios se ven de inmediato en el calendario.</span>
                         </div>
                     </div>
-                    <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn-gca">Guardar Cambios</button>
-                        <a href="ver_eventos.php" class="btn btn-outline-secondary px-4" style="border-radius:10px;">Cancelar</a>
-                    </div>
-                </form>
+                    <form method="POST" autocomplete="off">
+                        <?= campo_csrf() ?>
+                        <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label" for="f_titulo">Título <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_titulo" type="text" name="titulo" class="form-control" required value="<?= htmlspecialchars($evento["titulo"]) ?>">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="f_fecha_evento">Fecha <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_fecha_evento" type="date" name="fecha_evento" class="form-control" required value="<?= $evento["fecha_evento"] ?>">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="f_hora_evento">Hora</label>
+                                <input id="f_hora_evento" type="time" name="hora_evento" class="form-control" value="<?= $evento["hora_evento"] ?? "" ?>">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="f_tipo">Tipo</label>
+                                <select id="f_tipo" name="tipo" class="form-select no-ts">
+                                    <?php foreach (["General","Cultural","Deportivo","Académico","Reunión","Festivo"] as $t): ?>
+                                    <option value="<?= $t ?>" <?= $evento["tipo"] === $t ? "selected" : "" ?>><?= $t ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="f_color">Color</label>
+                                <input id="f_color" type="color" name="color" class="form-control form-control-color" value="<?= htmlspecialchars($evento["color"]) ?>">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="f_descripcion">Descripción</label>
+                                <textarea id="f_descripcion" name="descripcion" class="form-control" rows="4"><?= htmlspecialchars($evento["descripcion"] ?? "") ?></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions mt-4">
+                            <button type="submit" class="btn-gca">Guardar Cambios</button>
+                            <a href="ver_eventos.php" class="btn-outline-gca">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+                </div>
             </div>
         </div>
     </main>

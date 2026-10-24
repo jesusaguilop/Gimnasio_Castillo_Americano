@@ -134,23 +134,20 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Editar Estudiante</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Editar Estudiante</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="row justify-content-center">
                 <div class="col-md-8 col-lg-6">
+                    <a href="ver_estudiantes.php" class="form-back"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a Estudiantes</a>
                     <div class="card card-form p-4 p-md-5">
 
                         <div class="header-box">
-                            <img src="../assets/img/logo_gca.png" alt="GCA">
-                            <h4>Editar Estudiante</h4>
-                            <span>Gimnasio Castillo Americano</span>
+                            <i class="bi bi-mortarboard" aria-hidden="true"></i>
+                            <div>
+                                <h4>Editar Estudiante</h4>
+                                <span>Actualice los datos y el curso del estudiante.</span>
+                            </div>
                         </div>
 
                         <?php if ($mensaje): ?>

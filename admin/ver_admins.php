@@ -1,12 +1,7 @@
 <?php
-session_start();
-require_once "../config/database.php";
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 require_once __DIR__ . "/../lib/csrf_helper.php";
-
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
 
 $mensaje = "";
 if (isset($_SESSION["success_msg"])) {
@@ -61,20 +56,14 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Administradores</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Administradores</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="gca-card p-4">
                 <div class="section-header">
-                    <h4><i class="bi bi-shield-check"></i> Administradores registrados</h4>
-                    <a href="crear_admin.php" class="btn-gca btn-gca-sm">
-                        <i class="bi bi-plus-circle me-1"></i> Nuevo Admin
+                    <h4><i class="bi bi-shield-lock" aria-hidden="true"></i> Administradores <span class="count-pill"><?= count($admins) ?></span></h4>
+                    <a href="crear_admin.php" class="btn-gca">
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> Nuevo administrador
                     </a>
                 </div>
 
@@ -85,61 +74,63 @@ include "includes/header.php";
                     </div>
                 <?php endif; ?>
 
-                <form method="GET" class="row g-2 mb-3 align-items-end" role="search">
-                    <div class="col-md-6">
-                        <label class="form-label fw-medium small mb-1" for="f_q">Buscar por nombre o correo</label>
-                        <input id="f_q" type="search" name="q" class="form-control form-control-sm"
-                            placeholder="Escriba un nombre o correo..."
-                            value="<?= htmlspecialchars($busqueda) ?>">
+                <form method="GET" class="filter-bar" role="search" aria-label="Buscar administradores">
+                    <div class="ff ff-grow">
+                        <label class="form-label" for="f_q">Buscar por nombre o correo</label>
+                        <div class="search-field mw-100">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input id="f_q" type="search" name="q" class="form-control"
+                                placeholder="Escriba un nombre o correo..."
+                                value="<?= htmlspecialchars($busqueda) ?>" data-live-filter="#tablaAdmins" autocomplete="off">
+                        </div>
                     </div>
-                    <div class="col-md-4 d-flex gap-2">
-                        <button type="submit" class="btn-gca btn-gca-sm flex-fill">
-                            <i class="bi bi-search" aria-hidden="true"></i> Buscar
-                        </button>
+                    <div class="ff-actions">
+                        <button type="submit" class="btn-gca"><i class="bi bi-search" aria-hidden="true"></i> Buscar</button>
                         <?php if ($busqueda !== ""): ?>
-                            <a href="ver_admins.php" class="btn btn-outline-secondary btn-sm flex-fill">
-                                <i class="bi bi-x-circle" aria-hidden="true"></i> Limpiar
-                            </a>
+                            <a href="ver_admins.php" class="btn-outline-gca"><i class="bi bi-x-lg" aria-hidden="true"></i> Limpiar</a>
                         <?php endif; ?>
                     </div>
                 </form>
-                <p class="small text-muted mb-2" role="status">
+                <p class="table-count mb-2" role="status">
                     <?= count($admins) ?> resultado(s)<?= $busqueda !== "" ? ' para «' . htmlspecialchars($busqueda) . '»' : '' ?>
                 </p>
 
                 <div class="table-responsive">
-                    <table class="table gca-table table-hover align-middle">
+                    <table class="table gca-table align-middle" id="tablaAdmins">
                         <thead>
                             <tr>
                                 <th scope="col">Nombre</th>
-                                <th scope="col">Email</th>
+                                <th scope="col">Correo</th>
                                 <th scope="col" class="text-end">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($admins as $a): ?>
                                 <tr>
-                                    <td><span class="fw-semibold"><?= htmlspecialchars($a["nombre"]) ?></span></td>
+                                    <td class="cell-strong">
+                                        <?= htmlspecialchars($a["nombre"]) ?>
+                                        <?php if ($a["id"] == $_SESSION["id"]): ?><span class="gca-badge is-gold ms-1">Tú</span><?php endif; ?>
+                                    </td>
                                     <td><?= htmlspecialchars($a["email"]) ?></td>
-                                    <td class="text-end">
-                                        <a href="editar_admin.php?id=<?= $a["id"] ?>" class="btn-action btn-edit me-1" title="Editar">
-                                            <i class="bi bi-pencil-square"></i>
+                                    <td class="text-end"><div class="row-actions">
+                                        <a href="editar_admin.php?id=<?= $a["id"] ?>" class="btn-action btn-edit" title="Editar" aria-label="Editar a <?= htmlspecialchars($a["nombre"]) ?>">
+                                            <i class="bi bi-pencil" aria-hidden="true"></i>
                                         </a>
                                         <?php if ($a["id"] != $_SESSION["id"]): ?>
-                                            <form method="POST" style="display:inline" id="delForm<?= $a["id"] ?>">
-                                    <?= campo_csrf() ?>
-                                    <input type="hidden" name="eliminar_id" value="<?= $a["id"] ?>">
-                                    <button type="button" class="btn-action btn-delete" title="Eliminar"
-                                        onclick="showConfirm('¿Seguro que deseas eliminar este administrador?',()=>document.getElementById('delForm<?= $a["id"] ?>').submit());">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                            <form method="POST" id="delForm<?= $a["id"] ?>">
+                                                <?= campo_csrf() ?>
+                                                <input type="hidden" name="eliminar_id" value="<?= $a["id"] ?>">
+                                                <button type="button" class="btn-action btn-delete" title="Eliminar" aria-label="Eliminar a <?= htmlspecialchars($a["nombre"]) ?>"
+                                                    onclick="showConfirm('¿Seguro que deseas eliminar este administrador?',()=>document.getElementById('delForm<?= $a["id"] ?>').submit());">
+                                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                                </button>
+                                            </form>
                                         <?php endif; ?>
-                                    </td>
+                                    </div></td>
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (count($admins) === 0): ?>
-                                <tr><td colspan="3" class="text-center text-muted py-4"><?= $busqueda !== "" ? "No se encontraron administradores con esa búsqueda." : "No hay administradores registrados." ?></td></tr>
+                                <tr><td colspan="3"><div class="empty-state empty-state-sm"><i class="bi bi-shield-lock" aria-hidden="true"></i><p><?= $busqueda !== "" ? "No se encontraron administradores con esa búsqueda." : "No hay administradores registrados." ?></p></div></td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>

@@ -64,56 +64,62 @@ include "includes/header.php";
     <div id="overlay" onclick="closeSidebar()"></div>
     <?php include "includes/sidebar.php"; ?>
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Editar Noticia</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Noticias &nbsp;/&nbsp; Editar</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
         <div class="content-area">
-            <?php if ($mensaje): ?>
-                <div class="alert alert-<?= $tipo ?>"><?= htmlspecialchars($mensaje) ?></div>
-            <?php endif; ?>
-            <div class="gca-card card-form">
-                <form method="POST" enctype="multipart/form-data" autocomplete="off">
-                    <?= campo_csrf() ?>
-                    <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label" for="f_titulo">Título <span class="req" aria-hidden="true">*</span></label>
-                            <input id="f_titulo" type="text" name="titulo" class="form-control" required value="<?= htmlspecialchars($noticia["titulo"]) ?>">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="f_categoria">Categoría</label>
-                            <select id="f_categoria" name="categoria" class="form-control no-ts">
-                                <?php foreach (["General","Institucional","Académico","Evento Cultural","Deportes"] as $cat): ?>
-                                <option value="<?= $cat ?>" <?= $noticia["categoria"] === $cat ? "selected" : "" ?>><?= $cat ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label" for="f_fecha_publicacion">Fecha de publicación</label>
-                            <input id="f_fecha_publicacion" type="date" name="fecha_publicacion" class="form-control" value="<?= $noticia["fecha_publicacion"] ?>">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="f_imagen">Imagen</label>
-                            <?php if ($noticia["imagen"]): ?>
-                                <div class="mb-2"><img src="../<?= htmlspecialchars($noticia["imagen"]) ?>" alt="Imagen actual de la noticia" style="max-height:120px;border-radius:8px;"></div>
-                            <?php endif; ?>
-                            <input id="f_imagen" type="file" name="imagen" class="form-control" accept="image/png,image/jpeg,image/webp">
-                            <small class="text-muted">Dejar vacío para mantener la imagen actual.</small>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label" for="f_contenido">Contenido</label>
-                            <textarea id="f_contenido" name="contenido" class="form-control" rows="6"><?= htmlspecialchars($noticia["contenido"] ?? "") ?></textarea>
+            <div class="row justify-content-center">
+                <div class="col-xl-9 col-xxl-8">
+                <a href="ver_noticias.php" class="form-back"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a Noticias</a>
+                <?php if ($mensaje): ?>
+                    <div class="alert alert-<?= $tipo ?>" role="alert"><?= htmlspecialchars($mensaje) ?></div>
+                <?php endif; ?>
+                <div class="card-form p-4 p-md-5">
+                    <div class="header-box">
+                        <i class="bi bi-newspaper" aria-hidden="true"></i>
+                        <div>
+                            <h4>Editar noticia</h4>
+                            <span>Los cambios se ven de inmediato en el sitio web.</span>
                         </div>
                     </div>
-                    <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn-gca">Guardar Cambios</button>
-                        <a href="ver_noticias.php" class="btn btn-outline-secondary px-4" style="border-radius:10px;">Cancelar</a>
-                    </div>
-                </form>
+                    <form method="POST" enctype="multipart/form-data" autocomplete="off">
+                        <?= campo_csrf() ?>
+                        <p class="form-note mb-3"><span class="req" aria-hidden="true">*</span> Campo obligatorio</p>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label" for="f_titulo">Título <span class="req" aria-hidden="true">*</span></label>
+                                <input id="f_titulo" type="text" name="titulo" class="form-control" required value="<?= htmlspecialchars($noticia["titulo"]) ?>">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="f_categoria">Categoría</label>
+                                <select id="f_categoria" name="categoria" class="form-select no-ts">
+                                    <?php foreach (["General","Institucional","Académico","Evento Cultural","Deportes"] as $cat): ?>
+                                    <option value="<?= $cat ?>" <?= $noticia["categoria"] === $cat ? "selected" : "" ?>><?= $cat ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="f_fecha_publicacion">Fecha de publicación</label>
+                                <input id="f_fecha_publicacion" type="date" name="fecha_publicacion" class="form-control" value="<?= $noticia["fecha_publicacion"] ?>">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="f_imagen">Imagen</label>
+                                <?php if ($noticia["imagen"]): ?>
+                                    <div class="mb-2"><img src="../<?= htmlspecialchars($noticia["imagen"]) ?>" alt="Imagen actual de la noticia" class="img-preview"></div>
+                                <?php endif; ?>
+                                <input id="f_imagen" type="file" name="imagen" class="form-control" accept="image/png,image/jpeg,image/webp">
+                                <small class="text-muted">Dejar vacío para mantener la imagen actual.</small>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="f_contenido">Contenido</label>
+                                <textarea id="f_contenido" name="contenido" class="form-control" rows="6"><?= htmlspecialchars($noticia["contenido"] ?? "") ?></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions mt-4">
+                            <button type="submit" class="btn-gca">Guardar Cambios</button>
+                            <a href="ver_noticias.php" class="btn-outline-gca">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+                </div>
             </div>
         </div>
     </main>

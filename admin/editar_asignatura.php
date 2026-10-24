@@ -1,12 +1,7 @@
 <?php
-session_start();
+require_once __DIR__ . "/../includes/init.php";
+checkRole("admin");
 
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "admin") {
-    header("Location: ../login.php");
-    exit;
-}
-
-require_once "../config/database.php";
 require_once "../lib/rank_helper.php";
 require_once "../lib/csrf_helper.php";
 
@@ -108,23 +103,20 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1">Editar Asignatura</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Editar Asignatura</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
             <div class="row justify-content-center">
                 <div class="col-md-8 col-lg-6">
+                    <a href="ver_asignaturas.php" class="form-back"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver a Asignaturas</a>
                     <div class="card card-form p-4 p-md-5">
 
                         <div class="header-box">
-                            <img src="../assets/img/logo_gca.png" alt="GCA">
-                            <h4>Editar Asignatura</h4>
-                            <span>Gimnasio Castillo Americano</span>
+                            <i class="bi bi-book" aria-hidden="true"></i>
+                            <div>
+                                <h4>Editar Asignatura</h4>
+                                <span>Actualice el área, el nivel y los grados de la asignatura.</span>
+                            </div>
                         </div>
 
                         <?php if ($mensaje): ?>
@@ -167,16 +159,15 @@ include "includes/header.php";
                                 <p class="form-label fw-medium mb-2" id="gradosTitulo">Grados donde se dicta</p>
                                 <div id="gradosContainer" role="group" aria-labelledby="gradosTitulo">
                                     <div class="grado-group" data-nivel="preescolar" style="display:none;">
-                                        <p class="form-label text-muted mb-1" style="font-size:12px;">Preescolar</p>
+                                        <p class="form-section-title mb-2">Preescolar</p>
                                         <div class="d-flex flex-wrap gap-2 mb-2">
                                             <?php $gradosPost = $_POST["grados"] ?? $gradosAsignados; ?>
                                             <?php foreach (['maternal','prejardin','jardin','transicion'] as $g): ?>
-                                                <div class="form-check form-check-inline">
+                                                <div class="grado-item">
                                                     <input class="form-check-input" type="checkbox" name="grados[]" value="<?= $g ?>" id="eg_<?= $g ?>"
                                                         <?= in_array($g, $gradosPost) ? 'checked' : '' ?>>
                                                     <label class="form-check-label" for="eg_<?= $g ?>"><?= ucfirst($g) ?></label>
-                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm d-inline-block ms-1"
-                                                        style="width:70px;" min="0" max="40"
+                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm" aria-label="Horas semanales en <?= ucfirst($g) ?>" min="0" max="40"
                                                         value="<?= htmlspecialchars($_POST["ih"][$g] ?? $gradosAsignadosIH[$g] ?? 0) ?>"
                                                         placeholder="Horas">
                                                 </div>
@@ -184,15 +175,14 @@ include "includes/header.php";
                                         </div>
                                     </div>
                                     <div class="grado-group" data-nivel="primaria" style="display:none;">
-                                        <p class="form-label text-muted mb-1" style="font-size:12px;">Primaria</p>
+                                        <p class="form-section-title mb-2">Primaria</p>
                                         <div class="d-flex flex-wrap gap-2 mb-2">
                                             <?php foreach (['primero','segundo','tercero','cuarto','quinto'] as $g): ?>
-                                                <div class="form-check form-check-inline">
+                                                <div class="grado-item">
                                                     <input class="form-check-input" type="checkbox" name="grados[]" value="<?= $g ?>" id="eg_<?= $g ?>"
                                                         <?= in_array($g, $gradosPost) ? 'checked' : '' ?>>
                                                     <label class="form-check-label" for="eg_<?= $g ?>"><?= ucfirst($g) ?></label>
-                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm d-inline-block ms-1"
-                                                        style="width:70px;" min="0" max="40"
+                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm" aria-label="Horas semanales en <?= ucfirst($g) ?>" min="0" max="40"
                                                         value="<?= htmlspecialchars($_POST["ih"][$g] ?? $gradosAsignadosIH[$g] ?? 0) ?>"
                                                         placeholder="Horas">
                                                 </div>
@@ -200,15 +190,14 @@ include "includes/header.php";
                                         </div>
                                     </div>
                                     <div class="grado-group" data-nivel="secundaria" style="display:none;">
-                                        <p class="form-label text-muted mb-1" style="font-size:12px;">Secundaria</p>
+                                        <p class="form-section-title mb-2">Secundaria</p>
                                         <div class="d-flex flex-wrap gap-2 mb-2">
                                             <?php foreach (['sexto','septimo','octavo','noveno','decimo','once'] as $g): ?>
-                                                <div class="form-check form-check-inline">
+                                                <div class="grado-item">
                                                     <input class="form-check-input" type="checkbox" name="grados[]" value="<?= $g ?>" id="eg_<?= $g ?>"
                                                         <?= in_array($g, $gradosPost) ? 'checked' : '' ?>>
                                                     <label class="form-check-label" for="eg_<?= $g ?>"><?= ucfirst($g) ?></label>
-                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm d-inline-block ms-1"
-                                                        style="width:70px;" min="0" max="40"
+                                                    <input type="number" name="ih[<?= $g ?>]" class="form-control form-control-sm" aria-label="Horas semanales en <?= ucfirst($g) ?>" min="0" max="40"
                                                         value="<?= htmlspecialchars($_POST["ih"][$g] ?? $gradosAsignadosIH[$g] ?? 0) ?>"
                                                         placeholder="Horas">
                                                 </div>
