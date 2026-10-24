@@ -1,0 +1,209 @@
+/* ============================================================
+   Escudo animado del GCA — "El rugido del castillo"
+   ------------------------------------------------------------
+   El escudo va en 3 capas que encajan píxel a píxel
+   (assets/img/escudo/): la base sin leones y cada león aparte.
+   Así los leones pueden saltar y rugir sin mover el resto.
+
+     <span class="escudo">               ← proporción 226 × 337
+       <img class="escudo-base"> <img class="escudo-leon izq"> <img class="escudo-leon der">
+     </span>
+
+   Puntos medidos sobre el lienzo (226 × 337):
+     patas  izq 8.4% 31.8%  ·  der 91.6% 31.8%   (pivote del salto)
+     cabeza izq 15% 14.5%   ·  der 85% 14.5%     (origen del rugido)
+   Respeta prefers-reduced-motion.
+   ============================================================ */
+
+.escudo {
+    --escudo-oro: #c9a24d;
+    position: relative;
+    display: inline-block;
+    aspect-ratio: 226 / 337;
+    height: 64px;
+    flex: none;
+    isolation: isolate;
+}
+.escudo > img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    user-select: none; -webkit-user-drag: none;
+}
+.escudo-leon { will-change: transform; }
+.escudo-leon.izq { transform-origin: 8.4% 31.8%; }
+.escudo-leon.der { transform-origin: 91.6% 31.8%; }
+
+/* Destello dorado que recorre SOLO la silueta del escudo */
+.escudo::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(105deg, transparent 38%, rgba(255, 246, 214, .95) 50%, transparent 62%);
+    background-size: 260% 100%;
+    background-position: 130% 0;
+    -webkit-mask: url('../img/escudo/escudo.png') center / 100% 100% no-repeat;
+            mask: url('../img/escudo/escudo.png') center / 100% 100% no-repeat;
+    pointer-events: none;
+    opacity: 0;
+}
+
+/* ── Rugido: el león se impulsa hacia la torre y vuelve ── */
+@keyframes rugido-izq {
+    0%   { transform: none; }
+    18%  { transform: rotate(-9deg) scale(.94); }            /* toma impulso */
+    42%  { transform: rotate(7deg) scale(1.14) translateX(4%); } /* zarpazo */
+    58%  { transform: rotate(5deg) scale(1.1) translateX(3%); }
+    100% { transform: none; }
+}
+@keyframes rugido-der {
+    0%   { transform: none; }
+    18%  { transform: rotate(9deg) scale(.94); }
+    42%  { transform: rotate(-7deg) scale(1.14) translateX(-4%); }
+    58%  { transform: rotate(-5deg) scale(1.1) translateX(-3%); }
+    100% { transform: none; }
+}
+@keyframes destello {
+    0%   { opacity: 1; background-position: 130% 0; }
+    100% { opacity: 1; background-position: -30% 0; }
+}
+@keyframes brillo-leon {
+    0%, 100% { filter: none; }
+    45%      { filter: drop-shadow(0 0 3px rgba(255, 214, 120, .95)) brightness(1.18); }
+}
+
+/* Al cargar la página (una vez) y al pasar el mouse por la marca */
+.escudo.ruge .escudo-leon.izq,
+.navbar-brand:hover .escudo .escudo-leon.izq,
+.navbar-brand:focus-visible .escudo .escudo-leon.izq {
+    animation: rugido-izq .9s cubic-bezier(.3, 1.4, .5, 1) both, brillo-leon .9s ease both;
+}
+.escudo.ruge .escudo-leon.der,
+.navbar-brand:hover .escudo .escudo-leon.der,
+.navbar-brand:focus-visible .escudo .escudo-leon.der {
+    animation: rugido-der .9s cubic-bezier(.3, 1.4, .5, 1) .08s both, brillo-leon .9s ease .08s both;
+}
+.escudo.ruge::after,
+.navbar-brand:hover .escudo::after,
+.navbar-brand:focus-visible .escudo::after {
+    animation: destello 1.1s ease .25s both;
+}
+
+/* ── En el header: más grande (antes 48px) ── */
+.navbar-brand .escudo { height: 64px; transition: height .3s ease, transform .5s cubic-bezier(.22, 1, .36, 1); }
+.navbar-brand:hover .escudo { transform: translateY(-1px) scale(1.04); }
+.site-nav.scrolled .navbar-brand .escudo { height: 48px; }
+@media (max-width: 576px) {
+    .navbar-brand .escudo { height: 54px; }
+    .site-nav.scrolled .navbar-brand .escudo { height: 44px; }
+}
+
+
+/* ============================================================
+   Intro de la portada: los leones saltan al escudo y rugen
+   (una vez por visita; se salta con clic o tecla)
+   ============================================================ */
+.gca-intro {
+    position: fixed; inset: 0; z-index: 3000;
+    display: grid; place-items: center;
+    background:
+        radial-gradient(ellipse at 50% 42%, rgba(201, 162, 77, .16), transparent 60%),
+        #12100c;
+    color: #f3e6c4;
+    cursor: pointer;
+    animation: intro-sale .7s cubic-bezier(.7, 0, .3, 1) 3.1s forwards;
+}
+.gca-intro__centro { display: grid; justify-items: center; gap: 22px; }
+.gca-intro .escudo { height: min(46vh, 320px); }
+
+/* Base: aparece desde abajo */
+.gca-intro .escudo-base { animation: base-entra .8s cubic-bezier(.22, 1, .36, 1) .15s both; }
+
+/* Leones: saltan desde los lados en arco y aterrizan con rebote.
+   El rugido va con fill "forwards" (no "both"): con "both" su primer
+   fotograma se aplicaría durante el retardo y anularía el salto. */
+.gca-intro .escudo-leon.izq { animation: salto-izq .95s cubic-bezier(.3, .7, .3, 1) .7s both,
+                                         rugido-izq .9s cubic-bezier(.3, 1.4, .5, 1) 1.75s forwards,
+                                         brillo-leon .9s ease 1.75s forwards; }
+.gca-intro .escudo-leon.der { animation: salto-der .95s cubic-bezier(.3, .7, .3, 1) .82s both,
+                                         rugido-der .9s cubic-bezier(.3, 1.4, .5, 1) 1.83s forwards,
+                                         brillo-leon .9s ease 1.83s forwards; }
+.gca-intro .escudo::after { animation: destello 1.2s ease 2.1s both; }
+
+/* Ondas del rugido, desde la cabeza de cada león */
+.gca-intro__onda {
+    position: absolute; width: 34%; aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid var(--escudo-oro);
+    translate: -50% -50%;
+    opacity: 0; pointer-events: none;
+    animation: onda 1.1s ease-out forwards;   /* forwards: invisibles durante el retardo */
+}
+.gca-intro__onda.izq { left: 15%; top: 14.5%; }
+.gca-intro__onda.der { left: 85%; top: 14.5%; }
+.gca-intro__onda.n1 { animation-delay: 1.95s; }
+.gca-intro__onda.n2 { animation-delay: 2.15s; }
+.gca-intro__onda.n3 { animation-delay: 2.35s; }
+
+.gca-intro__nombre {
+    text-align: center; line-height: 1.15;
+    animation: texto-entra .8s ease 2.2s both;
+}
+.gca-intro__nombre small {
+    display: block; letter-spacing: .32em; font-size: .78rem; color: var(--escudo-oro);
+    font-family: 'Poppins', system-ui, sans-serif; font-weight: 500;
+}
+.gca-intro__nombre strong {
+    display: block; font-family: 'Playfair Display', Georgia, serif;
+    font-size: clamp(1.5rem, 4vw, 2.3rem); color: #f6ead0;
+}
+.gca-intro__nombre em {
+    display: block; margin-top: 6px; font-style: normal;
+    letter-spacing: .2em; font-size: .72rem; color: rgba(243, 230, 196, .7);
+    font-family: 'Poppins', system-ui, sans-serif;
+}
+.gca-intro__saltar {
+    position: absolute; bottom: 22px; right: 24px;
+    background: none; border: 1px solid rgba(201, 162, 77, .5); color: #e9d8ad;
+    border-radius: 999px; padding: 6px 16px; font-size: .8rem; cursor: pointer;
+    opacity: 0; animation: texto-entra .5s ease .5s both;
+}
+.gca-intro__saltar:focus-visible { outline: 2px solid #f3d27a; outline-offset: 3px; }
+.gca-intro.fuera { animation: intro-sale .5s cubic-bezier(.7, 0, .3, 1) forwards; }
+
+@keyframes base-entra {
+    from { opacity: 0; transform: translateY(14%) scale(.9); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes salto-izq {
+    0%   { opacity: 0; transform: translate(-260%, 70%) rotate(-35deg) scale(1.5); }
+    55%  { opacity: 1; transform: translate(-40%, -45%) rotate(-12deg) scale(1.25); }  /* cima del salto */
+    80%  { transform: translate(0, 4%) rotate(3deg) scale(.96, 1.04); }               /* aterriza */
+    100% { opacity: 1; transform: none; }
+}
+@keyframes salto-der {
+    0%   { opacity: 0; transform: translate(260%, 70%) rotate(35deg) scale(1.5); }
+    55%  { opacity: 1; transform: translate(40%, -45%) rotate(12deg) scale(1.25); }
+    80%  { transform: translate(0, 4%) rotate(-3deg) scale(.96, 1.04); }
+    100% { opacity: 1; transform: none; }
+}
+@keyframes onda {
+    0%   { opacity: .9; transform: scale(.3); }
+    100% { opacity: 0;  transform: scale(3.2); }
+}
+@keyframes texto-entra {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes intro-sale {
+    to { opacity: 0; visibility: hidden; transform: translateY(-3%); }
+}
+
+/* Sin animaciones si la persona las desactivó en su sistema */
+@media (prefers-reduced-motion: reduce) {
+    .escudo .escudo-leon, .escudo::after,
+    .navbar-brand .escudo { animation: none !important; transition: none !important; }
+    .gca-intro { display: none !important; }
+}
+
+/* Mientras dura la intro no se desplaza la página de fondo */
+html.gca-intro-activa { overflow: hidden; }

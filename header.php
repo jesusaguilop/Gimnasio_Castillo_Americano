@@ -16,6 +16,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/landing.css">
     <link rel="stylesheet" href="assets/css/home.css">
+    <link rel="stylesheet" href="assets/css/escudo.css">
+    <script src="assets/js/escudo.js" defer></script>
     <style>
         :root { --gca-gold: #c9a24d; --gca-gold-hover: #b8933f; --gca-dark: #0f0f0f; }
         body { font-family: 'Inter', system-ui, sans-serif; }
@@ -80,9 +82,7 @@
             .site-nav.scrolled .container { padding-left:16px; padding-right:10px; }
         }
         .navbar-brand { display:flex; align-items:center; gap:12px; animation: brandIn .7s ease .1s both; }
-        .navbar-brand img { height:48px; transition: transform .5s cubic-bezier(.22,1,.36,1), height .3s ease; }
-        .navbar-brand:hover img { transform: rotate(-8deg) scale(1.08); }
-        .site-nav.scrolled .navbar-brand img { height:38px; }
+        /* Tamaño y animación del escudo: assets/css/escudo.css */
         .brand-text {
             font-family:'Playfair Display', serif; font-weight:700; color:var(--gca-dark);
             line-height:1.05; font-size:1.05rem;
@@ -217,7 +217,6 @@
             .top-bar .tb-email, .top-bar .tb-sep--email { display:none; }
         }
         @media (max-width: 576px) {
-            .navbar-brand img { height:40px; }
             .brand-text { font-size:.9rem; max-width:180px; }
         }
 
@@ -225,11 +224,37 @@
         @media (prefers-reduced-motion: reduce) {
             .top-bar, .site-nav, .navbar-brand, .site-nav .navbar-nav > .nav-item,
             #menu.show .nav-item, .tb-slogan { animation: none !important; }
-            .navbar-brand img, .btn-gca, .site-nav .nav-link::after { transition: none !important; }
+            .btn-gca, .site-nav .nav-link::after { transition: none !important; }
         }
     </style>
 </head>
 <body>
+<?php if ($__page === 'index.php'): ?>
+<script>
+/* Intro de la portada: los leones del escudo saltan y rugen. Va en línea, al
+   inicio del body, para que aparezca antes de pintar el sitio. Una vez por
+   visita (sessionStorage) y nunca si la persona desactivó las animaciones. */
+(function () {
+    try {
+        if (sessionStorage.getItem('gcaIntro')) return;
+        sessionStorage.setItem('gcaIntro', '1');
+    } catch (e) { return; }
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var capa = function (c) { return '<img class="' + c + '" src="assets/img/escudo/' + (c === 'escudo-base' ? 'escudo-base' : (c.indexOf('izq') > 0 ? 'leon-izq' : 'leon-der')) + '.png" alt="">'; };
+    var ondas = '';
+    ['izq', 'der'].forEach(function (l) { ['n1', 'n2', 'n3'].forEach(function (n) { ondas += '<span class="gca-intro__onda ' + l + ' ' + n + '"></span>'; }); });
+    var d = document.createElement('div');
+    d.className = 'gca-intro';
+    d.setAttribute('role', 'presentation');
+    d.innerHTML = '<div class="gca-intro__centro">'
+        + '<span class="escudo">' + capa('escudo-base') + capa('escudo-leon izq') + capa('escudo-leon der') + ondas + '</span>'
+        + '<div class="gca-intro__nombre"><small>GIMNASIO</small><strong>Castillo Americano</strong><em>CULTIVAR PARA COSECHAR</em></div>'
+        + '</div><button type="button" class="gca-intro__saltar">Saltar intro</button>';
+    document.body.appendChild(d);
+    document.documentElement.classList.add('gca-intro-activa');
+})();
+</script>
+<?php endif; ?>
 
 <a class="visually-hidden-focusable skip-link" href="#contenido">Saltar al contenido</a>
 
@@ -248,7 +273,11 @@
 <nav class="navbar navbar-expand-lg site-nav">
     <div class="container">
         <a class="navbar-brand" href="index.php">
-            <img src="assets/img/escudo-gca.png" alt="">
+            <span class="escudo" aria-hidden="true">
+                <img class="escudo-base" src="assets/img/escudo/escudo-base.png" alt="" width="226" height="337">
+                <img class="escudo-leon izq" src="assets/img/escudo/leon-izq.png" alt="" width="226" height="337">
+                <img class="escudo-leon der" src="assets/img/escudo/leon-der.png" alt="" width="226" height="337">
+            </span>
             <span class="brand-text">Gimnasio Castillo Americano</span>
         </a>
 
