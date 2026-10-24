@@ -5,7 +5,7 @@ require_once "../lib/rank_helper.php";
 
 $profesor_id = userId();
 $anio_activo = (int)(getConfig('anio_activo') ?? date('Y'));
-$NOTA_MINIMA = 60;
+$NOTA_MINIMA = NOTA_MINIMA_APROBACION;
 
 /* Cursos que dirige */
 $cursos = $conexion->prepare("
@@ -16,6 +16,9 @@ $cursos = $conexion->prepare("
 ");
 $cursos->execute([$profesor_id]);
 $cursos = $cursos->fetchAll(PDO::FETCH_ASSOC);
+
+/* Consolidado de TODOS los cursos dirigidos en UNA consulta (antes 2 por curso) */
+$rankings = rankingAnualCursos($conexion, array_column($cursos, 'id'), $anio_activo, $NOTA_MINIMA);
 
 $pageTitle = "Resultados del Año";
 include "includes/header.php";
@@ -50,7 +53,7 @@ include "includes/header.php";
                 </div>
 
                 <?php foreach ($cursos as $curso):
-                    $ranking = rankingAnualCurso($conexion, (int)$curso['id'], $anio_activo, $NOTA_MINIMA);
+                    $ranking = $rankings[(int) $curso['id']] ?? [];
                     $conNotas = array_filter($ranking, fn($r) => $r['promedio'] !== null);
                     $aprob = count(array_filter($conNotas, fn($r) => $r['aprobo']));
                     $reprob = count($conNotas) - $aprob;
@@ -78,23 +81,27 @@ include "includes/header.php";
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php $pos = 1; foreach ($ranking as $r): ?>
+                                    <?php foreach ($ranking as $r):
+                                        // Con menos de 4 períodos el resultado es PROVISIONAL (antes decía APROBÓ en julio)
+                                        $provisional = $r['periodos'] < 4; ?>
                                         <tr>
                                             <td style="text-align:center;font-weight:700;color:var(--gold-dark);">
-                                                <?= $r['promedio'] !== null ? '#' . $pos : '—' ?>
+                                                <?= $r['puesto'] !== null ? '#' . (int) $r['puesto'] : '—' ?>
                                             </td>
                                             <td class="fw-medium"><?= htmlspecialchars($r['nombre']) ?></td>
                                             <td style="text-align:center;">
                                                 <?php if ($r['promedio'] !== null):
                                                     $p = (float)$r['promedio'];
-                                                    $bg = $p >= 60 ? '#1b5e20' : ($p >= 40 ? '#e65100' : '#b71c1c'); ?>
-                                                    <span class="badge rounded-pill px-3 py-1" style="background:<?= $bg ?>;color:#fff;font-size:12px;"><?= $p ?></span>
+                                                    ?>
+                                                    <span class="badge rounded-pill px-3 py-1" title="Desempeño <?= desempenoNota($p) ?> · <?= (int) $r['periodos'] ?> de 4 períodos" style="<?= desempenoEstilo($p) ?>font-size:12px;"><?= number_format($p, 1) ?></span>
                                                 <?php else: ?><span class="text-muted">Sin notas</span><?php endif; ?>
                                             </td>
                                             <td style="text-align:center;"><?= $r['promedio'] !== null ? (int)$r['areas_perdidas'] : '—' ?></td>
                                             <td style="text-align:center;">
                                                 <?php if ($r['promedio'] === null): ?>
                                                     <span class="text-muted">—</span>
+                                                <?php elseif ($provisional): ?>
+                                                    <span style="color:<?= $r['aprobo'] ? '#2e7d32' : '#c62828' ?>;font-size:12px;" title="Faltan períodos: resultado no definitivo"><i class="bi bi-hourglass-split"></i> <?= $r['aprobo'] ? 'Va aprobando' : 'Va reprobando' ?> (<?= (int) $r['periodos'] ?>/4)</span>
                                                 <?php elseif ($r['aprobo']): ?>
                                                     <span style="color:#2e7d32;font-weight:700;font-size:12px;"><i class="bi bi-check-circle-fill"></i> APROBÓ</span>
                                                 <?php else: ?>
@@ -102,8 +109,7 @@ include "includes/header.php";
                                                 <?php endif; ?>
                                             </td>
                                         </tr>
-                                        <?php if ($r['promedio'] !== null) $pos++; ?>
-                                    <?php endforeach; ?>
+                                                                            <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>

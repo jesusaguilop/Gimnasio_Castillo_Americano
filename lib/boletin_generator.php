@@ -30,9 +30,12 @@ use Dompdf\Options;
 function generarBoletinEstudiante(PDO $conexion, int $estudiante_id, string $periodo, int $generado_por, string $template = 'v2', int $anio = 0, bool $paz_y_salvo = false): array
 {
     if ($anio <= 0) $anio = (int) date('Y');
+    // Estudiante + curso + director de grupo en UNA consulta
     $stmt = $conexion->prepare("
         SELECT e.id, e.nombre, e.documento, e.curso_id, e.padre_id,
-               c.grado, c.nombre AS curso_nombre, c.nivel
+               c.grado, c.nombre AS curso_nombre, c.nivel,
+               (SELECT u.nombre FROM directores_grupo dg JOIN usuarios u ON u.id = dg.profesor_id
+                 WHERE dg.curso_id = e.curso_id ORDER BY dg.created_at LIMIT 1) AS director_nombre
         FROM estudiantes e
         JOIN cursos c ON e.curso_id = c.id
         WHERE e.id = ?
@@ -43,60 +46,43 @@ function generarBoletinEstudiante(PDO $conexion, int $estudiante_id, string $per
         return ['ok' => false, 'motivo' => 'Estudiante no encontrado'];
     }
 
-    // Notas del período (con intensidad horaria del grado y porcentaje)
-    $notasStmt = $conexion->prepare("
-        SELECT a.nombre AS asignatura, a.area, a.id AS asignatura_id,
-               COALESCE(ag.intensidad_horaria, a.intensidad_horaria, 0) AS intensidad_horaria,
-               n.nota,
-               COALESCE(ag.porcentaje, 100) AS porcentaje
-        FROM notas n
-        JOIN asignaturas a ON n.asignatura_id = a.id
-        LEFT JOIN asignatura_grado ag ON ag.asignatura_id = a.id AND ag.grado = ?
-        WHERE n.estudiante_id = ? AND n.periodo = ? AND n.anio = ?
-        ORDER BY a.area, a.nombre
-    ");
-    $notasStmt->execute([$est['grado'], $estudiante_id, $periodo, $anio]);
-    $notas = $notasStmt->fetchAll(PDO::FETCH_ASSOC);
+    // Notas del período + porcentaje del grado + logro, en UNA consulta (rank_helper)
+    $notas = obtenerNotasPonderadas($conexion, $estudiante_id, $periodo, $anio);
     if (count($notas) === 0) {
         return ['ok' => false, 'motivo' => 'Sin notas', 'estudiante' => $est];
     }
-
-    // Logros
     $logros = [];
-    $sl = $conexion->prepare("SELECT asignatura_id, logro FROM logros WHERE estudiante_id = ? AND periodo = ? AND anio = ?");
-    $sl->execute([$estudiante_id, $periodo, $anio]);
-    foreach ($sl->fetchAll(PDO::FETCH_ASSOC) as $l) {
-        $logros[$l['asignatura_id']] = $l['logro'];
+    foreach ($notas as $n) {
+        if ($n['logro'] !== null) $logros[$n['asignatura_id']] = $n['logro'];
     }
 
-    // Definitivas + promedio (ponderado) + puesto
+    // Definitivas + promedio + puesto: el mismo cálculo que todas las pantallas
     $def = calcularDefinitivas($notas);
+    if ($def['general'] === null) {
+        return ['ok' => false, 'motivo' => 'No hay notas suficientes para calcular el promedio.', 'estudiante' => $est];
+    }
     $promediosArea = $def['areas'];
-    $promedio = $def['general'] ?? 0;
-    $puesto = calcularPuestoCurso($conexion, $estudiante_id, $periodo, $anio);
+    $promedio = $def['general'];
+    $puesto = calcularPuestoCurso($conexion, $estudiante_id, $periodo, $anio, (int) $est['curso_id']);
 
     $curso = ['nivel' => $est['nivel'], 'grado' => $est['grado'], 'curso_nombre' => $est['curso_nombre']];
 
-    // Director de grupo
-    $sd = $conexion->prepare("
-        SELECT u.nombre FROM directores_grupo dg
-        JOIN usuarios u ON dg.profesor_id = u.id WHERE dg.curso_id = ?
-    ");
-    $sd->execute([$est['curso_id']]);
-    $dir = $sd->fetch(PDO::FETCH_ASSOC);
-    $directorNombre = $dir ? htmlspecialchars(strtoupper($dir['nombre'])) : '___________________________________________';
+    $directorNombre = $est['director_nombre'] ? htmlspecialchars(mb_strtoupper($est['director_nombre'])) : '___________________________________________';
 
     // HTML
     $useV2 = ($template === 'v2');
     if ($useV2) {
-        $html = boletinHTML_v2($est, $curso, $periodo, $notas, $promedio, $promediosArea, $logros, $directorNombre, $puesto);
+        $html = boletinHTML_v2($est, $curso, $periodo, $notas, $promedio, $promediosArea, $logros, $directorNombre, $puesto, $anio);
     } else {
         $html = boletinHTML($est, $curso, $periodo, $notas, $promedio, $promediosArea, $logros, $directorNombre, $puesto);
     }
 
     // PDF
     $options = new Options();
-    $options->set('isRemoteEnabled', $useV2);
+    // Sin acceso remoto: las imágenes van embebidas en base64 y la fuente
+    // (Carlito, métrica de Calibri) se lee del disco dentro del chroot.
+    $options->set('isRemoteEnabled', false);
+    $options->setChroot([__DIR__, realpath(__DIR__ . '/../assets/img/boletin')]);
     $options->set('isHtml5ParserEnabled', true);
     $dompdf = new Dompdf($options);
     $dompdf->loadHtml($html);
@@ -117,33 +103,36 @@ function generarBoletinEstudiante(PDO $conexion, int $estudiante_id, string $per
     // segunda barrera si el directorio quedara servido como estático.
     $filename = "boletin_{$est['id']}_{$periodo}_{$year}_" . bin2hex(random_bytes(8)) . ".pdf";
 
-    // Al regenerar, borrar el PDF anterior para no dejar copias huérfanas
-    // (con nombre aleatorio ya no se sobreescriben entre ellas).
-    $anterior = $conexion->prepare(
-        "SELECT ruta_pdf FROM boletines_pdf WHERE estudiante_id = ? AND periodo = ? AND year = ?"
-    );
-    $anterior->execute([$estudiante_id, $periodo, $year]);
-    if ($rutaVieja = $anterior->fetchColumn()) {
-        $archivoViejo = __DIR__ . '/../' . ltrim($rutaVieja, '/');
-        if (is_file($archivoViejo)) {
-            @unlink($archivoViejo);
-        }
-    }
-
     file_put_contents("{$dir_fs}/{$filename}", $pdf);
     $ruta_relativa = url_subidas("boletines/{$year}/{$periodo}") . "/{$filename}";
 
     // Registrar en BD. Queda PENDIENTE de publicación (el admin decide el paso al padre).
     // Al (re)generar se reinicia a no-publicado para que el admin apruebe la versión vigente.
+    // El CTE "anterior" devuelve la ruta del PDF previo en el MISMO viaje a la BD
+    // (todas las partes de la sentencia ven la foto previa a la actualización).
     $pazSQL = $paz_y_salvo ? 'TRUE' : 'FALSE';
     $rec = $conexion->prepare("
+        WITH anterior AS (
+            SELECT ruta_pdf FROM boletines_pdf WHERE estudiante_id = ? AND periodo = ? AND year = ?
+        )
         INSERT INTO boletines_pdf (estudiante_id, periodo, year, ruta_pdf, generado_por, paz_y_salvo, publicado, publicado_en)
         VALUES (?, ?, ?, ?, ?, $pazSQL, FALSE, NULL)
         ON CONFLICT (estudiante_id, periodo, year) DO UPDATE
             SET ruta_pdf = EXCLUDED.ruta_pdf, generado_por = EXCLUDED.generado_por,
                 paz_y_salvo = $pazSQL, publicado = FALSE, publicado_en = NULL
+        RETURNING (SELECT ruta_pdf FROM anterior) AS ruta_anterior
     ");
-    $rec->execute([$estudiante_id, $periodo, $year, $ruta_relativa, $generado_por]);
+    $rec->execute([$estudiante_id, $periodo, $year, $estudiante_id, $periodo, $year, $ruta_relativa, $generado_por]);
+
+    // Al regenerar, borrar el PDF anterior (después de registrar el nuevo: si la
+    // BD fallara, el boletín vigente seguiría teniendo su archivo).
+    $rutaVieja = $rec->fetchColumn();
+    if ($rutaVieja && $rutaVieja !== $ruta_relativa) {
+        $archivoViejo = __DIR__ . '/../' . ltrim($rutaVieja, '/');
+        if (is_file($archivoViejo)) {
+            @unlink($archivoViejo);
+        }
+    }
 
     return [
         'ok' => true,

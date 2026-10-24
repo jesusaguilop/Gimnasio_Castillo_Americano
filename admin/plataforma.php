@@ -27,9 +27,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['guardar_config'])
     && !validar_token_csrf($_POST['_csrf_token'] ?? '')) {
     $error = "Error de seguridad. Recargue la página e intente de nuevo.";
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['guardar_config'])) {
-    $periodo = $_POST['periodo_activo'] ?? '1';
-    $apertura = $_POST['fecha_apertura'] ?? '';
-    $cierre = $_POST['fecha_cierre'] ?? '';
+    // Se imprime en los paneles de profesores: solo 1-4, nada de texto libre
+    $periodo = in_array($_POST['periodo_activo'] ?? '', ['1', '2', '3', '4'], true) ? $_POST['periodo_activo'] : '1';
+    $apertura = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['fecha_apertura'] ?? '') ? $_POST['fecha_apertura'] : '';
+    $cierre = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['fecha_cierre'] ?? '') ? $_POST['fecha_cierre'] : '';
     $anio = (int)($_POST['anio_activo'] ?? date('Y'));
     if ($anio < 2000 || $anio > 2100) $anio = (int)date('Y');
 
@@ -92,54 +93,45 @@ $cursos = $conexion->query("
     SELECT * FROM cursos ORDER BY nivel, grado, nombre
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-function obtenerNotasEstudiantesCurso($conexion, $curso_id, $anio) {
-    $stmt = $conexion->prepare("
-        SELECT n.estudiante_id, n.periodo, n.nota, a.nombre as asignatura, a.area, a.id as asignatura_id
-        FROM notas n
-        JOIN asignaturas a ON n.asignatura_id = a.id
-        WHERE n.curso_id = ? AND n.anio = ?
-        ORDER BY a.area, a.nombre, n.periodo
-    ");
-    $stmt->execute([$curso_id, $anio]);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+/* ── Todo lo de la vista de notas en 4 consultas fijas ──
+   Antes eran 3 consultas por curso (≈48) y un "promedio general" propio
+   (media de todas las notas, sin áreas, sin % y con Comportamiento) que no
+   coincidía con el del boletín. Ahora el promedio y el puesto salen de
+   lib/rank_helper.php, igual que en el boletín y en los paneles. */
+$curso_ids = array_map('intval', array_column($cursos, 'id'));
 
-    $notas_por_estudiante = [];
-    foreach ($rows as $r) {
-        $eid = $r['estudiante_id'];
-        if (!isset($notas_por_estudiante[$eid])) {
-            $notas_por_estudiante[$eid] = [];
-        }
-        $key = $r['asignatura_id'] . '_' . $r['asignatura'];
-        if (!isset($notas_por_estudiante[$eid][$key])) {
-            $notas_por_estudiante[$eid][$key] = [
-                'area' => $r['area'],
-                'asignatura' => $r['asignatura'],
-                'periodos' => [],
-                'sum' => 0,
-                'count' => 0,
-            ];
-        }
-        $notas_por_estudiante[$eid][$key]['periodos'][$r['periodo']] = $r['nota'];
-        $notas_por_estudiante[$eid][$key]['sum'] += $r['nota'];
-        $notas_por_estudiante[$eid][$key]['count']++;
-    }
+$estPorCurso = [];
+foreach ($conexion->query("SELECT * FROM estudiantes WHERE curso_id IS NOT NULL ORDER BY nombre") as $e) {
+    $estPorCurso[(int) $e['curso_id']][] = $e;
+}
 
-    $resultado = [];
-    foreach ($notas_por_estudiante as $eid => $materias) {
-        $total_sum = 0;
-        $total_count = 0;
-        foreach ($materias as &$m) {
-            $m['promedio'] = $m['count'] > 0 ? round($m['sum'] / $m['count'], 1) : null;
-            $total_sum += $m['sum'];
-            $total_count += $m['count'];
-        }
-        unset($m);
-        $resultado[$eid] = [
-            'materias' => $materias,
-            'promedio_general' => $total_count > 0 ? round($total_sum / $total_count, 1) : null,
-        ];
+// Puesto del período activo y promedio del año (de los períodos con notas)
+$rankings = obtenerRankingsCursos($conexion, $curso_ids, $periodo_activo, $anio_activo);
+$promedioAnual = [];
+foreach (rankingAnualCursos($conexion, $curso_ids, $anio_activo) as $lista) {
+    foreach ($lista as $r) {
+        $promedioAnual[(int) $r['id']] = $r['promedio'];
     }
-    return $resultado;
+}
+
+// Notas por asignatura y período (solo para mostrarlas en la tabla)
+$notasPorEst = [];
+$stmt = $conexion->prepare("
+    SELECT n.estudiante_id, n.periodo, n.nota, a.nombre AS asignatura, a.area, a.id AS asignatura_id
+    FROM notas n
+    JOIN asignaturas a ON n.asignatura_id = a.id
+    WHERE n.anio = ?
+    ORDER BY a.area, a.nombre, n.periodo
+");
+$stmt->execute([$anio_activo]);
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    $m = &$notasPorEst[(int) $r['estudiante_id']][$r['asignatura_id'] . '_' . $r['asignatura']];
+    $m ??= ['area' => $r['area'], 'asignatura' => $r['asignatura'], 'periodos' => [], 'sum' => 0, 'count' => 0];
+    $m['periodos'][$r['periodo']] = $r['nota'];
+    $m['sum'] += $r['nota'];
+    $m['count']++;
+    $m['promedio'] = round($m['sum'] / $m['count'], 1);
+    unset($m);
 }
 
 $pageTitle = "Configuración de Plataforma";
@@ -151,21 +143,15 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1"><i class="ti ti-settings" aria-hidden="true"></i> Periodo y notas</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Configuración del periodo y notas por curso</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
 
             <?php if ($mensaje): ?>
-                <div class="alert alert-success border-0 rounded-3 d-flex align-items-center gap-2 shadow-sm mb-4"><?= $mensaje ?></div>
+                <div class="alert alert-success alert-icon mb-4" role="alert"><i class="bi bi-check-circle" aria-hidden="true"></i><div><?= htmlspecialchars($mensaje) ?></div></div>
             <?php endif; ?>
             <?php if ($error): ?>
-                <div class="alert alert-danger border-0 rounded-3 d-flex align-items-center gap-2 shadow-sm mb-4"><?= $error ?></div>
+                <div class="alert alert-danger alert-icon mb-4" role="alert"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><div><?= htmlspecialchars($error) ?></div></div>
             <?php endif; ?>
 
             <div class="row g-4">
@@ -175,21 +161,20 @@ include "includes/header.php";
 
                     <!-- Toggle plataforma -->
                     <div class="gca-card p-4 mb-4">
-                        <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-start justify-content-between gap-3">
                             <div>
-                                <h6 class="fw-bold mb-1"><i class="bi bi-toggle-on me-2" style="color:var(--gold);"></i>Estado de la Plataforma</h6>
-                                <p class="text-muted small mb-0" id="platformHelp">Habilita o deshabilita el registro de notas y la vista de boletines.</p>
+                                <h4 class="section-title"><i class="bi bi-toggle-on" aria-hidden="true"></i> Registro de notas</h4>
+                                <p class="section-sub mt-2" id="platformHelp">Habilita o deshabilita el registro de notas y la vista de boletines.</p>
                             </div>
-                            <div class="form-check form-switch">
+                            <div class="form-check form-switch switch-lg">
                                 <input class="form-check-input" type="checkbox" id="platformSwitch" role="switch"
                                     aria-label="Plataforma de notas activa" aria-describedby="platformHelp"
-                                    style="width:3.2rem;height:1.6rem;cursor:pointer;"
                                     <?= $plataforma_activa ? 'checked' : '' ?>>
                             </div>
                         </div>
-                        <div class="mt-3 d-flex align-items-center gap-2">
-                            <span class="badge rounded-pill px-3 py-1 <?= $plataforma_activa ? 'bg-success' : 'bg-secondary' ?>">
-                                <i class="bi <?= $plataforma_activa ? 'bi-check-circle' : 'bi-x-circle' ?> me-1"></i>
+                        <div class="mt-3 d-flex align-items-center gap-2 flex-wrap">
+                            <span class="gca-badge <?= $plataforma_activa ? 'is-ok' : '' ?>">
+                                <i class="bi <?= $plataforma_activa ? 'bi-check-circle' : 'bi-x-circle' ?>" aria-hidden="true"></i>
                                 <?= $plataforma_activa ? 'Activa' : 'Inactiva' ?>
                             </span>
                             <span class="small text-muted">
@@ -202,7 +187,9 @@ include "includes/header.php";
 
                     <!-- Configuración de periodo y fechas -->
                     <div class="gca-card p-4">
-                        <h6 class="fw-bold mb-3"><i class="bi bi-calendar-range me-2" style="color:var(--gold);"></i>Ventana de Registro</h6>
+                        <div class="section-header">
+                            <h4><i class="bi bi-calendar-range" aria-hidden="true"></i> Periodo y ventana de registro</h4>
+                        </div>
 
                         <form method="POST">
                             <?= campo_csrf() ?>
@@ -235,17 +222,17 @@ include "includes/header.php";
                                 </div>
                             </div>
 
-                            <button type="submit" name="guardar_config" class="btn-gca w-100 justify-content-center">
-                                <i class="bi bi-check-lg"></i> Guardar Configuración
+                            <button type="submit" name="guardar_config" class="btn-gca w-100">
+                                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar configuración
                             </button>
                         </form>
                     </div>
 
                     <!-- ── Zona de mantenimiento: reiniciar período (pruebas) ── -->
-                    <div class="gca-card p-4 mt-4" style="border:1px solid rgba(220,53,69,.28);">
-                        <h6 class="fw-bold mb-1" style="color:#c0392b;">
-                            <i class="bi bi-exclamation-octagon me-2"></i>Reiniciar período
-                        </h6>
+                    <div class="gca-card danger-zone p-4 mt-4">
+                        <h3 class="h6 fw-bold mb-1">
+                            <i class="bi bi-exclamation-octagon me-2" aria-hidden="true"></i>Zona de riesgo: reiniciar período
+                        </h3>
                         <p class="text-muted small mb-3">
                             Borra <strong>todas las notas, logros y boletines</strong> del período seleccionado.
                             Acción <strong>irreversible</strong> — pensada para pruebas.
@@ -267,10 +254,9 @@ include "includes/header.php";
                                     <input id="f_confirmacion" type="text" name="confirmacion" class="form-control" placeholder="REINICIAR" autocomplete="off">
                                 </div>
                             </div>
-                            <button type="submit" name="reiniciar_periodo" class="w-100"
-                                style="background:#c0392b;color:#fff;border:none;border-radius:10px;padding:11px;font-weight:600;cursor:pointer;"
+                            <button type="submit" name="reiniciar_periodo" class="btn-danger-gca w-100"
                                 onclick="event.preventDefault(); var b=this, f=b.form; if (!f.reportValidity()) return; showConfirm('¿Seguro? Se borrarán TODAS las notas, logros y boletines de este período. No se puede deshacer.', function(){ var h=document.createElement('input'); h.type='hidden'; h.name='reiniciar_periodo'; h.value='1'; f.appendChild(h); f.submit(); }, 'Sí, borrar');">
-                                <i class="bi bi-trash3"></i> Reiniciar período
+                                <i class="bi bi-trash3" aria-hidden="true"></i> Reiniciar período
                             </button>
                         </form>
                     </div>
@@ -279,45 +265,44 @@ include "includes/header.php";
 
                 <!-- ─── COL DERECHA: VISTA DE NOTAS (BACKUP) ─── -->
                 <div class="col-lg-7">
-                    <div class="gca-card p-4" id="notas" style="scroll-margin-top:80px;">
-                        <div class="section-header mb-0 pb-3" style="border-bottom:1px solid var(--border-color);">
-                            <h4><i class="bi bi-database" aria-hidden="true"></i> Notas por curso</h4>
-                            <span class="badge bg-dark rounded-pill px-3 py-1" style="color:var(--gold);font-size:11px;">
-                                <i class="bi bi-eye"></i> Vista general
-                            </span>
+                    <div class="gca-card p-4 scroll-target" id="notas">
+                        <div class="section-header">
+                            <div>
+                                <h4><i class="bi bi-database" aria-hidden="true"></i> Notas por curso</h4>
+                                <p class="section-sub">Notas del año <?= (int) $anio_activo ?> por curso y estudiante (solo lectura).</p>
+                            </div>
+                            <span class="gca-badge"><i class="bi bi-eye" aria-hidden="true"></i> Vista general</span>
                         </div>
 
                         <?php if (!$plataforma_activa): ?>
-                            <div class="empty-state py-4">
-                                <i class="bi bi-journal-x"></i>
-                                <p class="mb-0">Activa la plataforma para visualizar las notas registradas.</p>
+                            <div class="empty-state">
+                                <i class="bi bi-journal-x" aria-hidden="true"></i>
+                                <h3>Registro de notas cerrado</h3>
+                                <p>Activa la plataforma para visualizar las notas registradas.</p>
                             </div>
                         <?php elseif (count($cursos) === 0): ?>
-                            <div class="empty-state py-4">
-                                <i class="bi bi-inbox"></i>
-                                <p class="mb-0">No hay cursos registrados en el sistema.</p>
+                            <div class="empty-state">
+                                <i class="bi bi-inbox" aria-hidden="true"></i>
+                                <p>No hay cursos registrados en el sistema.</p>
                             </div>
                         <?php else: ?>
-                            <div class="accordion mt-3" id="accordionCursos">
+                            <div class="accordion" id="accordionCursos">
                                 <?php foreach ($cursos as $curso):
-                                    $stmt = $conexion->prepare("SELECT * FROM estudiantes WHERE curso_id = ? ORDER BY nombre");
-                                    $stmt->execute([$curso['id']]);
-                                    $estudiantes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                                    $ranking = obtenerRankingCurso($conexion, $curso['id'], $periodo_activo, $anio_activo);
+                                    $estudiantes = $estPorCurso[(int) $curso['id']] ?? [];
                                     $ranking_map = [];
-                                    foreach ($ranking as $i => $r) {
-                                        $ranking_map[$r['id']] = ['pos' => $i + 1, 'total' => count($ranking)];
+                                    foreach ($rankings[(int) $curso['id']] ?? [] as $r) {
+                                        if ($r['puesto'] !== null) {
+                                            $ranking_map[$r['id']] = ['pos' => $r['puesto'], 'total' => $r['total']];
+                                        }
                                     }
-                                    $notas_curso = count($estudiantes) > 0 ? obtenerNotasEstudiantesCurso($conexion, $curso['id'], $anio_activo) : [];
                                 ?>
-                                    <div class="accordion-item" style="border-radius:12px!important;margin-bottom:10px;border:1px solid #ece8e0;overflow:hidden;">
+                                    <div class="accordion-item acc-curso">
                                         <h2 class="accordion-header">
                                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                                data-bs-target="#collapseCurso<?= $curso['id'] ?>"
-                                                style="font-weight:600;font-size:14px;background:#fcfbfa;">
-                                                <i class="bi bi-book-fill me-2" style="color:var(--gold);"></i>
+                                                data-bs-target="#collapseCurso<?= $curso['id'] ?>" aria-expanded="false" aria-controls="collapseCurso<?= $curso['id'] ?>">
+                                                <i class="bi bi-collection acc-ico" aria-hidden="true"></i>
                                                 <?= htmlspecialchars(ucfirst($curso['nivel'] ?? '') . ' - ' . $curso['grado'] . ' ' . $curso['nombre']) ?>
-                                                <span class="badge bg-secondary ms-2 rounded-pill"><?= count($estudiantes) ?> est.</span>
+                                                <span class="gca-badge acc-rank"><?= count($estudiantes) ?> est.</span>
                                             </button>
                                         </h2>
                                         <div id="collapseCurso<?= $curso['id'] ?>" class="accordion-collapse collapse" data-bs-parent="#accordionCursos">
@@ -325,19 +310,17 @@ include "includes/header.php";
                                                 <?php if (count($estudiantes) > 0): ?>
                                                     <div class="accordion student-accordion" id="accordionEstudiantes<?= $curso['id'] ?>">
                                                         <?php foreach ($estudiantes as $estudiante):
-                                                            $notasData = $notas_curso[$estudiante['id']] ?? ['materias' => [], 'promedio_general' => null];
-                                                            $materias = $notasData['materias'];
-                                                            $promedio_gral = $notasData['promedio_general'];
+                                                            $materias = $notasPorEst[(int) $estudiante['id']] ?? [];
+                                                            $promedio_gral = $promedioAnual[(int) $estudiante['id']] ?? null;
                                                         ?>
-                                                            <div class="accordion-item" style="border-left:3px solid var(--gold);border-radius:0;">
+                                                            <div class="accordion-item acc-est">
                                                                 <h2 class="accordion-header">
                                                                     <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse"
-                                                                        data-bs-target="#collapseEst<?= $estudiante['id'] ?>"
-                                                                        style="font-size:13px;background:#fff;">
-                                                                        <i class="bi bi-person-fill me-2" style="color:var(--gold-dark);"></i>
+                                                                        data-bs-target="#collapseEst<?= $estudiante['id'] ?>" aria-expanded="false" aria-controls="collapseEst<?= $estudiante['id'] ?>">
+                                                                        <i class="bi bi-person acc-ico" aria-hidden="true"></i>
                                                                         <?= htmlspecialchars($estudiante['nombre']) ?>
                                                                         <?php if (isset($ranking_map[$estudiante['id']])): ?>
-                                                                            <span style="margin-left:12px;font-size:10px;font-weight:700;color:var(--gold-dark);background:rgba(212,175,55,0.1);padding:1px 8px;border-radius:20px;white-space:nowrap;">
+                                                                            <span class="gca-badge is-gold acc-rank" title="Puesto en el curso">
                                                                                 #<?= $ranking_map[$estudiante['id']]['pos'] ?>/<?= $ranking_map[$estudiante['id']]['total'] ?>
                                                                             </span>
                                                                         <?php endif; ?>
@@ -348,63 +331,60 @@ include "includes/header.php";
                                                                     <div class="accordion-body p-0">
                                                                         <?php if (count($materias) > 0): ?>
                                                                             <div class="table-responsive">
-                                                                                <table class="table gca-table mb-0" style="font-size:12px;">
+                                                                                <table class="table gca-table gca-table-sm mb-0">
                                                                                     <thead>
                                                                                         <tr>
                                                                                             <th scope="col">Área</th>
                                                                                             <th scope="col">Asignatura</th>
-                                                                                            <th scope="col" style="text-align:center;width:40px;">P1</th>
-                                                                                            <th scope="col" style="text-align:center;width:40px;">P2</th>
-                                                                                            <th scope="col" style="text-align:center;width:40px;">P3</th>
-                                                                                            <th scope="col" style="text-align:center;width:40px;">P4</th>
-                                                                                            <th scope="col" style="text-align:center;width:50px;">Prom.</th>
+                                                                                            <th scope="col" class="text-center">P1</th>
+                                                                                            <th scope="col" class="text-center">P2</th>
+                                                                                            <th scope="col" class="text-center">P3</th>
+                                                                                            <th scope="col" class="text-center">P4</th>
+                                                                                            <th scope="col" class="text-center">Prom.</th>
                                                                                         </tr>
                                                                                     </thead>
                                                                                     <tbody>
                                                                                         <?php foreach ($materias as $m): ?>
                                                                                             <tr>
-                                                                                                <td style="color:#888;"><?= htmlspecialchars($m['area']) ?></td>
+                                                                                                <td class="text-muted"><?= htmlspecialchars($m['area']) ?></td>
                                                                                                 <td><?= htmlspecialchars($m['asignatura']) ?></td>
                                                                                                 <?php for ($p = 1; $p <= 4; $p++):
                                                                                                     $n = $m['periodos'][(string)$p] ?? null;
                                                                                                 ?>
-                                                                                                    <td style="text-align:center;">
+                                                                                                    <td class="text-center">
                                                                                                         <?php if ($n !== null): ?>
-                                                                                                            <span class="badge rounded-pill px-2 py-1"
-                                                                                                                  style="font-size:10px;font-weight:600;background:<?= $n >= 60 ? '#e8f5e9' : ($n >= 40 ? '#fff3e0' : '#ffebee') ?>;color:<?= $n >= 60 ? '#2e7d32' : ($n >= 40 ? '#e65100' : '#c62828') ?>;">
+                                                                                                            <span class="nota <?= $n >= 60 ? 'ok' : ($n >= 40 ? 'warn' : 'bad') ?>">
                                                                                                                 <?= (int)$n ?>
                                                                                                             </span>
                                                                                                         <?php else: ?>
-                                                                                                            <span style="color:#ddd;">–</span>
+                                                                                                            <span class="nota-vacia" aria-label="Sin nota">–</span>
                                                                                                         <?php endif; ?>
                                                                                                     </td>
                                                                                                 <?php endfor; ?>
-                                                                                                <td style="text-align:center;">
+                                                                                                <td class="text-center">
                                                                                                     <?php if ($m['promedio'] !== null): ?>
-                                                                                                        <span class="badge rounded-pill px-2 py-1"
-                                                                                                              style="font-size:10px;font-weight:700;background:<?= $m['promedio'] >= 60 ? '#1b5e20' : ($m['promedio'] >= 40 ? '#e65100' : '#b71c1c') ?>;color:#fff;">
+                                                                                                        <span class="nota solid <?= $m['promedio'] >= 60 ? 'ok' : ($m['promedio'] >= 40 ? 'warn' : 'bad') ?>">
                                                                                                             <?= $m['promedio'] ?>
                                                                                                         </span>
                                                                                                     <?php else: ?>
-                                                                                                        <span style="color:#ddd;">–</span>
+                                                                                                        <span class="nota-vacia" aria-label="Sin nota">–</span>
                                                                                                     <?php endif; ?>
                                                                                                 </td>
                                                                                             </tr>
                                                                                         <?php endforeach; ?>
                                                                                     </tbody>
                                                                                     <tfoot>
-                                                                                        <tr style="border-top:2px solid var(--gold);background:#fcfbfa;">
-                                                                                            <td colspan="6" style="text-align:right;font-weight:700;font-size:13px;">
-                                                                                                <i class="bi bi-star-fill me-1" style="color:var(--gold);"></i>Promedio General
+                                                                                        <tr class="row-total">
+                                                                                            <td colspan="6" class="text-end fw-semibold">
+                                                                                                <i class="bi bi-star-fill me-1 text-gold" aria-hidden="true"></i>Promedio del año (como en el boletín)
                                                                                             </td>
-                                                                                            <td style="text-align:center;">
+                                                                                            <td class="text-center">
                                                                                                 <?php if ($promedio_gral !== null): ?>
-                                                                                                    <span class="badge rounded-pill px-3 py-1"
-                                                                                                          style="font-size:12px;font-weight:700;background:<?= $promedio_gral >= 60 ? '#1b5e20' : ($promedio_gral >= 40 ? '#e65100' : '#b71c1c') ?>;color:#fff;">
+                                                                                                    <span class="nota solid <?= $promedio_gral >= 60 ? 'ok' : ($promedio_gral >= 40 ? 'warn' : 'bad') ?>">
                                                                                                         <?= $promedio_gral ?>
                                                                                                     </span>
                                                                                                 <?php else: ?>
-                                                                                                    <span style="color:#ddd;">–</span>
+                                                                                                    <span class="nota-vacia" aria-label="Sin nota">–</span>
                                                                                                 <?php endif; ?>
                                                                                             </td>
                                                                                         </tr>
@@ -412,7 +392,7 @@ include "includes/header.php";
                                                                                 </table>
                                                                             </div>
                                                                         <?php else: ?>
-                                                                            <div class="p-3 text-center text-muted small">Sin notas registradas.</div>
+                                                                            <div class="empty-state empty-state-sm"><p>Sin notas registradas.</p></div>
                                                                         <?php endif; ?>
                                                                     </div>
                                                                 </div>
@@ -420,7 +400,7 @@ include "includes/header.php";
                                                         <?php endforeach; ?>
                                                     </div>
                                                 <?php else: ?>
-                                                    <div class="p-3 text-center text-muted small">No hay estudiantes en este curso.</div>
+                                                    <div class="empty-state empty-state-sm"><p>No hay estudiantes en este curso.</p></div>
                                                 <?php endif; ?>
                                             </div>
                                         </div>

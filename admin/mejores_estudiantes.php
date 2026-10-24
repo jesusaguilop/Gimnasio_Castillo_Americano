@@ -19,7 +19,7 @@ $stmtPd->execute([$anio_activo]);
 $periodos_disponibles = $stmtPd->fetchAll(PDO::FETCH_COLUMN);
 
 $selected_periodo = $_GET['periodo'] ?? $periodo_activo;
-$limite = max(1, (int)($_GET['limite'] ?? 5));
+$limite = min(50, max(1, (int)($_GET['limite'] ?? 5)));
 
 $mejores = calcularMejoresPorGrado($conexion, $selected_periodo, $limite, $anio_activo);
 
@@ -32,55 +32,45 @@ include "includes/header.php";
     <?php include "includes/sidebar.php"; ?>
 
     <main id="main">
-        <div class="topbar">
-            <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Abrir o cerrar menú" aria-controls="sidebar"><i class="bi bi-list" aria-hidden="true"></i></button>
-            <div class="breadcrumb-bar">
-                <h5 role="heading" aria-level="1"><i class="ti ti-trophy"></i> Mejores Estudiantes por Grado</h5>
-                <p>Panel Administrativo &nbsp;/&nbsp; Reportes &nbsp;/&nbsp; Rendimiento</p>
-            </div>
-        </div>
+        <?php include "includes/topbar.php"; ?>
 
         <div class="content-area">
 
-            <!-- Filters -->
-            <div class="gca-card p-4 mb-4">
-                <form method="GET" class="row g-3 align-items-end">
-                    <div class="col-md-4">
-                        <label class="form-label fw-medium" for="f_periodo"><i class="bi bi-calendar3 me-1" style="color:var(--gold);"></i> Período</label>
-                        <select id="f_periodo" name="periodo" class="form-select">
-                            <?php foreach ($periodos_disponibles as $p): ?>
-                                <option value="<?= htmlspecialchars($p) ?>" <?= $p === $selected_periodo ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($p) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-medium" for="f_limite"><i class="bi bi-sort-numeric-up me-1" style="color:var(--gold);"></i> Top</label>
-                        <select id="f_limite" name="limite" class="form-select">
-                            <?php foreach ([3, 5, 10, 15, 20] as $l): ?>
-                                <option value="<?= $l ?>" <?= $l === $limite ? 'selected' : '' ?>><?= $l ?> estudiantes</option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <button type="submit" class="btn-gca w-100 justify-content-center">
-                            <i class="bi bi-search"></i> Generar Reporte
-                        </button>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="button" onclick="window.print()" class="btn-outline-gca w-100 justify-content-center">
-                            <i class="bi bi-printer"></i> Imprimir
-                        </button>
-                    </div>
-                </form>
-            </div>
+            <!-- Filtros -->
+            <form method="GET" class="filter-bar no-print" aria-label="Opciones del reporte">
+                <div class="ff">
+                    <label class="form-label" for="f_periodo">Período</label>
+                    <select id="f_periodo" name="periodo" class="form-select">
+                        <?php foreach ($periodos_disponibles as $p): ?>
+                            <option value="<?= htmlspecialchars($p) ?>" <?= $p === $selected_periodo ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($p) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="ff">
+                    <label class="form-label" for="f_limite">Mostrar</label>
+                    <select id="f_limite" name="limite" class="form-select">
+                        <?php foreach ([3, 5, 10, 15, 20] as $l): ?>
+                            <option value="<?= $l ?>" <?= $l === $limite ? 'selected' : '' ?>>Top <?= $l ?> por grado</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="ff-actions">
+                    <button type="submit" class="btn-gca">
+                        <i class="bi bi-bar-chart" aria-hidden="true"></i> Generar reporte
+                    </button>
+                    <button type="button" onclick="window.print()" class="btn-outline-gca">
+                        <i class="bi bi-printer" aria-hidden="true"></i> Imprimir
+                    </button>
+                </div>
+            </form>
 
             <?php if (empty($mejores)): ?>
-                <div class="gca-card empty-state p-5">
-                    <i class="bi bi-inbox" style="font-size:52px;color:#ddd;"></i>
-                    <h4 style="font-family:'Cormorant Garamond',serif;color:#444;font-weight:700;">Sin datos</h4>
-                    <p class="text-muted mb-0">No hay calificaciones registradas para el período seleccionado.</p>
+                <div class="gca-card empty-state">
+                    <i class="bi bi-trophy" aria-hidden="true"></i>
+                    <h3>Sin datos</h3>
+                    <p>No hay calificaciones registradas para el período seleccionado.</p>
                 </div>
             <?php else:
                 $niveles_orden = ['Preescolar', 'Primaria', 'Secundaria'];
@@ -91,52 +81,54 @@ include "includes/header.php";
                     $agrupado[$nivel][$grado] = $estudiantes;
                 }
                 ?>
+                <div class="alert alert-gca alert-icon mb-4" role="note">
+                    <i class="bi bi-info-circle" aria-hidden="true"></i>
+                    <div>
+                        <strong>Período <?= htmlspecialchars($selected_periodo) ?></strong> ·
+                        Los <?= $limite ?> mejores estudiantes de cada grado. El promedio se calcula sobre todas las asignaturas cursadas en el período.
+                    </div>
+                </div>
+
                 <?php foreach ($niveles_orden as $nivel): ?>
                     <?php if (!isset($agrupado[$nivel])) continue; ?>
-                    <div class="gca-card p-4 mb-4">
-                        <div class="section-header mb-3 pb-3" style="border-bottom:2px solid var(--gold);">
-                            <h4>
-                                <i class="bi bi-trophy-fill" style="color:var(--gold);"></i>
-                                <?= $nivel ?>
-                            </h4>
+                    <section class="gca-card p-4 mb-4" aria-labelledby="niv-<?= htmlspecialchars($nivel) ?>">
+                        <div class="section-header">
+                            <h4 id="niv-<?= htmlspecialchars($nivel) ?>"><i class="bi bi-trophy" aria-hidden="true"></i> <?= $nivel ?></h4>
                         </div>
 
+                        <div class="row g-4">
                         <?php foreach ($agrupado[$nivel] as $grado => $estudiantes): ?>
-                            <div class="mb-4">
-                                <h5 style="font-family:'Cormorant Garamond',serif;font-weight:700;color:#444;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-                                    <i class="bi bi-book-fill" style="color:var(--gold-dark);font-size:16px;"></i>
+                            <div class="col-xxl-6">
+                                <h5 class="level-head">
+                                    <i class="bi bi-mortarboard" aria-hidden="true"></i>
                                     Grado <?= htmlspecialchars(ucfirst($grado)) ?>
-                                    <span class="badge bg-dark rounded-pill px-3 py-1" style="color:var(--gold);font-size:10px;margin-left:auto;">
-                                        <i class="bi bi-star-fill"></i> Top <?= $limite ?>
-                                    </span>
+                                    <span class="gca-badge is-gold">Top <?= $limite ?></span>
                                 </h5>
 
                                 <div class="table-responsive">
-                                    <table class="table gca-table mb-0">
+                                    <table class="table gca-table align-middle" data-no-filter>
                                         <thead>
                                             <tr>
-                                                <th scope="col" style="width:50px;">#</th>
+                                                <th scope="col">#</th>
                                                 <th scope="col">Estudiante</th>
                                                 <th scope="col">Curso</th>
-                                                <th scope="col" style="width:120px;text-align:center;">Promedio</th>
+                                                <th scope="col" class="text-center">Promedio</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <?php $pos = 1; ?>
                                             <?php foreach ($estudiantes as $est):
                                                 $prom = (float) $est['promedio'];
-                                                if ($prom >= 60) $badgeClass = 'bg-success';
-                                                elseif ($prom >= 40) $badgeClass = 'bg-warning text-dark';
-                                                else $badgeClass = 'bg-danger';
+                                                if ($prom >= 60) $badgeClass = 'ok';
+                                                elseif ($prom >= 40) $badgeClass = 'warn';
+                                                else $badgeClass = 'bad';
                                             ?>
                                                 <tr>
-                                                    <td style="font-weight:700;color:var(--gold-dark);">#<?= $pos++ ?></td>
-                                                    <td class="fw-medium"><?= htmlspecialchars($est['nombre']) ?></td>
-                                                    <td><?= htmlspecialchars(ucfirst($est['grado']) . ' ' . $est['curso_nombre']) ?></td>
-                                                    <td style="text-align:center;">
-                                                        <span class="badge <?= $badgeClass ?> rounded-pill px-3 py-1 fs-6 fw-semibold">
-                                                            <?= $prom ?>
-                                                        </span>
+                                                    <td class="rank-pos<?= $pos === 1 ? ' top1' : '' ?>"><?= $pos === 1 ? '<i class="bi bi-trophy-fill me-1" aria-hidden="true"></i>' : '' ?>#<?= $pos++ ?></td>
+                                                    <td class="cell-strong"><?= htmlspecialchars($est['nombre']) ?></td>
+                                                    <td class="text-nowrap"><?= htmlspecialchars(ucfirst($est['grado']) . ' ' . $est['curso_nombre']) ?></td>
+                                                    <td class="text-center">
+                                                        <span class="nota <?= $badgeClass ?>"><?= $prom ?></span>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -145,20 +137,9 @@ include "includes/header.php";
                                 </div>
                             </div>
                         <?php endforeach; ?>
-                    </div>
+                        </div>
+                    </section>
                 <?php endforeach; ?>
-
-                <div class="d-flex align-items-center gap-3 p-3 gca-card" style="background:#fcfbfa;">
-                    <i class="bi bi-info-circle-fill" style="color:var(--gold);font-size:20px;"></i>
-                    <div>
-                        <p class="mb-0 small">
-                            <strong>Reporte de Mejores Estudiantes</strong> &middot;
-                            Período <?= htmlspecialchars($selected_periodo) ?> &middot;
-                            Mostrando los <?= $limite ?> mejores estudiantes por grado.
-                            Los promedios se calculan sobre todas las asignaturas cursadas en el período.
-                        </p>
-                    </div>
-                </div>
             <?php endif; ?>
 
         </div>

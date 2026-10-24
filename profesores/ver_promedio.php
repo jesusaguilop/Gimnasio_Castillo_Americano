@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/init.php';
 checkRole('profesor');
+require_once "../lib/rank_helper.php";
 
 
 $profesor_id = $_SESSION["id"];
@@ -60,8 +61,7 @@ include "includes/header.php";
                     GROUP BY n.curso_id, e.id, a.id
                     ORDER BY e.nombre, a.nombre
                 ");
-                $anioQ = $conexion->query("SELECT valor FROM configuraciones WHERE clave = 'anio_activo'");
-                $anio_activo = (int) (($anioQ ? $anioQ->fetchColumn() : null) ?: date('Y'));
+                $anio_activo = (int) (getConfig('anio_activo') ?? date('Y'));   // ya en caché: sin otra consulta
                 $stmtP->execute(array_merge($curso_ids, [$profesor_id, $anio_activo]));
                 foreach ($stmtP->fetchAll(PDO::FETCH_ASSOC) as $row) {
                     $promedios_por_curso[$row['curso_id']][] = $row;
@@ -96,15 +96,12 @@ include "includes/header.php";
                                                 <tbody>
                                                     <?php foreach ($promedios as $p):
                                                         $prom = (float) $p['promedio'];
-                                                        if ($prom >= 60) $badgeClass = 'bg-success';
-                                                        elseif ($prom >= 40) $badgeClass = 'bg-warning text-dark';
-                                                        else $badgeClass = 'bg-danger';
                                                     ?>
                                                         <tr>
                                                             <td><?= htmlspecialchars($p['estudiante']) ?></td>
                                                             <td><?= htmlspecialchars($p['asignatura']) ?></td>
                                                             <td>
-                                                                <span class="badge <?= $badgeClass ?> rounded-pill px-3 py-1 fs-6 fw-semibold">
+                                                                <span class="badge rounded-pill px-3 py-1 fs-6 fw-semibold" title="Desempeño <?= desempenoNota($prom) ?>" style="<?= desempenoEstilo($prom) ?>">
                                                                     <?= $prom ?>
                                                                 </span>
                                                             </td>

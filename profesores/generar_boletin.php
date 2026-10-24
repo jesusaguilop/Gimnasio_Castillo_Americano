@@ -1,6 +1,6 @@
 <?php
-session_start();
-require_once "../config/database.php";
+require_once __DIR__ . "/../includes/init.php";
+checkRole("profesor");
 require_once "../lib/boletin_generator.php";
 require_once "../lib/mail_helper.php";
 require_once "../lib/csrf_helper.php";
@@ -35,11 +35,6 @@ function boletinMensaje(string $titulo, string $mensaje, string $icono = 'bi-inf
         . '<p>' . htmlspecialchars($mensaje) . '</p>'
         . '<button class="btn" onclick="window.close(); history.back();"><i class="bi bi-arrow-left"></i> Volver</button>'
         . '</div></body></html>';
-    exit;
-}
-
-if (!isset($_SESSION["rol"]) || $_SESSION["rol"] !== "profesor") {
-    header("Location: ../login.php");
     exit;
 }
 

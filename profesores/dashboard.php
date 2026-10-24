@@ -6,37 +6,23 @@ checkRole('profesor');
 $profesor_id = userId();
 $nombre = $_SESSION["nombre"] ?? "Profesor";
 
-/* ── Stats ── */
-$totalEstudiantes = $conexion->prepare("
-    SELECT COUNT(DISTINCT e.id)
-    FROM estudiantes e
-    JOIN profesor_curso_asignatura pca ON e.curso_id = pca.curso_id
-    WHERE pca.profesor_id = ?
+/* ── Stats: las 4 cifras en UNA consulta (antes 4) ──
+ * "Notas registradas" cuenta solo el año lectivo activo (antes sumaba todos los años). */
+$anio_activo = (int) (getConfig('anio_activo') ?? date('Y'));
+$stats = $conexion->prepare("
+    SELECT
+        (SELECT COUNT(DISTINCT e.id) FROM estudiantes e
+          WHERE e.curso_id IN (SELECT curso_id FROM profesor_curso_asignatura WHERE profesor_id = ?)) AS estudiantes,
+        (SELECT COUNT(DISTINCT curso_id) FROM profesor_curso_asignatura WHERE profesor_id = ?)        AS cursos,
+        (SELECT COUNT(DISTINCT asignatura_id) FROM profesor_curso_asignatura WHERE profesor_id = ?)   AS asignaturas,
+        (SELECT COUNT(*) FROM notas WHERE profesor_id = ? AND anio = ?)                               AS notas
 ");
-$totalEstudiantes->execute([$profesor_id]);
-$totalEstudiantes = (int) $totalEstudiantes->fetchColumn();
-
-$totalCursos = $conexion->prepare("
-    SELECT COUNT(DISTINCT pca.curso_id)
-    FROM profesor_curso_asignatura pca
-    WHERE pca.profesor_id = ?
-");
-$totalCursos->execute([$profesor_id]);
-$totalCursos = (int) $totalCursos->fetchColumn();
-
-$totalAsignaturas = $conexion->prepare("
-    SELECT COUNT(DISTINCT pca.asignatura_id)
-    FROM profesor_curso_asignatura pca
-    WHERE pca.profesor_id = ?
-");
-$totalAsignaturas->execute([$profesor_id]);
-$totalAsignaturas = (int) $totalAsignaturas->fetchColumn();
-
-$totalNotas = $conexion->prepare("
-    SELECT COUNT(*) FROM notas WHERE profesor_id = ?
-");
-$totalNotas->execute([$profesor_id]);
-$totalNotas = (int) $totalNotas->fetchColumn();
+$stats->execute([$profesor_id, $profesor_id, $profesor_id, $profesor_id, $anio_activo]);
+$stats = $stats->fetch(PDO::FETCH_ASSOC);
+$totalEstudiantes = (int) $stats['estudiantes'];
+$totalCursos      = (int) $stats['cursos'];
+$totalAsignaturas = (int) $stats['asignaturas'];
+$totalNotas       = (int) $stats['notas'];
 
 /* ── Recent grades ── */
 $recientes = $conexion->prepare("
@@ -166,7 +152,7 @@ include "includes/header.php";
                         <div class="stat-icon purple"><i class="bi bi-star-fill"></i></div>
                         <div class="stat-info">
                             <h3 data-count="<?= (int)$totalNotas ?>">0</h3>
-                            <p>Notas Registradas</p>
+                            <p>Notas Registradas <?= (int) $anio_activo ?></p>
                         </div>
                     </div>
                 </div>

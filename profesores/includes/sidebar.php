@@ -35,16 +35,31 @@ $isActive = fn($file) => $currentFile === $file ? 'active' : '';
     <div style="margin:0 18px 8px;display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(212,175,55,0.06);border-radius:8px;border:1px solid rgba(212,175,55,0.1);">
         <i class="bi bi-calendar3" style="color:var(--gold);font-size:11px;"></i>
         <span style="color:var(--text-muted);font-size:11px;">Período activo:</span>
-        <span style="color:var(--gold);font-weight:700;font-size:12px;"><?= $periodo_sidebar ?></span>
+        <span style="color:var(--gold);font-weight:700;font-size:12px;"><?= htmlspecialchars($periodo_sidebar) ?></span>
     </div>
 
     <?php
-    $num_alertas_prof = 0;
-    try {
-        $stmtA = $conexion->prepare("SELECT COUNT(*) FROM alertas WHERE (para_usuario_id = ? OR (para_rol = 'profesor' AND para_usuario_id IS NULL)) AND leido = FALSE");
-        $stmtA->execute([$_SESSION['id']]);
-        $num_alertas_prof = (int) $stmtA->fetchColumn();
-    } catch (Exception $e) {}
+    // Campana + "¿es director de grupo?" en UNA consulta, cacheada 60 s en la sesión
+    // (el menú sale en todas las páginas: antes eran 2 consultas por página).
+    // alertas.php borra la caché al marcar una alerta como leída.
+    $sb = $_SESSION['_sidebar_prof'] ?? null;
+    if (!is_array($sb) || ($sb['t'] ?? 0) < time() - 60 || ($sb['uid'] ?? null) !== ($_SESSION['id'] ?? null)) {
+        $sb = ['t' => time(), 'uid' => $_SESSION['id'] ?? null, 'alertas' => 0, 'director' => false];
+        try {
+            $stmtA = $conexion->prepare("
+                SELECT (SELECT COUNT(*) FROM alertas
+                         WHERE (para_usuario_id = ? OR (para_rol = 'profesor' AND para_usuario_id IS NULL))
+                           AND leido = FALSE) AS alertas,
+                       EXISTS (SELECT 1 FROM directores_grupo WHERE profesor_id = ?) AS director
+            ");
+            $stmtA->execute([$_SESSION['id'], $_SESSION['id']]);
+            $row = $stmtA->fetch(PDO::FETCH_ASSOC);
+            $sb['alertas'] = (int) $row['alertas'];
+            $sb['director'] = (bool) $row['director'];
+            $_SESSION['_sidebar_prof'] = $sb;
+        } catch (Exception $e) {}
+    }
+    $num_alertas_prof = $sb['alertas'];
     ?>
     <a href="alertas.php" style="display:flex;align-items:center;gap:10px;margin:4px 18px 8px;padding:9px 14px;border-radius:10px;text-decoration:none;color:var(--text-sidebar-muted);font-size:13px;font-weight:500;transition:all.2s;border:1px solid rgba(212,175,55,0.08);background:rgba(212,175,55,0.03);"
        onmouseover="this.style.background='rgba(212,175,55,0.08)'" onmouseout="this.style.background='rgba(212,175,55,0.03)'">
@@ -75,11 +90,7 @@ $isActive = fn($file) => $currentFile === $file ? 'active' : '';
             Ver Promedios
         </a>
 
-        <?php
-        $es_director = $conexion->prepare("SELECT COUNT(*) FROM directores_grupo WHERE profesor_id = ?");
-        $es_director->execute([$_SESSION['id']]);
-        if ($es_director->fetchColumn() > 0):
-        ?>
+        <?php if ($sb['director']): ?>
         <div class="nav-section-label">Dirección de Grupo</div>
 
         <a href="direccion_grupo.php" class="nav-link-item <?= $isActive('direccion_grupo.php') ?>">

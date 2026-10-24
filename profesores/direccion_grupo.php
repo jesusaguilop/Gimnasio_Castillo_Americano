@@ -21,6 +21,53 @@ $cursos_dirigidos = $conexion->prepare("
 $cursos_dirigidos->execute([$profesor_id]);
 $cursos_dirigidos = $cursos_dirigidos->fetchAll(PDO::FETCH_ASSOC);
 
+/* ── Datos de TODOS los cursos dirigidos con 3 consultas en total (antes 4 por curso) ── */
+$est_por_curso = [];       // curso_id => [estudiantes]
+$materias_por_curso = [];  // curso_id => [materias del plan]
+$notas_map_por_est = [];   // est_id => [asignatura_id => fila]
+$filas_rank = [];          // curso_id => filas para el ranking
+$curso_ids = array_map('intval', array_column($cursos_dirigidos, 'id'));
+if ($curso_ids) {
+    $phC = implode(',', array_fill(0, count($curso_ids), '?'));
+
+    $st = $conexion->prepare("SELECT id, nombre, documento, curso_id FROM estudiantes WHERE curso_id IN ($phC) ORDER BY nombre");
+    $st->execute($curso_ids);
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $e) $est_por_curso[(int) $e['curso_id']][] = $e;
+
+    $st = $conexion->prepare("
+        SELECT pca.curso_id, a.id, a.nombre, a.area
+        FROM profesor_curso_asignatura pca
+        JOIN asignaturas a ON pca.asignatura_id = a.id
+        WHERE pca.curso_id IN ($phC)
+        GROUP BY pca.curso_id, a.id, a.nombre, a.area
+        ORDER BY a.area, a.nombre
+    ");
+    $st->execute($curso_ids);
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $m) $materias_por_curso[(int) $m['curso_id']][] = $m;
+
+    // Notas + logro + docente + área/porcentaje del período: sirven para la tabla
+    // Y para el promedio/puesto (mismo cálculo que el boletín, sin otra consulta).
+    $st = $conexion->prepare("
+        SELECT e.curso_id, e.id, e.nombre, n.asignatura_id, n.nota, n.profesor_id,
+               u.nombre AS profesor_nombre, l.logro,
+               a.area, COALESCE(ag.porcentaje, 100) AS porcentaje
+        FROM notas n
+        JOIN estudiantes e ON e.id = n.estudiante_id
+        JOIN cursos c ON c.id = e.curso_id
+        JOIN asignaturas a ON a.id = n.asignatura_id
+        LEFT JOIN asignatura_grado ag ON ag.asignatura_id = a.id AND ag.grado = c.grado
+        LEFT JOIN usuarios u ON u.id = n.profesor_id
+        LEFT JOIN logros l ON l.estudiante_id = n.estudiante_id AND l.asignatura_id = n.asignatura_id
+                          AND l.periodo = n.periodo AND l.anio = n.anio
+        WHERE e.curso_id IN ($phC) AND n.periodo = ? AND n.anio = ?
+    ");
+    $st->execute(array_merge($curso_ids, [$periodo_activo, $anio_activo]));
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $notas_map_por_est[(int) $row['id']][(int) $row['asignatura_id']] = $row;
+        $filas_rank[(int) $row['curso_id']][] = $row;
+    }
+}
+
 $pageTitle = "Dirección de Grupo";
 include "includes/header.php";
 ?>
@@ -53,57 +100,22 @@ include "includes/header.php";
                         <h4><i class="bi bi-eye"></i> Vista Consolidada</h4>
                     </div>
                     <span class="badge bg-dark rounded-pill px-3 py-1" style="color:var(--gold);font-size:11px;">
-                        <i class="bi bi-calendar3"></i> Período <?= $periodo_activo ?>
+                        <i class="bi bi-calendar3"></i> Período <?= htmlspecialchars($periodo_activo) ?>
                     </span>
                 </div>
 
                 <div class="accordion" id="accordionDirector">
                     <?php foreach ($cursos_dirigidos as $curso):
-                        $estudiantes = $conexion->prepare("
-                            SELECT id, nombre, documento FROM estudiantes WHERE curso_id = ? ORDER BY nombre
-                        ");
-                        $estudiantes->execute([$curso['id']]);
-                        $estudiantes = $estudiantes->fetchAll(PDO::FETCH_ASSOC);
+                        $estudiantes    = $est_por_curso[(int) $curso['id']] ?? [];
+                        $materias_curso = $materias_por_curso[(int) $curso['id']] ?? [];
+                        $ids_plan       = array_flip(array_map('intval', array_column($materias_curso, 'id')));
 
-                        $materias_curso = $conexion->prepare("
-                            SELECT DISTINCT a.id, a.nombre, a.area
-                            FROM profesor_curso_asignatura pca
-                            JOIN asignaturas a ON pca.asignatura_id = a.id
-                            WHERE pca.curso_id = ?
-                            ORDER BY a.area, a.nombre
-                        ");
-                        $materias_curso->execute([$curso['id']]);
-                        $materias_curso = $materias_curso->fetchAll(PDO::FETCH_ASSOC);
-
-                        $ranking = obtenerRankingCurso($conexion, $curso['id'], $periodo_activo, $anio_activo);
+                        // Promedio y puesto del período: mismo cálculo que el boletín (rank_helper)
                         $ranking_map = [];
                         $prom_map = [];
-                        foreach ($ranking as $i => $r) {
-                            $ranking_map[$r['id']] = ['pos' => $i + 1, 'total' => count($ranking)];
+                        foreach (rankingDesdeFilas($filas_rank[(int) $curso['id']] ?? []) as $r) {
+                            $ranking_map[$r['id']] = ['pos' => $r['puesto'], 'total' => $r['total']];
                             $prom_map[$r['id']] = $r['promedio'];
-                        }
-
-                        // Eager-load all notas + logros for all students in this course (1 query)
-                        $notas_map_por_est = [];
-                        if (count($estudiantes) > 0) {
-                            $est_ids = array_column($estudiantes, 'id');
-                            $placeholders = implode(',', array_fill(0, count($est_ids), '?'));
-                            $params = array_merge($est_ids, [$periodo_activo, $anio_activo]);
-                            $notas_all = $conexion->prepare("
-                                SELECT n.estudiante_id, n.asignatura_id, n.nota, n.profesor_id,
-                                       u.nombre AS profesor_nombre, l.logro
-                                FROM notas n
-                                JOIN usuarios u ON n.profesor_id = u.id
-                                LEFT JOIN logros l ON l.estudiante_id = n.estudiante_id
-                                    AND l.asignatura_id = n.asignatura_id
-                                    AND l.periodo = n.periodo AND l.anio = n.anio
-                                WHERE n.estudiante_id IN ($placeholders) AND n.periodo = ? AND n.anio = ?
-                            ");
-                            $notas_all->execute($params);
-                            foreach ($notas_all->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                                $eid = $row['estudiante_id'];
-                                $notas_map_por_est[$eid][$row['asignatura_id']] = $row;
-                            }
                         }
                     ?>
                         <div class="accordion-item mb-3" style="border-radius:14px!important;border:1px solid #ece8e0;overflow:hidden;">
@@ -161,7 +173,8 @@ include "includes/header.php";
                                                                 </span>
                                                             <?php endif; ?>
                                                             <?php
-                                                                $reg = count($notas_map); $tot = count($materias_curso);
+                                                                // Solo cuentan las materias del plan del curso (una nota huérfana no infla el avance)
+                                                                $reg = count(array_intersect_key($notas_map, $ids_plan)); $tot = count($materias_curso);
                                                                 $completo = ($tot > 0 && $reg >= $tot);
                                                                 $prom = $prom_map[$est['id']] ?? null;
                                                             ?>
@@ -169,7 +182,7 @@ include "includes/header.php";
                                                                 <i class="bi bi-journal-check"></i> <?= $reg ?>/<?= $tot ?>
                                                             </span>
                                                             <?php if ($prom !== null): ?>
-                                                                <span style="margin-left:6px;font-size:10px;font-weight:700;color:#1a1a1a;background:rgba(212,175,55,.15);padding:1px 8px;border-radius:20px;white-space:nowrap;">Prom <?= $prom ?></span>
+                                                                <span style="margin-left:6px;font-size:10px;font-weight:700;color:#1a1a1a;background:rgba(212,175,55,.15);padding:1px 8px;border-radius:20px;white-space:nowrap;" title="Promedio general del período · Desempeño <?= desempenoNota($prom) ?>">Prom <?= number_format((float) $prom, 1) ?></span>
                                                             <?php endif; ?>
                                                             <span style="margin-left:auto;font-size:11px;color:var(--text-muted);"><?= htmlspecialchars($est['documento']) ?></span>
                                                         </button>
@@ -207,8 +220,7 @@ include "includes/header.php";
                                                                                 </td>
                                                                                 <td>
                                                                                     <?php if ($tiene): ?>
-                                                                                        <span class="badge rounded-pill px-2 py-1
-                                                                                            <?= $tiene['nota'] >= 60 ? 'bg-success' : ($tiene['nota'] >= 40 ? 'bg-warning text-dark' : 'bg-danger') ?>">
+                                                                                        <span class="badge rounded-pill px-2 py-1" title="Desempeño <?= desempenoNota($tiene['nota']) ?>" style="<?= desempenoEstilo($tiene['nota']) ?>">
                                                                                             <?= (int) $tiene['nota'] ?>
                                                                                         </span>
                                                                                     <?php else: ?>

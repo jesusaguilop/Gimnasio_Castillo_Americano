@@ -2,176 +2,310 @@
 
 /**
  * ============================================================
- * MODELO DE CALIFICACIÓN (consistente en toda la aplicación)
+ * MODELO DE CALIFICACIÓN — punto ÚNICO de cálculo de la aplicación
  * ============================================================
- *   • Definitiva de asignatura = nota registrada.
- *   • Definitiva de ÁREA       = promedio de sus asignaturas ponderado por
- *     'porcentaje' (aporte configurado de cada asignatura al área). Si los
- *     porcentajes están en su valor por defecto, equivale al promedio simple.
- *   • PROMEDIO GENERAL         = promedio de las definitivas de área ponderado
- *     por la intensidad horaria total de cada área.
+ * Toda pantalla que muestre definitivas, promedio general o puesto
+ * (dashboard/registro del profesor, dirección de grupo, resultados del año,
+ * portal del padre, mejores estudiantes, boletín PDF) calcula AQUÍ.
  *
- * Por construcción, el promedio general es la media ponderada de las áreas, de
- * modo que el "puesto" (ranking) siempre es coherente con el promedio mostrado.
- * Las áreas con intensidad horaria 0 (p. ej. Comportamiento) no afectan el
- * promedio general.
- *
- * REQUIERE que la base de datos tenga las tablas/columnas creadas por
- * database/migration_postgres_fix.sql (asignatura_grado, porcentaje).
+ *   • Nota de asignatura: entero 0..100 (columna notas.nota es INTEGER).
+ *   • Definitiva de ÁREA  = Σ(nota · %) / Σ(%), con % = asignatura_grado.porcentaje
+ *     (peso de la asignatura dentro de su área para ese grado; cada área suma 100).
+ *     Una asignatura SIN nota no entra ni al numerador ni al denominador: el área
+ *     se calcula con las asignaturas que sí tienen nota (ver 'cobertura').
+ *     Si la asignatura no está en el plan del grado (sin fila en asignatura_grado)
+ *     pesa 100.
+ *   • PROMEDIO GENERAL    = MEDIA SIMPLE de las definitivas de TODAS las áreas,
+ *     Comportamiento incluido (decisión del colegio, 2026-10-23: es parte de la
+ *     nota final). AREAS_FUERA_DEL_PROMEDIO queda vacío.
+ *   • EXAMEN FINAL DEL PERÍODO (notas.examen): solo se guarda y se muestra en
+ *     el boletín. NO entra al cálculo: la nota que registra el profesor ya es
+ *     la definitiva de la asignatura en el período.
+ *   • La INTENSIDAD HORARIA NO interviene en ningún cálculo (dato informativo).
+ *   • Redondeo: definitiva de área a 1 decimal; el promedio general es la media
+ *     de esas definitivas YA redondeadas (lo que ve el padre en el boletín), y se
+ *     redondea a 1 decimal (PHP round: mitad hacia arriba).
+ *   • Desempeño: Superior ≥ 90, Alto 80–89, Básico 60–79, Bajo < 60.
+ *   • PUESTO = ranking del curso por promedio general. Empates: mismo puesto
+ *     ("1, 2, 2, 4"); el orden de desempate visual es alfabético.
+ *     Solo entran al ranking los estudiantes con promedio (con alguna nota).
+ *   • CONSOLIDADO ANUAL: definitiva anual de cada asignatura = promedio de sus
+ *     notas en los períodos que tiene; con eso → áreas → promedio del año.
+ *     Aprueba el año con promedio general ≥ NOTA_MINIMA_APROBACION.
  * ============================================================
  */
 
+if (!defined('NOTA_MINIMA_APROBACION')) {
+    define('NOTA_MINIMA_APROBACION', 60);
+}
+
+/** Áreas que se mostrarían en el boletín sin entrar al promedio ni al puesto.
+ *  Vacío: el colegio decidió que Comportamiento SÍ cuenta en la nota final. */
+if (!defined('AREAS_FUERA_DEL_PROMEDIO')) {
+    define('AREAS_FUERA_DEL_PROMEDIO', []);
+}
+
+/** ¿El área cuenta para el promedio general? */
+function areaPromedia(string $area): bool
+{
+    return !in_array(mb_strtolower(trim($area)), AREAS_FUERA_DEL_PROMEDIO, true);
+}
+
+/** Desempeño cualitativo de una nota/promedio (escala 0-100). */
+function desempenoNota($nota): string
+{
+    $n = (float) $nota;
+    if ($n >= 90) return 'Superior';
+    if ($n >= 80) return 'Alto';
+    if ($n >= 60) return 'Básico';
+    return 'Bajo';
+}
+
+/** Estilo en línea (fondo + texto) de un badge según el desempeño. */
+function desempenoEstilo($nota): string
+{
+    $map = [
+        'Superior' => 'background:#1b5e20;color:#fff;',
+        'Alto'     => 'background:#e8f5e9;color:#1b5e20;',
+        'Básico'   => 'background:#fff3e0;color:#a33f00;',
+        'Bajo'     => 'background:#ffebee;color:#b71c1c;',
+    ];
+    return $map[desempenoNota($nota)];
+}
+
 /**
- * Calcula la definitiva por área y el promedio general a partir de un conjunto
- * de filas de notas.
+ * Interpreta lo que el profesor escribe en la casilla de nota.
+ * Acepta "85", " 85 ", "85.0", "85,0". La nota es ENTERA (columna INTEGER):
+ * "85,5" se rechaza en vez de redondearse a escondidas.
  *
- * @param array $notas Filas con claves: nota, area, intensidad_horaria, porcentaje
- * @return array ['areas' => [area => definitiva(float)], 'general' => float|null]
+ * @return array{0: bool, 1: ?int}  [válida, valor]  ('' → [true, null] = sin nota)
+ */
+function parsearNota($raw): array
+{
+    $v = trim((string) $raw);
+    if ($v === '') return [true, null];
+    $v = str_replace(',', '.', $v);
+    if (!preg_match('/^\d{1,3}(\.0+)?$/', $v)) return [false, null];
+    $n = (int) $v;
+    if ($n < 0 || $n > 100) return [false, null];
+    return [true, $n];
+}
+
+/**
+ * Calcula la definitiva por área y el promedio general a partir de filas de notas.
+ *
+ * @param array $notas Filas con claves: area, nota, porcentaje (intensidad_horaria se ignora)
+ * @return array [
+ *   'areas'     => [area => definitiva (float, 1 decimal)],
+ *   'general'   => float|null  (media simple de las áreas que promedian),
+ *   'cobertura' => [area => Σ% de las asignaturas con nota (100 = área completa)],
+ * ]
  */
 function calcularDefinitivas(array $notas): array
 {
-    // area => acumuladores
     $acc = [];
     foreach ($notas as $n) {
-        $area = $n['area'] ?? '';
-        $nota = (float) ($n['nota'] ?? 0);
+        if (!isset($n['nota']) || $n['nota'] === '') continue;   // sin nota: no cuenta
+        $area = (string) ($n['area'] ?? '');
+        $nota = max(0.0, min(100.0, (float) $n['nota']));
         $pct  = (float) ($n['porcentaje'] ?? 100);
-        if ($pct <= 0) $pct = 100;                 // porcentaje inválido → peso neutro
+        if ($pct <= 0) $pct = 100;                                 // porcentaje inválido → peso neutro
 
-        if (!isset($acc[$area])) {
-            $acc[$area] = ['num' => 0.0, 'den' => 0.0];
-        }
-        $acc[$area]['num'] += $nota * $pct;        // Σ nota·porcentaje (ponderado dentro del área)
-        $acc[$area]['den'] += $pct;                // Σ porcentaje
+        if (!isset($acc[$area])) $acc[$area] = ['num' => 0.0, 'den' => 0.0];
+        $acc[$area]['num'] += $nota * $pct;
+        $acc[$area]['den'] += $pct;
     }
 
-    // Definitiva de cada área = promedio ponderado por el porcentaje de sus materias.
-    // El promedio GENERAL es la media simple de las áreas. La intensidad horaria
-    // NO interviene en el cálculo: es solo informativa en el boletín.
     $areasDef = [];
+    $cobertura = [];
+    $suma = 0.0;
+    $cuenta = 0;
     foreach ($acc as $area => $d) {
-        $areasDef[$area] = round($d['den'] > 0 ? $d['num'] / $d['den'] : 0.0, 1);
+        $def = round($d['num'] / $d['den'], 1);
+        $areasDef[$area] = $def;
+        $cobertura[$area] = $d['den'];
+        if (areaPromedia($area)) {
+            $suma += $def;
+            $cuenta++;
+        }
     }
 
-    $general = count($areasDef) > 0
-        ? round(array_sum($areasDef) / count($areasDef), 1)
-        : null;
-
-    return ['areas' => $areasDef, 'general' => $general];
+    return [
+        'areas'     => $areasDef,
+        'general'   => $cuenta > 0 ? round($suma / $cuenta, 1) : null,
+        'cobertura' => $cobertura,
+    ];
 }
 
 /**
- * Obtiene las notas de un estudiante en un período con el peso (intensidad
- * horaria del grado y porcentaje) necesario para el cálculo ponderado.
+ * Ordena por promedio (desc) y asigna 'puesto' con empates ("1, 2, 2, 4") y
+ * 'total' (estudiantes con promedio). Los que no tienen promedio quedan al
+ * final con puesto null.
  */
-function obtenerNotasPonderadas($conexion, $estudiante_id, $periodo, $anio = null): array
+function asignarPuestos(array $lista): array
 {
-    $anio = $anio ?? (int) date('Y');
-    $stmtG = $conexion->prepare("
-        SELECT c.grado FROM estudiantes e
-        JOIN cursos c ON e.curso_id = c.id
-        WHERE e.id = ?
-    ");
-    $stmtG->execute([$estudiante_id]);
-    $grado = $stmtG->fetchColumn();
+    usort($lista, function ($a, $b) {
+        $pa = $a['promedio'] ?? null;
+        $pb = $b['promedio'] ?? null;
+        if ($pa === null || $pb === null) {
+            if ($pa !== $pb) return $pa === null ? 1 : -1;
+        } elseif (($c = ((int) round($pb * 10)) <=> ((int) round($pa * 10))) !== 0) {
+            return $c;
+        }
+        return strcasecmp((string) ($a['nombre'] ?? ''), (string) ($b['nombre'] ?? ''));
+    });
 
-    $stmt = $conexion->prepare("
-        SELECT a.area,
-               n.nota,
-               COALESCE(ag.intensidad_horaria, a.intensidad_horaria, 0) AS intensidad_horaria,
-               COALESCE(ag.porcentaje, 100) AS porcentaje
-        FROM notas n
-        JOIN asignaturas a ON n.asignatura_id = a.id
-        LEFT JOIN asignatura_grado ag ON ag.asignatura_id = a.id AND ag.grado = ?
-        WHERE n.estudiante_id = ? AND n.periodo = ? AND n.anio = ?
-    ");
-    $stmt->execute([$grado, $estudiante_id, $periodo, $anio]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $total = count(array_filter($lista, fn($r) => ($r['promedio'] ?? null) !== null));
+    $puesto = 0;
+    $anterior = null;
+    foreach ($lista as $i => &$r) {
+        if (($r['promedio'] ?? null) === null) {
+            $r['puesto'] = null;
+        } else {
+            $clave = (int) round($r['promedio'] * 10);
+            if ($clave !== $anterior) {
+                $puesto = $i + 1;
+                $anterior = $clave;
+            }
+            $r['puesto'] = $puesto;
+        }
+        $r['total'] = $total;
+    }
+    unset($r);
+    return $lista;
 }
 
 /**
- * Ranking del curso por promedio general ponderado (descendente).
- * @return array [ ['id'=>int, 'nombre'=>string, 'promedio'=>float|null], ... ]
+ * Ranking a partir de filas sueltas (una por nota) con claves
+ * id, nombre, area, nota, porcentaje. Sirve para no repetir la consulta
+ * cuando la página ya trajo las notas del curso.
+ */
+function rankingDesdeFilas(array $filas): array
+{
+    $porEst = [];
+    foreach ($filas as $r) {
+        $eid = (int) $r['id'];
+        if (!isset($porEst[$eid])) $porEst[$eid] = ['id' => $eid, 'nombre' => $r['nombre'] ?? '', 'notas' => []];
+        $porEst[$eid]['notas'][] = $r;
+    }
+    $lista = [];
+    foreach ($porEst as $e) {
+        $prom = calcularDefinitivas($e['notas'])['general'];
+        if ($prom === null) continue;                    // sin áreas que promedien: fuera del ranking
+        $lista[] = ['id' => $e['id'], 'nombre' => $e['nombre'], 'promedio' => $prom];
+    }
+    return asignarPuestos($lista);
+}
+
+/** Caché por request de rankings de período: clave "curso|periodo|anio". */
+function &_rankingMemo(): array
+{
+    static $memo = [];
+    return $memo;
+}
+
+/**
+ * Rankings de VARIOS cursos de un período en UNA consulta.
+ * @return array [curso_id => ranking (ver obtenerRankingCurso)]
+ */
+function obtenerRankingsCursos($conexion, array $curso_ids, $periodo, $anio = null): array
+{
+    $anio = (int) ($anio ?? date('Y'));
+    $periodo = (string) $periodo;
+    $memo = &_rankingMemo();
+
+    $curso_ids = array_values(array_unique(array_map('intval', $curso_ids)));
+    $faltan = array_values(array_filter($curso_ids, fn($c) => !isset($memo["$c|$periodo|$anio"])));
+
+    if ($faltan) {
+        $ph = implode(',', array_fill(0, count($faltan), '?'));
+        $stmt = $conexion->prepare("
+            SELECT e.curso_id, e.id, e.nombre, a.area, n.nota,
+                   COALESCE(ag.porcentaje, 100) AS porcentaje
+            FROM estudiantes e
+            JOIN cursos c       ON c.id = e.curso_id
+            JOIN notas n        ON n.estudiante_id = e.id AND n.periodo = ? AND n.anio = ?
+            JOIN asignaturas a  ON a.id = n.asignatura_id
+            LEFT JOIN asignatura_grado ag ON ag.asignatura_id = a.id AND ag.grado = c.grado
+            WHERE e.curso_id IN ($ph)
+        ");
+        $stmt->execute(array_merge([$periodo, $anio], $faltan));
+        $porCurso = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $porCurso[(int) $r['curso_id']][] = $r;
+        }
+        foreach ($faltan as $c) {
+            $memo["$c|$periodo|$anio"] = rankingDesdeFilas($porCurso[$c] ?? []);
+        }
+    }
+
+    $out = [];
+    foreach ($curso_ids as $c) $out[$c] = $memo["$c|$periodo|$anio"];
+    return $out;
+}
+
+/**
+ * Ranking del curso por promedio general (descendente). 1 consulta (memo por request).
+ * @return array [ ['id','nombre','promedio','puesto','total'], ... ]
  */
 function obtenerRankingCurso($conexion, $curso_id, $periodo, $anio = null)
 {
-    static $memo = [];
-    $anio = $anio ?? (int) date('Y');
-    // Memo por request: en la generación masiva de boletines se pide el mismo
-    // ranking del curso una vez por estudiante; así se calcula una sola vez.
-    $memoKey = $curso_id . '|' . $periodo . '|' . $anio;
-    if (isset($memo[$memoKey])) return $memo[$memoKey];
-
-    $stmtG = $conexion->prepare("SELECT grado FROM cursos WHERE id = ?");
-    $stmtG->execute([$curso_id]);
-    $grado = $stmtG->fetchColumn();
-
-    $stmt = $conexion->prepare("
-        SELECT e.id, e.nombre, a.area, n.nota,
-               COALESCE(ag.intensidad_horaria, a.intensidad_horaria, 0) AS intensidad_horaria,
-               COALESCE(ag.porcentaje, 100) AS porcentaje
-        FROM estudiantes e
-        JOIN notas n ON n.estudiante_id = e.id
-        JOIN asignaturas a ON n.asignatura_id = a.id
-        LEFT JOIN asignatura_grado ag ON ag.asignatura_id = a.id AND ag.grado = ?
-        WHERE e.curso_id = ? AND n.periodo = ? AND n.anio = ?
-    ");
-    $stmt->execute([$grado, $curso_id, $periodo, $anio]);
-
-    $porEst = [];
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
-        $eid = $r['id'];
-        if (!isset($porEst[$eid])) {
-            $porEst[$eid] = ['id' => (int)$eid, 'nombre' => $r['nombre'], 'notas' => []];
-        }
-        $porEst[$eid]['notas'][] = $r;
-    }
-
-    $ranking = [];
-    foreach ($porEst as $e) {
-        $ranking[] = [
-            'id'       => $e['id'],
-            'nombre'   => $e['nombre'],
-            'promedio' => calcularDefinitivas($e['notas'])['general'],
-        ];
-    }
-    usort($ranking, fn($a, $b) => ($b['promedio'] ?? -1) <=> ($a['promedio'] ?? -1));
-    $memo[$memoKey] = $ranking;
-    return $ranking;
+    return obtenerRankingsCursos($conexion, [(int) $curso_id], $periodo, $anio)[(int) $curso_id];
 }
 
-function calcularPuestoCurso($conexion, $estudiante_id, $periodo, $anio = null)
+/**
+ * Puesto "N/Total" del estudiante en su curso, o null si no tiene notas.
+ * Si se pasa $curso_id se ahorra una consulta.
+ */
+function calcularPuestoCurso($conexion, $estudiante_id, $periodo, $anio = null, $curso_id = null)
 {
-    $curso_id = obtenerCursoIdEstudiante($conexion, $estudiante_id);
+    $curso_id = $curso_id ?: obtenerCursoIdEstudiante($conexion, $estudiante_id);
     if (!$curso_id) return null;
 
-    $ranking = obtenerRankingCurso($conexion, $curso_id, $periodo, $anio);
-    if (empty($ranking)) return null;
-
-    $total = count($ranking);
-    $position = 0;
-    foreach ($ranking as $i => $r) {
-        if ((int)$r['id'] === (int)$estudiante_id) {
-            $position = $i + 1;
-            break;
+    foreach (obtenerRankingCurso($conexion, $curso_id, $periodo, $anio) as $r) {
+        if ((int) $r['id'] === (int) $estudiante_id) {
+            return $r['puesto'] . '/' . $r['total'];
         }
     }
-
-    if ($position === 0) return null;
-    return "$position/$total";
+    return null;
 }
 
 function obtenerCursoIdEstudiante($conexion, $estudiante_id)
 {
     $stmt = $conexion->prepare("SELECT curso_id FROM estudiantes WHERE id = ?");
     $stmt->execute([$estudiante_id]);
-    $est = $stmt->fetch(PDO::FETCH_ASSOC);
-    return $est ? $est['curso_id'] : null;
+    $c = $stmt->fetchColumn();
+    return $c ? (int) $c : null;
 }
 
 /**
- * Promedio general ponderado de un estudiante en un período.
+ * Notas de un estudiante en un período, listas para calcularDefinitivas() y
+ * para el boletín (una sola consulta: el grado sale del JOIN con cursos).
+ * Columnas: asignatura_id, asignatura, area, nota, examen (solo informativo), porcentaje, intensidad_horaria, logro.
  */
+function obtenerNotasPonderadas($conexion, $estudiante_id, $periodo, $anio = null): array
+{
+    $anio = (int) ($anio ?? date('Y'));
+    $stmt = $conexion->prepare("
+        SELECT a.id AS asignatura_id, a.nombre AS asignatura, a.area, n.nota, n.examen, e.curso_id,
+               COALESCE(ag.porcentaje, 100) AS porcentaje,
+               COALESCE(ag.intensidad_horaria, a.intensidad_horaria, 0) AS intensidad_horaria,
+               l.logro
+        FROM notas n
+        JOIN estudiantes e  ON e.id = n.estudiante_id
+        LEFT JOIN cursos c  ON c.id = e.curso_id
+        JOIN asignaturas a  ON a.id = n.asignatura_id
+        LEFT JOIN asignatura_grado ag ON ag.asignatura_id = a.id AND ag.grado = c.grado
+        LEFT JOIN logros l  ON l.estudiante_id = n.estudiante_id AND l.asignatura_id = n.asignatura_id
+                           AND l.periodo = n.periodo AND l.anio = n.anio
+        WHERE n.estudiante_id = ? AND n.periodo = ? AND n.anio = ?
+        ORDER BY a.area, a.nombre
+    ");
+    $stmt->execute([$estudiante_id, (string) $periodo, $anio]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/** Promedio general de un estudiante en un período (null si no tiene notas). */
 function calcularPromedioGeneralEstudiante($conexion, $estudiante_id, $periodo, $anio = null)
 {
     $notas = obtenerNotasPonderadas($conexion, $estudiante_id, $periodo, $anio);
@@ -180,150 +314,130 @@ function calcularPromedioGeneralEstudiante($conexion, $estudiante_id, $periodo, 
 }
 
 /**
- * Consolidado ANUAL de un estudiante: la definitiva anual de cada asignatura es el
- * promedio de sus notas en todos los períodos del año; con eso se calculan las
- * definitivas de área y el PROMEDIO GENERAL del año, y si aprobó (>= nota mínima).
- *
- * @return array ['areas'=>[area=>def], 'general'=>float|null, 'aprobo'=>bool, 'areas_perdidas'=>int]
+ * Consolidado anual de VARIOS cursos en una consulta.
+ * @return array [curso_id => [ ['id','nombre','promedio','aprobo','areas_perdidas','areas','periodos','puesto','total'], ... ]]
  */
-function consolidadoAnualEstudiante($conexion, $estudiante_id, $anio = null, $notaMinima = 60)
+function rankingAnualCursos($conexion, array $curso_ids, $anio = null, $notaMinima = NOTA_MINIMA_APROBACION): array
 {
-    $anio = $anio ?? (int) date('Y');
-    $stmtG = $conexion->prepare("SELECT c.grado FROM estudiantes e JOIN cursos c ON e.curso_id = c.id WHERE e.id = ?");
-    $stmtG->execute([$estudiante_id]);
-    $grado = $stmtG->fetchColumn();
+    $anio = (int) ($anio ?? date('Y'));
+    $curso_ids = array_values(array_unique(array_map('intval', $curso_ids)));
+    if (!$curso_ids) return [];
+    $ph = implode(',', array_fill(0, count($curso_ids), '?'));
 
-    // Definitiva anual por asignatura = promedio de sus notas en los períodos del año
+    // Definitiva anual por asignatura = AVG de sus notas en los períodos del año.
     $stmt = $conexion->prepare("
-        SELECT a.area,
+        SELECT e.curso_id, e.id, e.nombre, a.area,
                AVG(n.nota) AS nota,
-               COALESCE(ag.intensidad_horaria, a.intensidad_horaria, 0) AS intensidad_horaria,
-               COALESCE(ag.porcentaje, 100) AS porcentaje
-        FROM notas n
-        JOIN asignaturas a ON n.asignatura_id = a.id
-        LEFT JOIN asignatura_grado ag ON ag.asignatura_id = a.id AND ag.grado = ?
-        WHERE n.estudiante_id = ? AND n.anio = ?
-        GROUP BY a.id, a.area, ag.intensidad_horaria, a.intensidad_horaria, ag.porcentaje
-    ");
-    $stmt->execute([$grado, $estudiante_id, $anio]);
-    $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    if (count($filas) === 0) {
-        return ['areas' => [], 'general' => null, 'aprobo' => false, 'areas_perdidas' => 0];
-    }
-
-    $def = calcularDefinitivas($filas);
-    $perdidas = 0;
-    foreach ($def['areas'] as $v) {
-        if ($v < $notaMinima) $perdidas++;
-    }
-    $aprobo = ($def['general'] !== null && $def['general'] >= $notaMinima);
-
-    return ['areas' => $def['areas'], 'general' => $def['general'], 'aprobo' => $aprobo, 'areas_perdidas' => $perdidas];
-}
-
-/**
- * Ranking anual del curso (por promedio general del año), para el puesto anual.
- */
-function rankingAnualCurso($conexion, $curso_id, $anio = null, $notaMinima = 60)
-{
-    $anio = $anio ?? (int) date('Y');
-
-    $grado = $conexion->prepare("SELECT grado FROM cursos WHERE id = ?");
-    $grado->execute([$curso_id]);
-    $grado = $grado->fetchColumn();
-
-    // UNA sola consulta trae la definitiva anual por asignatura (AVG de los períodos)
-    // de TODOS los estudiantes del curso, evitando el patrón N+1.
-    $stmt = $conexion->prepare("
-        SELECT e.id, e.nombre, a.area,
-               AVG(n.nota) AS nota,
-               COALESCE(ag.intensidad_horaria, a.intensidad_horaria, 0) AS intensidad_horaria,
-               COALESCE(ag.porcentaje, 100) AS porcentaje
+               COALESCE(MAX(ag.porcentaje), 100) AS porcentaje,
+               COUNT(n.id) AS n_notas,
+               STRING_AGG(DISTINCT n.periodo, ',') AS periodos
         FROM estudiantes e
+        JOIN cursos c ON c.id = e.curso_id
         LEFT JOIN notas n ON n.estudiante_id = e.id AND n.anio = ?
-        LEFT JOIN asignaturas a ON n.asignatura_id = a.id
-        LEFT JOIN asignatura_grado ag ON ag.asignatura_id = a.id AND ag.grado = ?
-        WHERE e.curso_id = ?
-        GROUP BY e.id, e.nombre, a.id, a.area, ag.intensidad_horaria, a.intensidad_horaria, ag.porcentaje
-        ORDER BY e.nombre
+        LEFT JOIN asignaturas a ON a.id = n.asignatura_id
+        LEFT JOIN asignatura_grado ag ON ag.asignatura_id = a.id AND ag.grado = c.grado
+        WHERE e.curso_id IN ($ph)
+        GROUP BY e.curso_id, e.id, e.nombre, a.id, a.area
     ");
-    $stmt->execute([$anio, $grado, $curso_id]);
+    $stmt->execute(array_merge([$anio], $curso_ids));
 
-    // Agrupar por estudiante
     $porEst = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $eid = (int) $r['id'];
         if (!isset($porEst[$eid])) {
-            $porEst[$eid] = ['id' => $eid, 'nombre' => $r['nombre'], 'notas' => []];
+            $porEst[$eid] = ['curso_id' => (int) $r['curso_id'], 'id' => $eid, 'nombre' => $r['nombre'], 'notas' => [], 'periodos' => []];
         }
         if ($r['area'] !== null && $r['nota'] !== null) {
-            $porEst[$eid]['notas'][] = [
-                'area' => $r['area'], 'nota' => $r['nota'],
-                'porcentaje' => $r['porcentaje'], 'intensidad_horaria' => $r['intensidad_horaria'],
-            ];
+            $porEst[$eid]['notas'][] = ['area' => $r['area'], 'nota' => $r['nota'], 'porcentaje' => $r['porcentaje']];
+            foreach (explode(',', (string) $r['periodos']) as $p) {
+                if ($p !== '') $porEst[$eid]['periodos'][$p] = true;
+            }
         }
     }
 
-    $ranking = [];
+    $porCurso = array_fill_keys($curso_ids, []);
     foreach ($porEst as $e) {
-        if (count($e['notas']) === 0) {
-            $ranking[] = ['id' => $e['id'], 'nombre' => $e['nombre'], 'promedio' => null, 'aprobo' => false, 'areas_perdidas' => 0];
-            continue;
-        }
-        $def = calcularDefinitivas($e['notas']);
+        $def = $e['notas'] ? calcularDefinitivas($e['notas']) : ['areas' => [], 'general' => null];
         $perdidas = 0;
-        foreach ($def['areas'] as $v) if ($v < $notaMinima) $perdidas++;
-        $aprobo = ($def['general'] !== null && $def['general'] >= $notaMinima);
-        $ranking[] = ['id' => $e['id'], 'nombre' => $e['nombre'], 'promedio' => $def['general'], 'aprobo' => $aprobo, 'areas_perdidas' => $perdidas];
+        foreach ($def['areas'] as $area => $v) {
+            if ($v < $notaMinima && areaPromedia($area)) $perdidas++;
+        }
+        $porCurso[$e['curso_id']][] = [
+            'id'             => $e['id'],
+            'nombre'         => $e['nombre'],
+            'promedio'       => $def['general'],
+            'aprobo'         => $def['general'] !== null && $def['general'] >= $notaMinima,
+            'areas_perdidas' => $perdidas,
+            'areas'          => $def['areas'],
+            'periodos'       => count($e['periodos']),
+        ];
     }
-    usort($ranking, fn($a, $b) => ($b['promedio'] ?? -1) <=> ($a['promedio'] ?? -1));
-    return $ranking;
+    foreach ($porCurso as $c => $lista) $porCurso[$c] = asignarPuestos($lista);
+    return $porCurso;
+}
+
+/** Ranking anual de un curso (ver rankingAnualCursos). */
+function rankingAnualCurso($conexion, $curso_id, $anio = null, $notaMinima = NOTA_MINIMA_APROBACION)
+{
+    return rankingAnualCursos($conexion, [(int) $curso_id], $anio, $notaMinima)[(int) $curso_id] ?? [];
 }
 
 /**
- * Mejores estudiantes por grado, usando el promedio general ponderado.
- * @return array [ grado => [ ['id','nombre','grado','curso_nombre','nivel','promedio'], ... ] ]
+ * Consolidado ANUAL de un estudiante (mismo cálculo que rankingAnualCursos).
+ * @return array ['areas'=>[area=>def], 'general'=>float|null, 'aprobo'=>bool, 'areas_perdidas'=>int, 'periodos'=>int, 'puesto'=>?int, 'total'=>int]
+ */
+function consolidadoAnualEstudiante($conexion, $estudiante_id, $anio = null, $notaMinima = NOTA_MINIMA_APROBACION)
+{
+    $curso_id = obtenerCursoIdEstudiante($conexion, $estudiante_id);
+    $vacio = ['areas' => [], 'general' => null, 'aprobo' => false, 'areas_perdidas' => 0, 'periodos' => 0, 'puesto' => null, 'total' => 0];
+    if (!$curso_id) return $vacio;
+    foreach (rankingAnualCurso($conexion, $curso_id, $anio, $notaMinima) as $r) {
+        if ($r['id'] === (int) $estudiante_id) {
+            return ['areas' => $r['areas'], 'general' => $r['promedio'], 'aprobo' => $r['aprobo'],
+                    'areas_perdidas' => $r['areas_perdidas'], 'periodos' => $r['periodos'],
+                    'puesto' => $r['puesto'], 'total' => $r['total']];
+        }
+    }
+    return $vacio;
+}
+
+/**
+ * Mejores estudiantes por grado (promedio general del período). 1 consulta.
+ * @return array [ grado => [ ['id','nombre','grado','curso_nombre','nivel','promedio','puesto','total'], ... ] ]
  */
 function calcularMejoresPorGrado($conexion, $periodo, $limite = 5, $anio = null)
 {
-    $anio = $anio ?? (int) date('Y');
+    $anio = (int) ($anio ?? date('Y'));
     $stmt = $conexion->prepare("
         SELECT e.id, e.nombre, c.grado, c.nombre AS curso_nombre, c.nivel,
-               a.area, n.nota,
-               COALESCE(ag.intensidad_horaria, a.intensidad_horaria, 0) AS intensidad_horaria,
-               COALESCE(ag.porcentaje, 100) AS porcentaje
+               a.area, n.nota, COALESCE(ag.porcentaje, 100) AS porcentaje
         FROM estudiantes e
         JOIN cursos c ON e.curso_id = c.id
         JOIN notas n ON n.estudiante_id = e.id AND n.periodo = ? AND n.anio = ?
         JOIN asignaturas a ON n.asignatura_id = a.id
         LEFT JOIN asignatura_grado ag ON ag.asignatura_id = a.id AND ag.grado = c.grado
     ");
-    $stmt->execute([$periodo, $anio]);
+    $stmt->execute([(string) $periodo, $anio]);
 
-    // Agrupar filas por estudiante
     $est = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
-        $eid = $r['id'];
+        $eid = (int) $r['id'];
         if (!isset($est[$eid])) {
-            $est[$eid] = [
-                'id' => (int)$eid, 'nombre' => $r['nombre'], 'grado' => $r['grado'],
-                'curso_nombre' => $r['curso_nombre'], 'nivel' => $r['nivel'], 'notas' => [],
-            ];
+            $est[$eid] = ['id' => $eid, 'nombre' => $r['nombre'], 'grado' => $r['grado'],
+                          'curso_nombre' => $r['curso_nombre'], 'nivel' => $r['nivel'], 'notas' => []];
         }
         $est[$eid]['notas'][] = $r;
     }
 
-    // Promedio general por estudiante, agrupado por grado
     $porGrado = [];
     foreach ($est as $e) {
-        $porGrado[$e['grado']][] = [
-            'id' => $e['id'], 'nombre' => $e['nombre'], 'grado' => $e['grado'],
-            'curso_nombre' => $e['curso_nombre'], 'nivel' => $e['nivel'],
-            'promedio' => calcularDefinitivas($e['notas'])['general'],
-        ];
+        $prom = calcularDefinitivas($e['notas'])['general'];
+        if ($prom === null) continue;
+        unset($e['notas']);
+        $e['promedio'] = $prom;
+        $porGrado[$e['grado']][] = $e;
     }
 
-    // Orden de grados + top N por grado
     $ordenGrado = [
         'maternal'=>1,'prejardin'=>2,'jardin'=>3,'transicion'=>4,
         'primero'=>5,'segundo'=>6,'tercero'=>7,'cuarto'=>8,'quinto'=>9,
@@ -334,8 +448,7 @@ function calcularMejoresPorGrado($conexion, $periodo, $limite = 5, $anio = null)
 
     $resultados = [];
     foreach ($porGrado as $grado => $lista) {
-        usort($lista, fn($a, $b) => ($b['promedio'] ?? -1) <=> ($a['promedio'] ?? -1));
-        $resultados[$grado] = array_slice($lista, 0, $limite);
+        $resultados[$grado] = array_slice(asignarPuestos($lista), 0, $limite);
     }
     return $resultados;
 }

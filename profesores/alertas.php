@@ -10,6 +10,7 @@ $usuario_id = $_SESSION["id"];
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_leida'])
     && validar_token_csrf($_POST['_csrf_token'] ?? '')) {
     marcarAlertaLeida($conexion, $_POST['alerta_id'] ?? 0, $usuario_id, 'profesor');
+    unset($_SESSION['_sidebar_prof']);   // la campana del menú se recalcula ya
     header("Location: alertas.php");
     exit;
 }
