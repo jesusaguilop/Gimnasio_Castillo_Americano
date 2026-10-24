@@ -1,11 +1,26 @@
 <?php
 
 /**
- * Plantilla del boletín (v2) — replica el MODELO BOLETIN.docx del colegio.
- * Encabezado institucional (escudo + wordmark + resolución/dirección),
- * tabla de datos (con Promedio y Puesto), tabla de notas por área
- * (ÁREA · ASIGNATURA · I.H · % · DESEMPEÑO FINAL · LOGROS · DESEMPEÑO POR COMPETENCIA),
- * observaciones autocompletadas y firma. Ningún cuadro queda vacío.
+ * Plantilla del boletín (v2) — réplica del MODELO BOLETIN.docx/.pdf del colegio.
+ *
+ * Medidas tomadas del modelo (hoja carta, 612 x 792 pt):
+ *  - Encabezado enmarcado (escudo · wordmark + datos institucionales · escudo),
+ *    repetido en todas las páginas (position: fixed en el margen superior).
+ *  - Tabla de datos: INFORME ACADÉMICO / PUESTO, ESTUDIANTE / JORNADA,
+ *    GRADO / GRUPO / PERIODO ACADÉMICO / SEDE (Arial negrita 8).
+ *  - Fila de títulos con fondo dorado #D1B377: ÁREA · ASIGNATURA · I.H · % · EXAMEN ·
+ *    DESEMPEÑO FINAL ASIGNATURA · LOGROS Y RESULTADOS DE APRENDIZAJE ·
+ *    DESEMPEÑO POR COMPETENCIA (Calibri negrita 8). Área con rowspan.
+ *  - OBSERVACIONES (título + contenido), firma centrada del director de grupo
+ *    y número de página abajo a la derecha.
+ *  - Bordes negros de 0,5 pt; texto en negro.
+ *
+ * Fuente: el modelo usa Calibri; aquí se usa Carlito (métrica idéntica, licencia
+ * OFL) desde assets/img/boletin/fonts. Si dompdf no puede cargarla (chroot),
+ * cae a Helvetica/Arial, que también conserva el aspecto.
+ *
+ * Ningún cuadro queda vacío: logro por defecto según el desempeño y
+ * observación general autocompletada.
  */
 
 if (!function_exists('gcaDesempeno')) {
@@ -33,75 +48,129 @@ if (!function_exists('gcaLogroDefecto')) {
     }
 }
 
-function boletinHTML_v2($estudiante, $curso, $periodo, $notas, $promedio, $promediosArea = [], $logros = [], $directorNombre = '', $puesto = '')
+if (!function_exists('gcaMayus')) {
+    /** Mayúsculas seguras para UTF-8 (strtoupper no convierte tildes ni ñ). */
+    function gcaMayus($s): string
+    {
+        return mb_strtoupper(trim((string) $s), 'UTF-8');
+    }
+}
+
+/**
+ * @param array       $estudiante     fila de estudiantes (nombre, ...)
+ * @param array       $curso          ['nivel','grado','curso_nombre']
+ * @param string|int  $periodo
+ * @param array       $notas          filas: asignatura, area, asignatura_id, intensidad_horaria, nota, porcentaje
+ * @param float       $promedio       promedio general ponderado
+ * @param array       $promediosArea  (no se muestra: el modelo no tiene esa casilla)
+ * @param array       $logros         asignatura_id => texto
+ * @param string      $directorNombre ya escapado por el generador (o una línea de guiones bajos)
+ * @param string      $puesto         "n/total"
+ * @param int|null    $anio           año lectivo (si no llega, el año actual)
+ */
+function boletinHTML_v2($estudiante, $curso, $periodo, $notas, $promedio, $promediosArea = [], $logros = [], $directorNombre = '', $puesto = '', $anio = null)
 {
+    $base = __DIR__ . '/../assets/img/boletin/';
+
     // Imágenes institucionales embebidas (base64, seguras para dompdf)
-    $imgData = function ($rel) {
-        $path = __DIR__ . '/../' . $rel;
+    $imgData = function ($file) use ($base) {
+        $path = $base . $file;
         return is_file($path) ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($path)) : '';
     };
-    $escudo   = $imgData('assets/img/boletin/escudo.jpeg');
-    $wordmark = $imgData('assets/img/boletin/wordmark.jpeg');
+    $escudo   = $imgData('escudo.jpeg');
+    $wordmark = $imgData('wordmark.jpeg');
 
-    $perMap = ['1' => 'PRIMERO', '2' => 'SEGUNDO', '3' => 'TERCERO', '4' => 'CUARTO'];
-    $periodoLabel = $perMap[(string) $periodo] ?? strtoupper((string) $periodo);
+    // Fuente Carlito (equivalente métrico de Calibri, como en el modelo)
+    $fontUrl = function ($file) use ($base) {
+        $p = realpath($base . 'fonts/' . $file);
+        return $p ? 'file://' . str_replace('\\', '/', $p) : '';
+    };
+    $carlitoR = $fontUrl('Carlito-Regular.ttf');
+    $carlitoB = $fontUrl('Carlito-Bold.ttf');
 
-    $nombre = htmlspecialchars(strtoupper($estudiante['nombre'] ?? ''));
-    $grado  = htmlspecialchars(strtoupper($curso['grado'] ?? ''));
-    $grupo  = htmlspecialchars(strtoupper($curso['curso_nombre'] ?? ''));
-    $puestoTxt = htmlspecialchars($puesto ?: '0/0');
+    $h = fn($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 
-    [$gLabel, $gColor] = gcaDesempeno($promedio);
-    $promedioTxt = number_format((float) $promedio, 1);
+    $nombre    = $h(gcaMayus($estudiante['nombre'] ?? ''));
+    $grado     = $h(gcaMayus($curso['grado'] ?? ''));
+    $grupo     = $h(gcaMayus($curso['curso_nombre'] ?? ''));
+    $puestoTxt = $h($puesto !== '' && $puesto !== null ? $puesto : '0/0');
+    $periodoTxt = $h(gcaMayus($periodo));
+    $anioTxt   = $h($anio ?: date('Y'));
 
-    // ── Filas de notas agrupadas por área (celda de área con rowspan) ──
-    $areaCounts = [];
+    // ── Orden de áreas: el del generador, agrupando por área y con
+    //    COMPORTAMIENTO siempre al final (como en el modelo). ──
+    $grupos = [];
     foreach ($notas as $n) {
-        $areaCounts[$n['area']] = ($areaCounts[$n['area']] ?? 0) + 1;
+        $grupos[(string) $n['area']][] = $n;
     }
-    $areaDone = [];
-    $rows = '';
-    foreach ($notas as $n) {
-        $area = $n['area'];
-        $firstInArea = !isset($areaDone[$area]);
-        if ($firstInArea) $areaDone[$area] = true;
-
-        $notaVal = (int) round($n['nota']);
-        $ih      = (int) ($n['intensidad_horaria'] ?? 0);
-        $pct     = (int) round($n['porcentaje'] ?? 100);
-        [$desLabel, $desColor] = gcaDesempeno($n['nota']);
-
-        $logroRaw = trim((string) ($logros[$n['asignatura_id']] ?? ''));
-        if ($logroRaw === '') $logroRaw = gcaLogroDefecto($desLabel);
-        $logroText = nl2br(htmlspecialchars($logroRaw));
-
-        $rows .= '<tr>';
-        if ($firstInArea) {
-            $areaProm = $promediosArea[$area] ?? null;
-            $areaCell = '<strong>' . htmlspecialchars(strtoupper($area)) . '</strong>';
-            if ($areaProm !== null) {
-                [$aLabel, $aColor] = gcaDesempeno($areaProm);
-                $areaCell .= '<div class="area-def">Definitiva<br><span style="color:' . $aColor . '">' . number_format($areaProm, 1) . '</span><br><span class="area-lvl" style="color:' . $aColor . '">' . $aLabel . '</span></div>';
-            }
-            $rows .= '<td rowspan="' . $areaCounts[$area] . '" class="c-area">' . $areaCell . '</td>';
+    $fin = [];
+    foreach (array_keys($grupos) as $area) {
+        if (gcaMayus($area) === 'COMPORTAMIENTO') {
+            $fin[$area] = $grupos[$area];
+            unset($grupos[$area]);
         }
-        $rows .= '<td class="c-asig">' . htmlspecialchars($n['asignatura']) . '</td>';
-        $rows .= '<td class="c-ih">' . $ih . '</td>';
-        $rows .= '<td class="c-pct">' . $pct . '%</td>';
-        $rows .= '<td class="c-nota" style="color:' . $desColor . '">' . $notaVal . '</td>';
-        $rows .= '<td class="c-logro">' . $logroText . '</td>';
-        $rows .= '<td class="c-comp" style="color:' . $desColor . '">' . $desLabel . '</td>';
-        $rows .= '</tr>';
+    }
+    $grupos += $fin;
+
+    // ── Filas de notas ──
+    // Cada área es UNA fila: celda ÁREA (equivale a la celda combinada del
+    // modelo) + tabla anidada con sus asignaturas. Así dompdf nunca parte un
+    // área entre dos páginas (con rowspan descuadra las celdas al paginar).
+    $rows = '';
+    foreach ($grupos as $area => $items) {
+        $sub = '';
+        $last = count($items) - 1;
+        foreach ($items as $i => $n) {
+            $notaVal = (int) round((float) $n['nota']);
+            $ih      = (int) ($n['intensidad_horaria'] ?? 0);
+            $pct     = (int) round((float) ($n['porcentaje'] ?? 100));
+            [$desLabel] = gcaDesempeno($n['nota']);
+
+            $logroRaw = trim((string) ($logros[$n['asignatura_id']] ?? ''));
+            if ($logroRaw === '') $logroRaw = gcaLogroDefecto($desLabel);
+
+            $pos = ($i === 0 ? ' first' : '') . ($i === $last ? ' last' : '');
+            $sub .= '<tr class="' . trim($pos) . '">'
+                . '<td class="c-asig w-asig">' . $h(gcaMayus($n['asignatura'])) . '</td>'
+                . '<td class="c-num w-ih">' . $ih . '</td>'
+                . '<td class="c-num w-pct">' . $pct . '</td>'
+                . '<td class="c-num w-ex">' . (isset($n['examen']) ? (int) $n['examen'] : '–') . '</td>'
+                . '<td class="c-nota w-des">' . $notaVal . '</td>'
+                . '<td class="c-logro w-log">' . nl2br($h($logroRaw)) . '</td>'
+                . '<td class="c-comp w-comp">' . $h($desLabel) . '</td>'
+                . '</tr>';
+        }
+        $rows .= '<tr class="area">'
+            . '<td class="c-area w-area">' . $h(gcaMayus($area)) . '</td>'
+            . '<td class="c-sub"><table class="sub">' . $sub . '</table></td>'
+            . '</tr>';
+    }
+    if ($rows === '') {
+        $rows = '<tr class="area"><td class="c-vacio" colspan="2">No se registran calificaciones para este período.</td></tr>';
     }
 
     // ── Observación general autocompletada ──
-    $tail = ($gLabel === 'SUPERIOR' || $gLabel === 'ALTO')
-        ? '¡Felicitaciones por su excelente rendimiento y compromiso durante el período!'
-        : ($gLabel === 'BÁSICO'
-            ? 'Se le anima a fortalecer sus hábitos de estudio para mejorar su rendimiento.'
-            : 'Se recomienda acompañamiento en casa y un plan de refuerzo para superar las dificultades.');
-    $obsAuto = 'Durante el período, el/la estudiante obtuvo un promedio general de ' . $promedioTxt
-        . ' correspondiente a un desempeño ' . $gLabel . '. ' . $tail;
+    if (count($notas) === 0) {
+        $obsAuto = 'No se registran calificaciones del estudiante para este período académico.';
+    } else {
+        [$gLabel] = gcaDesempeno($promedio);
+        $tail = ($gLabel === 'SUPERIOR' || $gLabel === 'ALTO')
+            ? '¡Felicitaciones por su excelente rendimiento y compromiso durante el período!'
+            : ($gLabel === 'BÁSICO'
+                ? 'Se le anima a fortalecer sus hábitos de estudio para mejorar su rendimiento.'
+                : 'Se recomienda acompañamiento en casa y un plan de refuerzo para superar las dificultades.');
+        $obsAuto = 'Durante el período, el/la estudiante obtuvo un promedio general de '
+            . number_format((float) $promedio, 1) . ' correspondiente a un desempeño ' . $gLabel . '. ' . $tail;
+    }
+
+    // Director: el generador lo entrega ya escapado, o una línea "____" si no hay.
+    $dirTxt = trim((string) $directorNombre);
+    if ($dirTxt === '' || preg_match('/^_+$/', $dirTxt)) {
+        $dirTxt = '&nbsp;';
+    } else {
+        // Rehacer las mayúsculas con soporte UTF-8 (strtoupper deja "ñ"/tildes en minúscula)
+        $dirTxt = $h(gcaMayus(html_entity_decode($dirTxt, ENT_QUOTES, 'UTF-8')));
+    }
 
     ob_start();
     ?>
@@ -111,131 +180,161 @@ function boletinHTML_v2($estudiante, $curso, $periodo, $notas, $promedio, $prome
 <meta charset="utf-8">
 <title>Boletín - <?= $nombre ?></title>
 <style>
-    @page { margin: 10mm 9mm; }
-    * { box-sizing: border-box; }
-    body { font-family: "DejaVu Sans", sans-serif; font-size: 10px; color: #1a1a1a; }
+<?php if ($carlitoR && $carlitoB): ?>
+    @font-face { font-family: "Carlito"; font-style: normal; font-weight: normal; src: url("<?= $carlitoR ?>") format("truetype"); }
+    @font-face { font-family: "Carlito"; font-style: normal; font-weight: bold;   src: url("<?= $carlitoB ?>") format("truetype"); }
+<?php endif; ?>
+    /* Hoja carta como el modelo; márgenes = posición de la tabla en el modelo */
+    @page { size: letter portrait; margin: 182.1pt 23.8pt 70pt 28.1pt; }
+    body { margin: 0; padding: 0; }
+    body { font-family: "Carlito", "Helvetica", sans-serif; font-size: 8pt; color: #000; background: #fff; }
+    table { border-collapse: collapse; width: 560.1pt; }
+    td { border: 0.5pt solid #000; padding: 0 5.4pt; vertical-align: top; }
 
-    /* ── Encabezado institucional ── */
-    .head { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
-    .head td { vertical-align: middle; }
-    .head .escudo { width: 82px; text-align: center; }
-    .head .escudo img { height: 74px; }
-    .head .inst { text-align: center; padding: 0 6px; }
-    .head .inst .wm { height: 34px; margin-bottom: 3px; }
-    .head .inst .name { font-family: "DejaVu Serif", serif; font-size: 17px; font-weight: 700; color: #b8962e; margin: 0; }
-    .head .inst .lines { font-size: 7.5px; color: #444; line-height: 1.35; margin-top: 2px; }
-    .gold-rule { height: 3px; background: #c9a24d; border: none; margin: 4px 0 8px; }
+    /* ── Encabezado institucional (se repite en cada página) ── */
+    #encabezado { position: fixed; top: -146.7pt; left: 0; width: 560.1pt; }
+    .head td { height: 117.5pt; padding: 0; }
+    .head .escudo { width: 78pt; text-align: center; vertical-align: middle; }
+    .head .escudo img { width: 60pt; height: 81.5pt; }
+    .head .inst { text-align: center; padding: 1.8pt 26pt 0 0; }
+    .head .inst .wm { width: 171.7pt; height: 42.8pt; }
+    .head .inst .l1 { font-weight: bold; font-size: 9pt; line-height: 0.91; margin-top: 10pt; }
+    .head .inst .l2 { font-weight: bold; font-size: 8pt; line-height: 0.91; margin-top: 5.5pt; }
 
-    /* ── Tabla de datos ── */
-    .info { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-    .info td { border: 1px solid #c9b98a; padding: 5px 7px; font-size: 9.5px; }
-    .info .k { background: #f6f1e2; font-weight: 700; color: #6b5a24; text-transform: uppercase; font-size: 8.5px; letter-spacing: .3px; white-space: nowrap; }
-    .info .v { font-weight: 700; }
-    .info .titlebar { background: #c9a24d; color: #1a1400; font-weight: 700; text-align: center; letter-spacing: 1px; font-size: 11px; }
+    /* ── Número de página ── */
+    #pie { position: fixed; bottom: -22pt; left: 0; width: 501pt; text-align: right; font-size: 11pt; }
+    #pie .num:after { content: counter(page); }
+
+    /* ── Tabla de datos (Arial negrita 8, como el modelo) ── */
+    .info td { font-family: "Helvetica", sans-serif; font-weight: bold; font-size: 8pt; line-height: 0.905; padding-top: 1.6pt; }
+    .info .r1 td { height: 14.5pt; }
+    .info .r2 td { height: 13.4pt; }
+    .info .r3 td { height: 14.5pt; padding-bottom: 1.2pt; }
+    .info .titulo { font-size: 10pt; line-height: 0.905; text-align: center; }
+    .info .c { text-align: center; }
 
     /* ── Tabla de notas ── */
-    .grades { width: 100%; border-collapse: collapse; }
-    .grades th { background: #c9a24d; color: #1a1400; border: 1px solid #b8962e; padding: 6px 4px; font-size: 8px; text-transform: uppercase; letter-spacing: .3px; font-weight: 700; }
-    .grades td { border: 1px solid #d9cfae; padding: 5px 6px; vertical-align: middle; font-size: 9px; }
-    .grades .c-area { text-align: center; font-size: 9px; background: #faf6ec; }
-    .grades .c-area .area-def { font-size: 7.5px; font-weight: 400; color: #555; margin-top: 3px; line-height: 1.4; }
-    .grades .c-area .area-lvl { font-weight: 700; font-size: 7px; }
-    .grades .c-asig { font-weight: 600; }
-    .grades .c-ih, .grades .c-pct { text-align: center; }
-    .grades .c-nota { text-align: center; font-weight: 700; font-size: 12px; }
-    .grades .c-logro { text-align: left; font-size: 8.5px; color: #333; }
-    .grades .c-comp { text-align: center; font-weight: 700; font-size: 8.5px; }
+    /* anchos de contenido (= ancho del modelo - 10,8 pt de relleno - borde) */
+    .w-area { width: 66.8pt; } .w-asig { width: 77.9pt; } .w-ih { width: 12.7pt; } .w-pct { width: 11.7pt; }
+    .w-des { width: 68.1pt; } .w-log { width: 143.1pt; } .w-comp { width: 66.7pt; }
+    /* EXAMEN final del período (solo informativo): su ancho sale de LOGROS
+       para que la tabla conserve el ancho total del modelo. */
+    .w-ex { width: 34pt; }
+    .notas td { line-height: 0.91; }
+    .titulos td { background: #D1B377; font-weight: bold; text-align: center; height: 21.7pt; padding-top: 2pt; line-height: 0.91; }
+    .notas tr.area { page-break-inside: avoid; }
+    .notas .c-sub { padding: 0; vertical-align: top; }
+    .notas table.sub { width: 100%; }
+    .sub td { height: 34pt; }
+    .sub td.w-asig { border-left: none; }
+    .sub td.w-comp { border-right: none; }
+    .sub td.w-log { width: 142.4pt; }
+    .sub tr.first td { border-top: none; }
+    .sub tr.last td { border-bottom: none; }
+    .notas .c-area, .notas .c-asig, .notas .c-num, .notas .c-nota, .notas .c-comp { text-align: center; vertical-align: middle; }
+    .notas .c-nota { font-weight: bold; font-size: 10pt; }
+    .notas .c-comp { font-weight: bold; }
+    .notas .c-logro { text-align: justify; vertical-align: middle; padding-top: 2pt; padding-bottom: 2pt; }
+    .notas .c-vacio { text-align: center; vertical-align: middle; height: 38pt; }
 
-    /* ── Observaciones ── */
-    .obs { width: 100%; border-collapse: collapse; margin-top: 8px; }
-    .obs .oh { background: #f6f1e2; color: #6b5a24; font-weight: 700; text-transform: uppercase; font-size: 8.5px; letter-spacing: .5px; border: 1px solid #c9b98a; padding: 5px 7px; }
-    .obs .ob { border: 1px solid #c9b98a; padding: 8px; font-size: 9px; color: #333; line-height: 1.5; }
-
-    /* ── Firma ── */
-    .sign { text-align: center; margin-top: 34px; }
-    .sign .line { width: 260px; margin: 0 auto; border-top: 1px solid #333; padding-top: 5px; font-weight: 700; font-size: 10px; }
-    .sign .role { font-size: 8.5px; color: #555; letter-spacing: .5px; }
+    /* ── Observaciones + firma (no se separan) ── */
+    .cierre { page-break-inside: avoid; }
+    .obs .oh { font-weight: bold; font-size: 10pt; line-height: 0.91; height: 21.4pt; }
+    .obs .ob { font-size: 9pt; line-height: 0.91; text-align: justify; height: 20.4pt; padding-top: 3pt; padding-bottom: 3pt; }
+    .firma { text-align: center; padding-top: 50pt; width: 560.1pt; }
+    .firma .linea { font-size: 11pt; line-height: 0.91; }
+    .firma .nom { font-weight: bold; font-size: 10pt; line-height: 0.91; }
+    .firma .rol { font-weight: bold; font-size: 8pt; line-height: 0.91; }
 </style>
 </head>
 <body>
 
-    <!-- ENCABEZADO -->
-    <table class="head">
-        <tr>
-            <td class="escudo"><?php if ($escudo): ?><img src="<?= $escudo ?>" alt="GCA"><?php endif; ?></td>
-            <td class="inst">
-                <?php if ($wordmark): ?>
-                    <img class="wm" src="<?= $wordmark ?>" alt="Gimnasio Castillo Americano">
-                <?php else: ?>
-                    <p class="name">Gimnasio Castillo Americano</p>
-                <?php endif; ?>
-                <div class="lines">
-                    EDUCACIÓN PREESCOLAR, BÁSICA PRIMARIA Y SECUNDARIA<br>
-                    RESOLUCIÓN DE APROBACIÓN N° 002789 DEL 20 DE NOVIEMBRE DE 2013<br>
-                    DIRECCIÓN: CARRERA 3B No. 23-13, CALLEJAS II &nbsp;·&nbsp; TEL.: 3163388226<br>
-                    VALLEDUPAR - CESAR
-                </div>
-            </td>
-            <td class="escudo"><?php if ($escudo): ?><img src="<?= $escudo ?>" alt="GCA"><?php endif; ?></td>
-        </tr>
-    </table>
-    <hr class="gold-rule">
+    <!-- ENCABEZADO (fijo: se repite en cada página) -->
+    <div id="encabezado">
+        <table class="head">
+            <tr>
+                <td class="escudo"><?php if ($escudo): ?><img src="<?= $escudo ?>" alt="GCA"><?php endif; ?></td>
+                <td class="inst" style="width:376.3pt">
+                    <?php if ($wordmark): ?><img class="wm" src="<?= $wordmark ?>" alt="Gimnasio Castillo Americano"><?php else: ?><div style="font-size:20pt;line-height:42.8pt;color:#b8962e">Gimnasio Castillo Americano</div><?php endif; ?>
+                    <div class="l1">EDUCACION PREESCOLAR, BASICA PRIMARIA, SECUNDARIA</div>
+                    <div class="l2">RESOLUCIÓN DE APROBACIÓN: 002789 DEL 20 DE NOVIEMBRE DE 2013<br>
+                        DIRECCIÓN: CARRERA 3 B No. 23-13 CALLEJAS II<br>
+                        CONTACTOS: TEL.: 3163388226<br>
+                        VALLEDUPAR - CESAR</div>
+                </td>
+                <td class="escudo"><?php if ($escudo): ?><img src="<?= $escudo ?>" alt="GCA"><?php endif; ?></td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- NÚMERO DE PÁGINA -->
+    <div id="pie"><span class="num"></span></div>
 
     <!-- DATOS -->
     <table class="info">
-        <tr>
-            <td class="titlebar" colspan="4">INFORME ACADÉMICO</td>
-            <td class="k">Promedio</td>
-            <td class="v" style="text-align:center;color:<?= $gColor ?>"><?= $promedioTxt ?></td>
-            <td class="k">Puesto</td>
-            <td class="v" style="text-align:center"><?= $puestoTxt ?></td>
+        <tr class="r3" style="visibility:hidden">
+            <td style="width:67.3pt;height:0;padding:0 5.4pt;border:none"></td>
+            <td style="width:78.4pt;height:0;padding:0 5.4pt;border:none"></td>
+            <td style="width:36.2pt;height:0;padding:0 5.4pt;border:none"></td>
+            <td style="width:28.1pt;height:0;padding:0 5.4pt;border:none"></td>
+            <td style="width:52pt;height:0;padding:0 5.4pt;border:none"></td>
+            <td style="width:33.4pt;height:0;padding:0 5.4pt;border:none"></td>
+            <td style="width:35.1pt;height:0;padding:0 5.4pt;border:none"></td>
+            <td style="width:65.2pt;height:0;padding:0 5.4pt;border:none"></td>
+            <td style="width:67.2pt;height:0;padding:0 5.4pt;border:none"></td>
         </tr>
-        <tr>
-            <td class="k">Estudiante</td>
-            <td class="v" colspan="5"><?= $nombre ?></td>
-            <td class="k">Jornada</td>
-            <td class="v" style="text-align:center">ÚNICA</td>
+        <tr class="r1">
+            <td class="titulo" colspan="7">INFORME ACADÉMICO</td>
+            <td>PUESTO</td>
+            <td class="c"><?= $puestoTxt ?></td>
         </tr>
-        <tr>
-            <td class="k">Grado</td>
-            <td class="v"><?= $grado ?></td>
-            <td class="k">Grupo</td>
-            <td class="v"><?= $grupo ?></td>
-            <td class="k">Período</td>
-            <td class="v"><?= htmlspecialchars($periodoLabel) ?></td>
-            <td class="k">Sede</td>
-            <td class="v" style="text-align:center">PRINCIPAL</td>
+        <tr class="r2">
+            <td>ESTUDIANTE</td>
+            <td colspan="6"><?= $nombre ?></td>
+            <td>JORNADA</td>
+            <td class="c">ÚNICA</td>
+        </tr>
+        <tr class="r3">
+            <td>GRADO</td>
+            <td class="c"><?= $grado ?></td>
+            <td>GRUPO</td>
+            <td class="c"><?= $grupo ?></td>
+            <td class="c">PERIODO ACADÉMICO</td>
+            <td class="c"><?= $periodoTxt ?></td>
+            <td class="c"><?= $anioTxt ?></td>
+            <td>SEDE</td>
+            <td class="c">PRINCIPAL</td>
         </tr>
     </table>
 
     <!-- NOTAS -->
-    <table class="grades">
-        <thead>
-            <tr>
-                <th style="width:12%">Área</th>
-                <th style="width:16%">Asignatura</th>
-                <th style="width:5%">I.H</th>
-                <th style="width:5%">%</th>
-                <th style="width:12%">Desempeño final asignatura</th>
-                <th style="width:35%">Logros y resultados de aprendizaje</th>
-                <th style="width:15%">Desempeño por competencia</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?= $rows ?>
-        </tbody>
+    <table class="titulos">
+        <tr>
+            <td class="w-area">ÁREA</td>
+            <td class="w-asig">ASIGNATURA</td>
+            <td class="w-ih">I.H</td>
+            <td class="w-pct">%</td>
+            <td class="w-ex">EXAMEN</td>
+            <td class="w-des">DESEMPEÑO FINAL ASIGNATURA</td>
+            <td class="w-log">LOGROS Y RESULTADOS DE APRENDIZAJE</td>
+            <td class="w-comp">DESEMPEÑO POR COMPETENCIA</td>
+        </tr>
+    </table>
+    <table class="notas">
+        <?= $rows ?>
     </table>
 
-    <!-- OBSERVACIONES -->
-    <table class="obs">
-        <tr><td class="oh">Observaciones</td></tr>
-        <tr><td class="ob"><?= htmlspecialchars($obsAuto) ?></td></tr>
-    </table>
-
-    <!-- FIRMA -->
-    <div class="sign">
-        <div class="line"><?= $directorNombre ?: '___________________________________________' ?></div>
-        <div class="role">DIRECTOR(A) DE GRUPO</div>
+    <!-- OBSERVACIONES + FIRMA -->
+    <div class="cierre">
+        <table class="obs">
+            <tr><td class="oh">OBSERVACIONES</td></tr>
+            <tr><td class="ob"><?= $h($obsAuto) ?></td></tr>
+        </table>
+        <div class="firma">
+            <div class="linea">___________________________________________</div>
+            <div class="nom"><?= $dirTxt ?></div>
+            <div class="rol">DIRECTOR(A) DE GRUPO</div>
+        </div>
     </div>
 
 </body>
