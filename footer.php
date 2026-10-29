@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/lib/asset_helper.php'; ?>
 </main>
 
 <!-- FOOTER (compacto y estilizado) -->
@@ -79,7 +80,7 @@
 
             <div class="col-lg-5" data-aos="fade-up">
                 <div class="ft-brand">
-                    <img src="assets/img/escudo/escudo.png" alt="" class="ft-logo">
+                    <img src="<?= asset('assets/img/escudo/escudo.png') ?>" alt="" class="ft-logo">
                     <div>
                         <h5 class="ft-title">Gimnasio Castillo Americano</h5>
                         <span class="ft-tagline">“Cultivar para cosechar”</span>

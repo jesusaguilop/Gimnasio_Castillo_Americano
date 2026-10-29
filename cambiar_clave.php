@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/lib/asset_helper.php';
 /**
  * Cambio de contraseña del usuario que ha iniciado sesión.
  *
@@ -67,12 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cambiar contraseña | Gimnasio Castillo Americano</title>
 <meta name="robots" content="noindex">
-<link rel="icon" href="assets/img/favicon.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
-<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+<link rel="icon" href="<?= asset('assets/img/favicon.ico') ?>" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="<?= asset('assets/img/favicon-32.png') ?>">
+<link rel="apple-touch-icon" href="<?= asset('assets/img/apple-touch-icon.png') ?>">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/auth.css">
+<link rel="stylesheet" href="<?= asset('assets/css/auth.css') ?>">
 </head>
 <body class="auth-body">
 
@@ -84,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="text-center mb-4">
             <div class="auth-logo">
-                <img src="assets/img/escudo/escudo.png" alt="">
+                <img src="<?= asset('assets/img/escudo/escudo.png') ?>" alt="">
             </div>
             <h1 class="auth-title"><?= $obligatorio ? 'Crea tu contraseña' : 'Cambiar contraseña' ?></h1>
             <p class="auth-sub"><?= htmlspecialchars(userName()) ?></p>

@@ -52,8 +52,8 @@ span.escudo-leon > img {
     background: linear-gradient(105deg, transparent 38%, rgba(255, 246, 214, .95) 50%, transparent 62%);
     background-size: 260% 100%;
     background-position: 130% 0;
-    -webkit-mask: url('../img/escudo/escudo.png') center / 100% 100% no-repeat;
-            mask: url('../img/escudo/escudo.png') center / 100% 100% no-repeat;
+    -webkit-mask: url('../img/escudo/escudo.png?v=2') center / 100% 100% no-repeat;
+            mask: url('../img/escudo/escudo.png?v=2') center / 100% 100% no-repeat;
     pointer-events: none;
     opacity: 0;
 }

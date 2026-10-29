@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/lib/asset_helper.php';
 require_once __DIR__ . '/vendor/autoload.php';
 \App\Base\Session::start();
 require_once __DIR__ . '/lib/csrf_helper.php';
@@ -19,15 +20,15 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
     <title>Acceso | Gimnasio Castillo Americano</title>
     <meta name="description" content="Ingreso al sistema académico del Gimnasio Castillo Americano para administradores, profesores y padres de familia.">
     <meta name="robots" content="noindex">
-    <link rel="icon" href="assets/img/favicon.ico" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
-    <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+    <link rel="icon" href="<?= asset('assets/img/favicon.ico') ?>" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= asset('assets/img/favicon-32.png') ?>">
+    <link rel="apple-touch-icon" href="<?= asset('assets/img/apple-touch-icon.png') ?>">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/escudo.css">
-    <link rel="stylesheet" href="assets/css/login.css">
-    <link rel="stylesheet" href="assets/css/login-intro.css">
+    <link rel="stylesheet" href="<?= asset('assets/css/escudo.css') ?>">
+    <link rel="stylesheet" href="<?= asset('assets/css/login.css') ?>">
+    <link rel="stylesheet" href="<?= asset('assets/css/login-intro.css') ?>">
 </head>
 <body class="lg-body">
 
@@ -41,31 +42,31 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
             <!-- Escudo original en piezas (assets/img/escudo/): la intro solo las mueve
                  hasta su sitio; al terminar queda idéntico al escudo original. -->
             <span class="escudo lg-escudo lg-intro" aria-hidden="true">
-                <img class="escudo-pieza escudo-bajo" src="assets/img/escudo/pieza-escudo-bajo.png" alt="" width="398" height="680">
-                <img class="escudo-pieza chevrones" src="assets/img/escudo/pieza-chevrones.png" alt="" width="398" height="680">
-                <img class="escudo-pieza estandartes" src="assets/img/escudo/pieza-estandartes.png" alt="" width="398" height="680">
-                <img class="escudo-pieza torre" src="assets/img/escudo/pieza-torre.png" alt="" width="398" height="680">
-                <img class="escudo-pieza almenas" src="assets/img/escudo/pieza-almenas.png" alt="" width="398" height="680">
-                <img class="escudo-pieza hojas" src="assets/img/escudo/pieza-hojas.png" alt="" width="398" height="680">
-                <img class="escudo-letra g" src="assets/img/escudo/letra-g.png" alt="" width="398" height="680">
-                <img class="escudo-letra a" src="assets/img/escudo/letra-a.png" alt="" width="398" height="680">
-                <img class="escudo-letra c" src="assets/img/escudo/letra-c.png" alt="" width="398" height="680">
+                <img class="escudo-pieza escudo-bajo" src="<?= asset('assets/img/escudo/pieza-escudo-bajo.png') ?>" alt="" width="398" height="680">
+                <img class="escudo-pieza chevrones" src="<?= asset('assets/img/escudo/pieza-chevrones.png') ?>" alt="" width="398" height="680">
+                <img class="escudo-pieza estandartes" src="<?= asset('assets/img/escudo/pieza-estandartes.png') ?>" alt="" width="398" height="680">
+                <img class="escudo-pieza torre" src="<?= asset('assets/img/escudo/pieza-torre.png') ?>" alt="" width="398" height="680">
+                <img class="escudo-pieza almenas" src="<?= asset('assets/img/escudo/pieza-almenas.png') ?>" alt="" width="398" height="680">
+                <img class="escudo-pieza hojas" src="<?= asset('assets/img/escudo/pieza-hojas.png') ?>" alt="" width="398" height="680">
+                <img class="escudo-letra g" src="<?= asset('assets/img/escudo/letra-g.png') ?>" alt="" width="398" height="680">
+                <img class="escudo-letra a" src="<?= asset('assets/img/escudo/letra-a.png') ?>" alt="" width="398" height="680">
+                <img class="escudo-letra c" src="<?= asset('assets/img/escudo/letra-c.png') ?>" alt="" width="398" height="680">
                 <!-- Cada león en partes para que corra; juntas son el león del escudo -->
                 <span class="escudo-leon izq corre">
-                    <img class="cola" src="assets/img/escudo/leon-izq-cola.png" alt="" width="398" height="680">
-                    <img class="pata-lejos" src="assets/img/escudo/leon-izq-pata.png" alt="" width="398" height="680">
-                    <img class="pata" src="assets/img/escudo/leon-izq-pata.png" alt="" width="398" height="680">
-                    <img class="cuerpo" src="assets/img/escudo/leon-izq-cuerpo.png" alt="" width="398" height="680">
-                    <img class="garra-baja" src="assets/img/escudo/leon-izq-garra-baja.png" alt="" width="398" height="680">
-                    <img class="garra-alta" src="assets/img/escudo/leon-izq-garra-alta.png" alt="" width="398" height="680">
+                    <img class="cola" src="<?= asset('assets/img/escudo/leon-izq-cola.png') ?>" alt="" width="398" height="680">
+                    <img class="pata-lejos" src="<?= asset('assets/img/escudo/leon-izq-pata.png') ?>" alt="" width="398" height="680">
+                    <img class="pata" src="<?= asset('assets/img/escudo/leon-izq-pata.png') ?>" alt="" width="398" height="680">
+                    <img class="cuerpo" src="<?= asset('assets/img/escudo/leon-izq-cuerpo.png') ?>" alt="" width="398" height="680">
+                    <img class="garra-baja" src="<?= asset('assets/img/escudo/leon-izq-garra-baja.png') ?>" alt="" width="398" height="680">
+                    <img class="garra-alta" src="<?= asset('assets/img/escudo/leon-izq-garra-alta.png') ?>" alt="" width="398" height="680">
                 </span>
                 <span class="escudo-leon der corre">
-                    <img class="cola" src="assets/img/escudo/leon-der-cola.png" alt="" width="398" height="680">
-                    <img class="pata-lejos" src="assets/img/escudo/leon-der-pata.png" alt="" width="398" height="680">
-                    <img class="pata" src="assets/img/escudo/leon-der-pata.png" alt="" width="398" height="680">
-                    <img class="cuerpo" src="assets/img/escudo/leon-der-cuerpo.png" alt="" width="398" height="680">
-                    <img class="garra-baja" src="assets/img/escudo/leon-der-garra-baja.png" alt="" width="398" height="680">
-                    <img class="garra-alta" src="assets/img/escudo/leon-der-garra-alta.png" alt="" width="398" height="680">
+                    <img class="cola" src="<?= asset('assets/img/escudo/leon-der-cola.png') ?>" alt="" width="398" height="680">
+                    <img class="pata-lejos" src="<?= asset('assets/img/escudo/leon-der-pata.png') ?>" alt="" width="398" height="680">
+                    <img class="pata" src="<?= asset('assets/img/escudo/leon-der-pata.png') ?>" alt="" width="398" height="680">
+                    <img class="cuerpo" src="<?= asset('assets/img/escudo/leon-der-cuerpo.png') ?>" alt="" width="398" height="680">
+                    <img class="garra-baja" src="<?= asset('assets/img/escudo/leon-der-garra-baja.png') ?>" alt="" width="398" height="680">
+                    <img class="garra-alta" src="<?= asset('assets/img/escudo/leon-der-garra-alta.png') ?>" alt="" width="398" height="680">
                 </span>
                 <span class="lg-impacto g"></span><span class="lg-impacto a"></span><span class="lg-impacto c"></span>
                 <span class="lg-polvo izq"></span><span class="lg-polvo der"></span>
@@ -160,7 +161,7 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
     </section>
 </main>
 
-<script src="assets/js/escudo.js" defer></script>
+<script src="<?= asset('assets/js/escudo.js') ?>" defer></script>
 <script>
 (function () {
     var passInput = document.getElementById('passInput');

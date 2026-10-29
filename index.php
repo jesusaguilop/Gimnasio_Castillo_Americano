@@ -11,7 +11,7 @@
             <div class="row align-items-center g-5">
                 <div class="col-lg-6" data-aos="fade-up">
                     <span class="hm-eyebrow">
-                        <img src="assets/img/escudo/escudo.png" alt="">
+                        <img src="<?= asset('assets/img/escudo/escudo.png') ?>" alt="">
                         Gimnasio Castillo Americano
                     </span>
                     <h1 class="hm-title">Bienvenidos a<br><span class="hm-title-grad">nuestro Castillo</span></h1>
@@ -24,10 +24,10 @@
                 <div class="col-lg-6" data-aos="fade-up" data-aos-delay="150">
                     <div class="hm-hero-media">
                         <div class="hm-frame">
-                            <img src="assets/img/colegio.png" alt="Gimnasio Castillo Americano">
+                            <img src="<?= asset('assets/img/colegio.png') ?>" alt="Gimnasio Castillo Americano">
                         </div>
                         <div class="hm-float-card">
-                            <img src="assets/img/escudo/escudo.png" alt="">
+                            <img src="<?= asset('assets/img/escudo/escudo.png') ?>" alt="">
                             <div><strong>Cultivar</strong><span>para cosechar</span></div>
                         </div>
                     </div>
@@ -42,7 +42,7 @@
             <div class="row align-items-center g-5">
                 <div class="col-lg-6 order-lg-2" data-aos="fade-left">
                     <div class="hm-img-stack">
-                        <img src="assets/img/img5.png" alt="Identidad institucional">
+                        <img src="<?= asset('assets/img/img5.png') ?>" alt="Identidad institucional">
                     </div>
                 </div>
                 <div class="col-lg-6 order-lg-1" data-aos="fade-right">
@@ -76,7 +76,7 @@
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
                     <article class="hm-card">
                         <div class="hm-card-media">
-                            <img src="assets/img/colegio.png" alt="">
+                            <img src="<?= asset('assets/img/colegio.png') ?>" alt="">
                             <span class="hm-card-icon"><i class="bi bi-shield-check" aria-hidden="true"></i></span>
                         </div>
                         <div class="hm-card-body">
@@ -89,7 +89,7 @@
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
                     <article class="hm-card">
                         <div class="hm-card-media">
-                            <img src="assets/img/img2.png" alt="Excelencia Académica">
+                            <img src="<?= asset('assets/img/img2.png') ?>" alt="Excelencia Académica">
                             <span class="hm-card-icon"><i class="bi bi-mortarboard-fill" aria-hidden="true"></i></span>
                         </div>
                         <div class="hm-card-body">
@@ -102,7 +102,7 @@
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="300">
                     <article class="hm-card">
                         <div class="hm-card-media">
-                            <img src="assets/img/img3.png" alt="Comunidad Educativa">
+                            <img src="<?= asset('assets/img/img3.png') ?>" alt="Comunidad Educativa">
                             <span class="hm-card-icon"><i class="bi bi-people-fill" aria-hidden="true"></i></span>
                         </div>
                         <div class="hm-card-body">

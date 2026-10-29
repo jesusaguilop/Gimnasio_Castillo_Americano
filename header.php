@@ -1,4 +1,4 @@
-<?php $__page = basename($_SERVER['PHP_SELF'] ?? 'index.php'); ?>
+<?php require_once __DIR__ . '/lib/asset_helper.php'; $__page = basename($_SERVER['PHP_SELF'] ?? 'index.php'); ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= isset($pageTitle) ? htmlspecialchars($pageTitle) . ' | ' : '' ?>Gimnasio Castillo Americano</title>
     <meta name="description" content="<?= htmlspecialchars($pageDesc ?? 'Gimnasio Castillo Americano, colegio en Valledupar (Cesar): educación inicial, primaria, secundaria y media con formación integral.') ?>">
-    <link rel="icon" href="assets/img/favicon.ico" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
-    <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+    <link rel="icon" href="<?= asset('assets/img/favicon.ico') ?>" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= asset('assets/img/favicon-32.png') ?>">
+    <link rel="apple-touch-icon" href="<?= asset('assets/img/apple-touch-icon.png') ?>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
@@ -16,10 +16,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/landing.css">
-    <link rel="stylesheet" href="assets/css/home.css">
-    <link rel="stylesheet" href="assets/css/escudo.css">
-    <script src="assets/js/escudo.js" defer></script>
+    <link rel="stylesheet" href="<?= asset('assets/css/landing.css') ?>">
+    <link rel="stylesheet" href="<?= asset('assets/css/home.css') ?>">
+    <link rel="stylesheet" href="<?= asset('assets/css/escudo.css') ?>">
+    <script src="<?= asset('assets/js/escudo.js') ?>" defer></script>
     <style>
         :root { --gca-gold: #c9a24d; --gca-gold-hover: #b8933f; --gca-dark: #0f0f0f; }
         body { font-family: 'Inter', system-ui, sans-serif; }
@@ -242,11 +242,13 @@
         sessionStorage.setItem('gcaIntro', '1');
     } catch (e) { return; }
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // Versión de las capas (ver lib/asset_helper.php): evita mezclar imágenes viejas en caché
+    var v = '?v=<?= (int) @filemtime(__DIR__ . '/assets/img/escudo/leon-izq-cuerpo.png') ?>';
     // Cada león va en partes (cola, pata, cuerpo, garras) para que corra
     var leon = function (l) {
         // pata-lejos: copia de la pata trasera, la cuarta pata mientras corre
         return '<span class="escudo-leon ' + l + ' corre">' + ['cola', 'pata-lejos', 'pata', 'cuerpo', 'garra-baja', 'garra-alta'].map(function (p) {
-            return '<img class="' + p + '" src="assets/img/escudo/leon-' + l + '-' + (p === 'pata-lejos' ? 'pata' : p) + '.png" alt="">';
+            return '<img class="' + p + '" src="assets/img/escudo/leon-' + l + '-' + (p === 'pata-lejos' ? 'pata' : p) + '.png' + v + '" alt="">';
         }).join('') + '</span>';
     };
     var ondas = '';
@@ -258,7 +260,7 @@
     d.className = 'gca-intro';
     d.setAttribute('role', 'presentation');
     d.innerHTML = '<div class="gca-intro__centro">'
-        + '<span class="escudo"><img class="escudo-base" src="assets/img/escudo/escudo-base.png" alt="">' + leon('izq') + leon('der') + ondas + '</span>'
+        + '<span class="escudo"><img class="escudo-base" src="<?= asset('assets/img/escudo/escudo-base.png') ?>" alt="">' + leon('izq') + leon('der') + ondas + '</span>'
         + '<div class="gca-intro__nombre"><small>GIMNASIO</small><strong>Castillo Americano</strong><em>CULTIVAR PARA COSECHAR</em></div>'
         + '</div><button type="button" class="gca-intro__saltar">Saltar intro</button>';
     document.body.appendChild(d);
@@ -285,9 +287,9 @@
     <div class="container">
         <a class="navbar-brand" href="index.php">
             <span class="escudo" aria-hidden="true">
-                <img class="escudo-base" src="assets/img/escudo/escudo-base.png" alt="" width="398" height="680">
-                <img class="escudo-leon izq" src="assets/img/escudo/leon-izq.png" alt="" width="398" height="680">
-                <img class="escudo-leon der" src="assets/img/escudo/leon-der.png" alt="" width="398" height="680">
+                <img class="escudo-base" src="<?= asset('assets/img/escudo/escudo-base.png') ?>" alt="" width="398" height="680">
+                <img class="escudo-leon izq" src="<?= asset('assets/img/escudo/leon-izq.png') ?>" alt="" width="398" height="680">
+                <img class="escudo-leon der" src="<?= asset('assets/img/escudo/leon-der.png') ?>" alt="" width="398" height="680">
             </span>
             <span class="brand-text">Gimnasio Castillo Americano</span>
         </a>
