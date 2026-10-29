@@ -138,7 +138,7 @@ include "includes/header.php";
                                                 <?= count($estudiantes) ?> estudiantes &middot; <?= count($materias_curso) ?> materias del plan
                                             </span>
                                             <form method="POST" action="generar_boletines_curso.php" class="m-0"
-                                                  onsubmit="return confirm('¿Generar los boletines de TODOS los estudiantes con notas de este curso?\n\nSe guardan con su promedio y puesto. Los boletines que ya estaban publicados vuelven a quedar pendientes hasta que administración los publique de nuevo.')">
+                                                  data-confirm="¿Generar los boletines de todos los estudiantes con notas de este curso?&#10;&#10;Se guardan con su promedio y puesto. Los que ya estaban publicados vuelven a quedar pendientes hasta que administración los publique de nuevo." data-confirm-ok="Generar boletines">
                                                 <?= campo_csrf() ?>
                                                 <input type="hidden" name="curso" value="<?= (int) $curso['id'] ?>">
                                                 <input type="hidden" name="periodo" value="<?= htmlspecialchars($periodo_activo) ?>">

@@ -3,6 +3,7 @@ require_once __DIR__ . '/nav.php';
 $__gcaCss = __DIR__ . '/../../assets/css/admin.css';
 $__gcaJs  = __DIR__ . '/../../assets/js/admin.js';
 $__gcaVer = (int) @filemtime($__gcaCss) . '-' . (int) @filemtime($__gcaJs);
+require_once __DIR__ . '/../../lib/asset_helper.php';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -35,4 +36,5 @@ $__gcaVer = (int) @filemtime($__gcaCss) . '-' . (int) @filemtime($__gcaJs);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
     <link href="../assets/css/admin.css?v=<?= $__gcaVer ?>" rel="stylesheet">
+    <link href="../<?= asset('assets/css/gca-ui.css') ?>" rel="stylesheet">
 </head>

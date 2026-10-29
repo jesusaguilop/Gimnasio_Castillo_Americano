@@ -3,11 +3,19 @@ require_once __DIR__ . '/../includes/init.php';
 checkRole('profesor');
 require_once "../lib/boletin_generator.php";
 require_once "../lib/csrf_helper.php";
+require_once "../lib/alertas_helper.php";
+require_once "../lib/limite_helper.php";
 
 // Generar en masa cambia datos (y despublica), así que solo por POST con token
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !validar_token_csrf($_POST['_csrf_token'] ?? '')) {
     header("Location: direccion_grupo.php");
     exit;
+}
+
+// Un curso entero son decenas de PDF: máximo 6 generaciones masivas cada 10 minutos
+if (limiteSuperado('generar-curso', 'u' . userId(), 6, 10)) {
+    http_response_code(429);
+    exit('Ya generaste varios cursos seguidos. Espera unos minutos e intenta de nuevo.');
 }
 
 @set_time_limit(300); // generar muchos PDFs puede tardar; evita timeout
@@ -52,6 +60,13 @@ if ($curso) {
             'promedio' => $r['promedio'] ?? null,
             'puesto'   => $r['puesto'] ?? null,
         ];
+    }
+
+    // Administración recibe el aviso de que hay boletines por publicar
+    try {
+        alertarBoletinesListos($conexion, $curso_id, $periodo, $anio, $generados);
+    } catch (\Throwable $e) {
+        error_log("[generar_boletines_curso] aviso a admin: " . $e->getMessage());
     }
 
     // id de cada boletín para enlazar al visor protegido (el PDF no es público)

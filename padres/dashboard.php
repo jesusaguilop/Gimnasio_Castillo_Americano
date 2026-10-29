@@ -2,12 +2,15 @@
 
 require_once __DIR__ . '/../includes/init.php';
 checkRole('padre');
-
-$padre_id = userId();
-
-/* ── Marcar una alerta como leída (solo las dirigidas a este padre) ── */
 require_once __DIR__ . '/../lib/csrf_helper.php';
 require_once __DIR__ . '/../lib/alertas_helper.php';
+require_once __DIR__ . '/../lib/rank_helper.php';
+
+$padre_id = userId();
+$anio_activo = (int) (getConfig('anio_activo') ?? date('Y'));
+$periodo_activo = (string) (getConfig('periodo_activo') ?? '1');
+
+/* ── Marcar un aviso como leído (solo los dirigidos a este padre) ── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_leida'])) {
     if (validar_token_csrf($_POST['_csrf_token'] ?? '')) {
         marcarAlertaLeida($conexion, (int) ($_POST['alerta_id'] ?? 0), $padre_id, 'padre');
@@ -16,12 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['marcar_leida'])) {
     exit;
 }
 
-$nombre_padre = $_SESSION["nombre"] ?? "Padre de Familia";
-
-/* ── Get children ── */
+/* ── Hijos vinculados ── */
 $hijos = $conexion->prepare("
-    SELECT e.id, e.nombre, e.documento,
-           c.grado, c.nombre AS curso_nombre
+    SELECT e.id, e.nombre, e.curso_id, c.grado, c.nombre AS curso_nombre
     FROM estudiante_acudientes ea
     JOIN estudiantes e ON e.id = ea.estudiante_id
     LEFT JOIN cursos c ON e.curso_id = c.id
@@ -31,194 +31,200 @@ $hijos = $conexion->prepare("
 $hijos->execute([$padre_id]);
 $hijos = $hijos->fetchAll(PDO::FETCH_ASSOC);
 
-/* ── Get unread alerts ── */
-$alertas_padre = $conexion->prepare("
-    SELECT * FROM alertas
-    WHERE (para_usuario_id = ? OR (para_rol = 'padre' AND para_usuario_id IS NULL))
-    AND leido = FALSE
+/* ── Avisos sin leer (los 3 más recientes) ── */
+$avisos = $conexion->prepare("
+    SELECT id, tipo, titulo, mensaje, created_at FROM alertas
+    WHERE (para_usuario_id = ? OR (para_rol = 'padre' AND para_usuario_id IS NULL)) AND leido = FALSE
     ORDER BY created_at DESC
-    LIMIT 5
+    LIMIT 3
 ");
-$alertas_padre->execute([$padre_id]);
-$alertas_padre = $alertas_padre->fetchAll(PDO::FETCH_ASSOC);
+$avisos->execute([$padre_id]);
+$avisos = $avisos->fetchAll(PDO::FETCH_ASSOC);
 
-/* ── Check for available boletines ── */
-$hijos_ids = array_column($hijos, 'id');
-$boletines_disponibles = [];
-if (count($hijos_ids) > 0) {
-    $placeholders = implode(',', array_fill(0, count($hijos_ids), '?'));
-    $stmtB = $conexion->prepare("
-        SELECT DISTINCT bp.estudiante_id, bp.periodo, bp.year, e.nombre AS estudiante_nombre
-        FROM boletines_pdf bp
-        JOIN estudiantes e ON bp.estudiante_id = e.id
-        WHERE bp.estudiante_id IN ($placeholders)
-          AND bp.publicado = TRUE AND bp.year = ?
-        ORDER BY bp.estudiante_id, bp.periodo
+/* ── Boletines publicados del año y el resumen del último de cada hijo ── */
+$publicados = [];
+if ($hijos) {
+    $ids = array_column($hijos, 'id');
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    $st = $conexion->prepare("
+        SELECT estudiante_id, periodo, publicado_en FROM boletines_pdf
+        WHERE estudiante_id IN ($ph) AND year = ? AND publicado = TRUE
+        ORDER BY periodo
     ");
-    $stmtB->execute(array_merge($hijos_ids, [(int)(getConfig('anio_activo') ?? date('Y'))]));
-    foreach ($stmtB->fetchAll(PDO::FETCH_ASSOC) as $b) {
-        $boletines_disponibles[$b['estudiante_id']][] = $b;
+    $st->execute(array_merge($ids, [$anio_activo]));
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $b) {
+        $publicados[(int) $b['estudiante_id']][(string) $b['periodo']] = $b['publicado_en'];
     }
 }
+$resumen = [];
+foreach ($hijos as $h) {
+    $per = array_keys($publicados[(int) $h['id']] ?? []);
+    if (!$per) continue;
+    $ultimo = (string) end($per);
+    $notas = obtenerNotasPonderadas($conexion, (int) $h['id'], $ultimo, $anio_activo);
+    $prom = $notas ? calcularDefinitivas($notas)['general'] : null;
+    $resumen[(int) $h['id']] = [
+        'periodo'  => $ultimo,
+        'promedio' => $prom,
+        'puesto'   => $notas && $prom !== null ? calcularPuestoCurso($conexion, (int) $h['id'], $ultimo, $anio_activo, (int) $h['curso_id']) : null,
+        'fecha'    => $publicados[(int) $h['id']][$ultimo],
+    ];
+}
 
-$h = (int)date('H');
-$saludo = $h < 12 ? 'Buenos días' : ($h < 18 ? 'Buenas tardes' : 'Buenas noches');
-$pageTitle = "Inicio";
-include "includes/header.php";
+/** Clase del chip de desempeño */
+function ppChip(?float $nota, int $anio): array
+{
+    $d = desempenoNota($nota, $anio);
+    return [$d, ['Superior' => 'sup', 'Alto' => 'alto', 'Básico' => 'bas', 'Bajo' => 'bajo'][$d]];
+}
+function ppTipoAviso(string $tipo): string
+{
+    if (str_starts_with($tipo, 'riesgo')) return 'riesgo';
+    if (str_starts_with($tipo, 'boletin')) return 'boletin';
+    return 'sistema';
+}
+function ppFecha(?string $ts): string
+{
+    if (!$ts) return '';
+    $d = new DateTime($ts, new DateTimeZone('UTC'));
+    $d->setTimezone(new DateTimeZone('America/Bogota'));
+    $meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    return $d->format('j') . ' ' . $meses[(int) $d->format('n') - 1];
+}
+
+$hora = (int) date('H');
+$saludo = $hora < 12 ? 'Buenos días' : ($hora < 18 ? 'Buenas tardes' : 'Buenas noches');
+$dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+$mesesL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+$fechaHoy = $dias[(int) date('w')] . ' ' . date('j') . ' de ' . $mesesL[(int) date('n') - 1];
+
+$pageTitle = 'Mis hijos';
+$ppActivo = 'inicio';
+include 'includes/header.php';
 ?>
 
-<body>
-
-<header class="app-header">
-    <a href="dashboard.php" class="app-header-brand">
-        <img src="../assets/img/escudo/escudo.png" alt="">
-        <div>
-            <span>Familia GCA</span>
-            <small>Panel de Padres</small>
-        </div>
-    </a>
-    <div class="header-actions">
-        <button type="button" class="btn-header" id="dmToggle" aria-label="Cambiar modo oscuro" aria-pressed="false" onclick="var on=document.body.classList.toggle('dark-mode');document.documentElement.setAttribute('data-bs-theme',on?'dark':'');localStorage.setItem('gca-dark-mode',on);this.setAttribute('aria-pressed',on);this.querySelector('i').className=on?'bi bi-sun':'bi bi-moon-stars';">
-            <i class="bi bi-moon-stars" aria-hidden="true"></i>
-        </button>
-        <a href="../auth/logout.php" class="btn-header logout">
-            <i class="bi bi-box-arrow-right"></i> Salir
-        </a>
-    </div>
-</header>
-
-<main class="app-content">
-
-    <div class="parent-welcome">
-        <div class="pw-txt">
-            <span class="pw-greet"><?= $saludo ?></span>
-            <h4>Hola, <span><?= htmlspecialchars($nombre_padre) ?></span></h4>
-            <p>Selecciona un hijo para ver su boletín</p>
-        </div>
-        <div class="pw-emoji"><i class="bi bi-house-heart-fill"></i></div>
-    </div>
-    <style>
-        .parent-welcome {
-            position: relative; overflow: hidden;
-            background:
-                radial-gradient(400px 160px at 90% -30%, rgba(212,175,55,.28), transparent 70%),
-                linear-gradient(135deg, #0f1117 0%, #1c1f2b 100%);
-            border: 1px solid rgba(212,175,55,.22);
-            border-radius: var(--radius);
-            padding: 20px 22px; margin-bottom: 20px;
-            display: flex; align-items: center; justify-content: space-between; gap: 14px;
-            box-shadow: 0 10px 30px rgba(0,0,0,.14);
-        }
-        .parent-welcome .pw-greet {
-            display:inline-block; font-size:10px; letter-spacing:1.4px; text-transform:uppercase;
-            color:var(--gold); background:rgba(212,175,55,.1); border:1px solid rgba(212,175,55,.22);
-            padding:2px 10px; border-radius:20px; margin-bottom:8px;
-        }
-        .parent-welcome h4 { font-family:'Cormorant Garamond',serif; color:#f0ede6; margin:0 0 2px; font-size:22px; font-weight:700; }
-        .parent-welcome h4 span {
-            background:linear-gradient(90deg,#d4af37 20%,#f6e4a6 50%,#d4af37 80%); background-size:200% auto;
-            -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;
-            animation: pwShine 5s linear infinite;
-        }
-        @keyframes pwShine { to { background-position:200% center; } }
-        .parent-welcome p { color:rgba(240,237,230,.6); margin:0; font-size:12.5px; }
-        .parent-welcome .pw-emoji {
-            width:54px; height:54px; flex-shrink:0; border-radius:16px;
-            display:flex; align-items:center; justify-content:center;
-            background:rgba(212,175,55,.12); border:1px solid rgba(212,175,55,.25);
-        }
-        .parent-welcome .pw-emoji i { font-size:26px; color:var(--gold); animation: floaty 3.5s ease-in-out infinite; }
-        @keyframes floaty { 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-5px);} }
-        @media (prefers-reduced-motion: reduce){ .parent-welcome h4 span, .parent-welcome .pw-emoji i { animation:none; } }
-    </style>
-
-    <h5 class="section-title" style="margin-bottom:12px;">
-        <i class="bi bi-people-fill"></i>Mis Hijos
-    </h5>
-
-    <?php if (count($alertas_padre) > 0): ?>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
-            <?php foreach ($alertas_padre as $al): ?>
-                <div role="note" style="background:var(--alert-bg);border-left:4px solid var(--alert-color);border-radius:10px;padding:10px 14px;">
-                    <div class="d-flex align-items-start gap-2">
-                        <i class="bi bi-exclamation-triangle-fill" style="color:var(--alert-color);font-size:16px;margin-top:1px;" aria-hidden="true"></i>
-                        <div style="flex:1;min-width:0;">
-                            <strong style="font-size:13px;color:var(--text-primary);"><?= htmlspecialchars($al['titulo']) ?></strong>
-                            <p style="font-size:12px;color:var(--text-secondary);margin:2px 0 0;"><?= nl2br(htmlspecialchars($al['mensaje'])) ?></p>
-                        </div>
-                        <form method="POST" style="margin:0;">
-                            <?= campo_csrf() ?>
-                            <input type="hidden" name="alerta_id" value="<?= (int) $al['id'] ?>">
-                            <button type="submit" name="marcar_leida" class="alerta-ok"
-                                    aria-label="Marcar como leída: <?= htmlspecialchars($al['titulo']) ?>">
-                                Entendido
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if (count($hijos) === 0): ?>
-        <div class="app-card">
-            <div class="empty-state">
-                <i class="bi bi-people"></i>
-                <h5>Sin estudiantes vinculados</h5>
-                <p>No hay hijos asignados a tu cuenta. Consulta con la administración del colegio.</p>
-            </div>
-        </div>
-    <?php else: ?>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-            <?php foreach ($hijos as $h):
-                $h_boletines = $boletines_disponibles[$h['id']] ?? [];
-                $nuevo = count($h_boletines) > 0;
-            ?>
-                <a href="boletin.php?estudiante=<?= $h['id'] ?>" class="student-card" style="position:relative;">
-                    <?php if ($nuevo): ?>
-                        <span style="position:absolute;top:-4px;right:-4px;width:20px;height:20px;background:#dc3545;color:#fff;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface);">
-                            <i class="bi bi-file-pdf-fill" style="font-size:8px;"></i>
-                        </span>
-                    <?php endif; ?>
-                    <div class="student-avatar">
-                        <?= htmlspecialchars(mb_strtoupper(mb_substr($h['nombre'], 0, 2))) ?>
-                    </div>
-                    <div class="student-info">
-                        <h6><?= htmlspecialchars($h['nombre']) ?></h6>
-                        <p>
-                            <?php if ($h['grado']): ?>
-                                Curso <?= htmlspecialchars($h['grado'] . ' ' . $h['curso_nombre']) ?>
-                            <?php else: ?>
-                                Sin curso asignado
-                            <?php endif; ?>
-                        </p>
-                        <div style="display:flex;gap:4px;flex-wrap:wrap;">
-                            <?php if ($h['grado']): ?>
-                                <span class="badge-curso">
-                                    <i class="bi bi-book-fill" style="font-size:9px;"></i>
-                                    <?= htmlspecialchars($h['grado']) ?>
-                                </span>
-                            <?php endif; ?>
-                            <?php if ($nuevo): ?>
-                                <span style="background:rgba(25,135,84,0.1);color:#198754;font-size:10px;font-weight:600;padding:2px 10px;border-radius:20px;">
-                                    <i class="bi bi-file-pdf-fill"></i> Boletín
-                                </span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <i class="bi bi-chevron-right student-chevron"></i>
-                </a>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-
-    <div style="text-align:center;margin-top:32px;padding-top:20px;border-top:1px solid var(--border);">
-        <p style="font-size:11px;color:var(--text-muted);margin:0;">
-            <i class="bi bi-shield-check me-1"></i>
-            Gimnasio Castillo Americano &middot; Boletín Académico
+    <section class="pp-saludo">
+        <p class="pp-fecha"><?= $fechaHoy ?></p>
+        <h1><?= $saludo ?>, <?= htmlspecialchars($_SESSION['nombre'] ?? '') ?></h1>
+        <p>
+            <?php if (count($hijos) === 1): ?>
+                Aquí encuentra los boletines de <?= htmlspecialchars($hijos[0]['nombre']) ?> y los avisos del colegio.
+            <?php else: ?>
+                Aquí encuentra los boletines de sus hijos y los avisos del colegio.
+            <?php endif; ?>
         </p>
-    </div>
+    </section>
 
-</main>
+    <?php if ($avisos): ?>
+    <section class="pp-sec" aria-labelledby="tAvisos">
+        <div class="pp-sec-head">
+            <h2 id="tAvisos">Avisos sin leer</h2>
+            <a href="avisos.php">Ver todos</a>
+        </div>
+        <ul class="pp-avisos pp-card">
+            <?php foreach ($avisos as $a):
+                [$base, $eid] = array_pad(explode(':', (string) $a['tipo'], 2), 2, null); ?>
+                <li class="pp-aviso nuevo" data-tipo="<?= ppTipoAviso((string) $a['tipo']) ?>">
+                    <span class="pp-aviso-ico" aria-hidden="true">
+                        <i class="bi <?= ppTipoAviso((string) $a['tipo']) === 'riesgo' ? 'bi-graph-down-arrow' : (ppTipoAviso((string) $a['tipo']) === 'boletin' ? 'bi-file-earmark-check' : 'bi-info-circle') ?>"></i>
+                    </span>
+                    <div>
+                        <h3><?= htmlspecialchars(trim(preg_replace('/^[\p{So}\p{Sk}\x{FE0F}\x{200D}\s]+/u', '', (string) $a['titulo']))) ?></h3>
+                        <p><?= nl2br(htmlspecialchars($a['mensaje'])) ?></p>
+                        <div class="pp-aviso-meta">
+                            <span><?= ppFecha($a['created_at']) ?></span>
+                            <?php if ((int) $eid): ?>
+                                <a href="boletin.php?estudiante=<?= (int) $eid ?>">Ver boletín</a>
+                            <?php endif; ?>
+                            <form method="POST" style="margin:0" data-no-loading>
+                                <?= campo_csrf() ?>
+                                <input type="hidden" name="alerta_id" value="<?= (int) $a['id'] ?>">
+                                <button type="submit" name="marcar_leida">Marcar como leído</button>
+                            </form>
+                        </div>
+                    </div>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </section>
+    <?php endif; ?>
 
-<?php include "includes/footer.php"; ?>
+    <section class="pp-sec" aria-labelledby="tHijos">
+        <div class="pp-sec-head">
+            <h2 id="tHijos"><?= count($hijos) === 1 ? 'Su hijo' : 'Sus hijos' ?></h2>
+            <span style="font-size:13px;color:var(--pp-muted)">Año lectivo <?= $anio_activo ?></span>
+        </div>
+
+        <?php if (!$hijos): ?>
+            <div class="pp-card pp-vacio">
+                <div class="ico" aria-hidden="true"><i class="bi bi-people"></i></div>
+                <h2>Aún no hay estudiantes vinculados</h2>
+                <p>Su cuenta no tiene hijos asociados todavía. Comuníquese con la administración del colegio para vincularlos.</p>
+            </div>
+        <?php else: ?>
+            <div class="pp-hijos">
+                <?php foreach ($hijos as $h):
+                    $hid = (int) $h['id'];
+                    $pubs = $publicados[$hid] ?? [];
+                    $r = $resumen[$hid] ?? null;
+                    $ini = mb_strtoupper(implode('', array_map(fn($p) => mb_substr($p, 0, 1), array_slice(preg_split('/\s+/', trim($h['nombre'])), 0, 2))));
+                ?>
+                <article class="pp-card pp-hijo">
+                    <div class="pp-hijo-top">
+                        <span class="pp-hijo-ini" aria-hidden="true"><?= htmlspecialchars($ini) ?></span>
+                        <div>
+                            <h3><?= htmlspecialchars($h['nombre']) ?></h3>
+                            <p><?= $h['grado'] ? 'Curso ' . htmlspecialchars($h['grado'] . ' ' . $h['curso_nombre']) : 'Sin curso asignado' ?></p>
+                        </div>
+                    </div>
+
+                    <div class="pp-periodos" role="list" aria-label="Boletines del año por período">
+                        <?php foreach (['1', '2', '3', '4'] as $p):
+                            if (isset($pubs[$p])): ?>
+                                <a role="listitem" class="pp-per ok" href="boletin.php?estudiante=<?= $hid ?>&amp;periodo=<?= $p ?>"
+                                   aria-label="Período <?= $p ?>: boletín publicado. Ver"><b>P<?= $p ?></b>Publicado</a>
+                            <?php elseif ($p === $periodo_activo): ?>
+                                <span role="listitem" class="pp-per curso" aria-label="Período <?= $p ?>: en curso"><b>P<?= $p ?></b>En curso</span>
+                            <?php else: ?>
+                                <span role="listitem" class="pp-per" aria-label="Período <?= $p ?>: sin boletín"><b>P<?= $p ?></b>&mdash;</span>
+                            <?php endif;
+                        endforeach; ?>
+                    </div>
+
+                    <?php if ($r): ?>
+                        <div class="pp-ultimo">
+                            <?php if ($r['promedio'] !== null): [$dNom, $dCls] = ppChip((float) $r['promedio'], $anio_activo); ?>
+                                <span class="pp-prom"><?= number_format((float) $r['promedio'], 1) ?></span>
+                            <?php endif; ?>
+                            <div class="pp-ultimo-txt">
+                                <small>Último boletín · período <?= htmlspecialchars($r['periodo']) ?><?= $r['fecha'] ? ' · ' . ppFecha($r['fecha']) : '' ?></small>
+                                <div class="linea">
+                                    <?php if ($r['promedio'] !== null): ?>
+                                        <span class="pp-chip <?= $dCls ?>"><?= $dNom ?></span>
+                                    <?php endif; ?>
+                                    <?php if ($r['puesto']): ?>
+                                        <span>Puesto <?= htmlspecialchars(str_replace('/', ' de ', $r['puesto'])) ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <a class="pp-btn" href="boletin.php?estudiante=<?= $hid ?>">Ver boletín <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                    <?php else: ?>
+                        <p class="pp-vacio-txt">Todavía no hay boletines publicados este año. Le avisaremos aquí cuando el colegio publique el primero.</p>
+                        <a class="pp-btn sec" href="boletin.php?estudiante=<?= $hid ?>">Ver detalle</a>
+                    <?php endif; ?>
+                </article>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </section>
+
+    <aside class="pp-ayuda" aria-label="Contacto del colegio">
+        <p><strong>¿Tiene dudas sobre un boletín?</strong> La administración del colegio le ayuda.</p>
+        <div>
+            <a href="tel:+573216548235"><i class="bi bi-telephone" aria-hidden="true"></i> 321 654 8235</a>
+            <a href="mailto:gimnasiocastilloamericano@gmail.com"><i class="bi bi-envelope" aria-hidden="true"></i> Escribir</a>
+        </div>
+    </aside>
+
+<?php include 'includes/footer.php'; ?>

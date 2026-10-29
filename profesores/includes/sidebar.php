@@ -61,7 +61,7 @@ $isActive = fn($file) => $currentFile === $file ? 'active' : '';
     }
     $num_alertas_prof = $sb['alertas'];
     ?>
-    <a href="alertas.php" style="display:flex;align-items:center;gap:10px;margin:4px 18px 8px;padding:9px 14px;border-radius:10px;text-decoration:none;color:var(--text-sidebar-muted);font-size:13px;font-weight:500;transition:all.2s;border:1px solid rgba(212,175,55,0.08);background:rgba(212,175,55,0.03);"
+    <a href="alertas.php" style="display:flex;align-items:center;gap:10px;margin:4px 18px 8px;padding:9px 14px;border-radius:10px;text-decoration:none;color:var(--text-sidebar-muted, rgba(240,237,230,.74));font-size:13px;font-weight:500;transition:all.2s;border:1px solid rgba(212,175,55,0.08);background:rgba(212,175,55,0.03);"
        onmouseover="this.style.background='rgba(212,175,55,0.08)'" onmouseout="this.style.background='rgba(212,175,55,0.03)'">
         <i class="bi bi-bell" style="font-size:15px;"></i>
         Notificaciones

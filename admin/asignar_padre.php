@@ -260,7 +260,7 @@ include "includes/header.php";
                                                     <strong class="d-block text-truncate"><?= htmlspecialchars($e["nombre"]) ?></strong>
                                                     <small class="text-muted d-block"><i class="bi bi-link-45deg" aria-hidden="true"></i> Acudiente: <?= htmlspecialchars($a["nombre"]) ?></small>
                                                 </span>
-                                                <form method="POST" onsubmit="return confirm('¿Quitar este vínculo?');">
+                                                <form method="POST" data-confirm="¿Quitar este vínculo? El acudiente dejará de ver los boletines de este estudiante." data-confirm-ok="Sí, quitar">
                                                     <?= campo_csrf() ?>
                                                     <input type="hidden" name="grado" value="<?= htmlspecialchars($grado) ?>">
                                                     <input type="hidden" name="estudiante_id" value="<?= (int) $e["id"] ?>">

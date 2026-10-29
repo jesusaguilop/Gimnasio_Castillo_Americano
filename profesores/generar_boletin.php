@@ -4,6 +4,14 @@ checkRole("profesor");
 require_once "../lib/boletin_generator.php";
 require_once "../lib/mail_helper.php";
 require_once "../lib/csrf_helper.php";
+require_once "../lib/alertas_helper.php";
+require_once "../lib/limite_helper.php";
+
+// Generar un PDF es pesado para el servidor: 40 cada 10 minutos por profesor
+if (limiteSuperado('generar', 'u' . userId(), 40, 10)) {
+    http_response_code(429);
+    exit('Demasiados boletines generados seguidos. Espera unos minutos e intenta de nuevo.');
+}
 
 /**
  * Muestra una página de mensaje con estilo (en vez de un die() en texto plano)
@@ -88,6 +96,15 @@ if (!$res['ok']) {
 // El boletín queda PENDIENTE de publicación: NO se envía al padre aquí.
 // El administrador decide el paso al padre desde "Gestión de Boletines".
 // El paz y salvo (marcado por el director) queda registrado como referencia para el admin.
+
+// Administración recibe el aviso de que hay un boletín por publicar
+try {
+    $cid = $conexion->prepare("SELECT curso_id FROM estudiantes WHERE id = ?");
+    $cid->execute([(int) $estudiante_id]);
+    alertarBoletinesListos($conexion, (int) $cid->fetchColumn(), $periodo, $anio, 1);
+} catch (\Throwable $e) {
+    error_log("[generar_boletin] aviso a admin: " . $e->getMessage());
+}
 
 // Transmitir el PDF al navegador (pestaña nueva)
 header('Content-Type: application/pdf');

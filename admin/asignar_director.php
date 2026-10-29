@@ -180,9 +180,9 @@ include "includes/header.php";
                     .then(r => r.text())
                     .then(res => {
                         if (res === 'ok') location.reload();
-                        else alert('No se pudo eliminar la asignación. Intente de nuevo.');
+                        else GCA.toast('No se pudo eliminar la asignación. Intente de nuevo.', { tipo: 'bad' });
                     })
-                    .catch(() => alert('No se pudo conectar con el servidor. Intente de nuevo.'));
+                    .catch(() => GCA.toast('No se pudo conectar con el servidor. Intente de nuevo.', { tipo: 'bad' }));
             });
         }
     </script>

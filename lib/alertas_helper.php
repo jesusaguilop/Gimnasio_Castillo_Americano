@@ -213,7 +213,7 @@ function verificarRiesgoAcademicoCurso($conexion, array $estudiante_ids, $period
             'admin', null];
 
         foreach ($directores[(int) $e['curso_id']] ?? [] as $dirId) {
-            $alertas[] = ['riesgo_academico', '🚨 Alerta: estudiante en riesgo',
+            $alertas[] = ['riesgo_academico', 'Estudiante en riesgo académico',
                 "{$e['nombre']} está en riesgo de perder el año. Áreas deficientes: {$detalle}. Promedio acumulado: {$gen}. Revisa el consolidado de tu curso.",
                 'profesor', $dirId];
         }
@@ -222,10 +222,66 @@ function verificarRiesgoAcademicoCurso($conexion, array $estudiante_ids, $period
             ? implode(', ', array_map(fn($t) => preg_replace('/ \([0-9.]+\)$/', '', $t), $x['areas']))
             : 'el promedio general';
         foreach (array_unique($padres[$eid] ?? []) as $padreId) {
-            $alertas[] = ['riesgo_academico', '📢 Alerta académica — Su hijo está en riesgo',
+            $alertas[] = ['riesgo_academico:' . $eid, 'Alerta académica: su hijo está en riesgo',
                 "Estimado padre, informamos que {$e['nombre']} presenta un rendimiento académico por debajo del mínimo en: {$areasPadre}. Puede ver el detalle en el boletín del período {$periodo}. Es importante tomar medidas de refuerzo antes del 4to período.",
                 'padre', $padreId];
         }
     }
     return crearAlertas($conexion, $alertas);
 }
+
+/**
+ * Avisa a los acudientes que ya pueden ver el boletín (al publicarlo el admin).
+ * $publicados: filas con estudiante_id, periodo y year. El tipo lleva el id del
+ * estudiante para que el aviso enlace a su boletín.
+ * @return int[] ids de alertas nuevas
+ */
+function alertarBoletinesPublicados($conexion, array $publicados): array
+{
+    $ids = array_values(array_unique(array_map(fn($p) => (int) $p['estudiante_id'], $publicados)));
+    if (!$ids) return [];
+    $ph = implode(',', array_fill(0, count($ids), '?'));
+    $st = $conexion->prepare("
+        SELECT e.id, e.nombre, ea.padre_id
+        FROM estudiantes e
+        JOIN estudiante_acudientes ea ON ea.estudiante_id = e.id
+        WHERE e.id IN ($ph)
+    ");
+    $st->execute($ids);
+    $acudientes = [];
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $acudientes[(int) $r['id']]['nombre'] = $r['nombre'];
+        $acudientes[(int) $r['id']]['padres'][] = (int) $r['padre_id'];
+    }
+    $alertas = [];
+    foreach ($publicados as $p) {
+        $eid = (int) $p['estudiante_id'];
+        if (empty($acudientes[$eid])) continue;
+        foreach (array_unique($acudientes[$eid]['padres']) as $padreId) {
+            $alertas[] = ['boletin_publicado:' . $eid, 'Boletín disponible',
+                "Ya puede consultar el boletín del período {$p['periodo']} de {$acudientes[$eid]['nombre']}.",
+                'padre', $padreId];
+        }
+    }
+    return $alertas ? crearAlertas($conexion, $alertas) : [];
+}
+
+/**
+ * Avisa a administración que un director dejó boletines listos para publicar.
+ * @return int[] ids de alertas nuevas
+ */
+function alertarBoletinesListos($conexion, int $curso_id, string $periodo, int $anio, int $cantidad): array
+{
+    if ($cantidad < 1) return [];
+    $st = $conexion->prepare("SELECT grado, nombre FROM cursos WHERE id = ?");
+    $st->execute([$curso_id]);
+    $c = $st->fetch(PDO::FETCH_ASSOC);
+    $curso = $c ? trim($c['grado'] . ' ' . $c['nombre']) : 'un curso';
+    $txt = $cantidad === 1 ? '1 boletín' : "$cantidad boletines";
+    return crearAlertas($conexion, [[
+        'boletin_listo', 'Boletines listos para publicar',
+        "$txt de $curso (período $periodo, $anio) esperan su revisión y publicación.",
+        'admin', null,
+    ]]);
+}
+

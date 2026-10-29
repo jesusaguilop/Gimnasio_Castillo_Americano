@@ -1,3 +1,4 @@
+<?php require_once __DIR__ . '/../../lib/asset_helper.php'; ?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -14,6 +15,7 @@
         href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" rel="stylesheet">
+    <link href="../<?= asset('assets/css/gca-ui.css') ?>" rel="stylesheet">
 
     <style>
         :root {
@@ -282,7 +284,12 @@
             background: var(--topbar-bg);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border-light);
+            /* Botón del menú, título y campana en una sola fila */
+            display: flex; align-items: center; gap: 14px;
+            padding: 12px 32px;
+            position: sticky; top: 0; z-index: 50;
         }
+        .topbar .gca-bell { margin-left: auto; }
 
         .toggle-btn {
             background: none;

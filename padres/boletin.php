@@ -2,12 +2,14 @@
 
 require_once __DIR__ . '/../includes/init.php';
 checkRole('padre');
+require_once __DIR__ . '/../lib/rank_helper.php';
 
 $padre_id = userId();
-$anio_activo = (int)(getConfig('anio_activo') ?? date('Y'));
-$estudiante_id = $_GET["estudiante"] ?? null;
+$anio_activo = (int) (getConfig('anio_activo') ?? date('Y'));
+$periodo_activo = (string) (getConfig('periodo_activo') ?? '1');
+$estudiante_id = (int) ($_GET['estudiante'] ?? 0);
 
-/* ── Verify this student belongs to this parent ── */
+/* ── El estudiante tiene que ser de este acudiente ── */
 $estudiante = null;
 if ($estudiante_id) {
     $stmt = $conexion->prepare("
@@ -21,273 +23,257 @@ if ($estudiante_id) {
     $stmt->execute([$estudiante_id, $padre_id]);
     $estudiante = $stmt->fetch(PDO::FETCH_ASSOC);
 }
-
 if (!$estudiante) {
-    header("Location: dashboard.php");
+    header('Location: dashboard.php');
     exit;
 }
 
 /* ── Endpoint en vivo: períodos con boletín PUBLICADO por el admin ── */
-if (isset($_GET["poll"])) {
-    header("Content-Type: application/json");
+if (isset($_GET['poll'])) {
+    header('Content-Type: application/json');
     $q = $conexion->prepare("SELECT id, periodo FROM boletines_pdf WHERE estudiante_id = ? AND year = ? AND publicado = TRUE ORDER BY periodo");
     $q->execute([$estudiante_id, $anio_activo]);
-    echo json_encode(["boletines" => $q->fetchAll(PDO::FETCH_ASSOC)]);
+    echo json_encode(['boletines' => $q->fetchAll(PDO::FETCH_ASSOC)]);
     exit;
 }
 
 /* ── Boletines PUBLICADOS por el admin ──
  * Es la compuerta: el padre no ve notas de un período hasta que el colegio
- * publica su boletín. Antes las notas salían de `notas` directamente y el
- * padre veía calificaciones a medio digitar. */
-$boletines_pdf = $conexion->prepare("
-    SELECT id, periodo, year
-    FROM boletines_pdf
+ * publica su boletín (nada de calificaciones a medio digitar). */
+$st = $conexion->prepare("
+    SELECT id, periodo, publicado_en FROM boletines_pdf
     WHERE estudiante_id = ? AND year = ? AND publicado = TRUE
     ORDER BY periodo
 ");
-$boletines_pdf->execute([$estudiante_id, $anio_activo]);
-$boletines_pdf = $boletines_pdf->fetchAll(PDO::FETCH_ASSOC);
+$st->execute([$estudiante_id, $anio_activo]);
 $boletines_por_periodo = [];
-foreach ($boletines_pdf as $bp) {
+foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $bp) {
     $boletines_por_periodo[(string) $bp['periodo']] = $bp;
 }
-$periodos = array_keys($boletines_por_periodo);
+// Las claves "1".."4" PHP las vuelve enteros: se comparan como texto
+$periodos = array_map('strval', array_keys($boletines_por_periodo));
 
 // Por defecto, el período publicado más reciente
-$selected_periodo = isset($_GET["periodo"]) ? (string) $_GET["periodo"] : (end($periodos) ?: null);
+$selected_periodo = isset($_GET['periodo']) ? (string) $_GET['periodo'] : (end($periodos) ?: null);
 if ($selected_periodo !== null && !isset($boletines_por_periodo[$selected_periodo])) {
     $selected_periodo = end($periodos) ?: null;
 }
 
-/* ── Notas del período seleccionado (solo si está publicado) ── */
+/* ── Notas del período (mismo cálculo que el boletín: rank_helper) ── */
 $notas = [];
 $promedio = null;
 $puesto = null;
+$definitivas = [];
 if ($selected_periodo !== null) {
-    // Notas + área + porcentaje del grado en UNA consulta; promedio y puesto con el
-    // MISMO cálculo que el boletín (rank_helper). Antes eran 6 consultas.
-    require_once __DIR__ . '/../lib/rank_helper.php';
     $notas = obtenerNotasPonderadas($conexion, $estudiante_id, $selected_periodo, $anio_activo);
-
-    if (count($notas) > 0) {
-        $promedio = calcularDefinitivas($notas)['general'];   // null si solo hay Comportamiento
+    if ($notas) {
+        $calc = calcularDefinitivas($notas);
+        $promedio = $calc['general'];            // null si solo hay Comportamiento
+        $definitivas = $calc['areas'];
         $puesto = calcularPuestoCurso($conexion, $estudiante_id, $selected_periodo, $anio_activo, (int) $notas[0]['curso_id']);
     }
 }
+// Asignaturas agrupadas por área, en el orden del boletín
+$porArea = [];
+foreach ($notas as $n) {
+    $porArea[(string) $n['area']][] = $n;
+}
 
-/* Misma escala que el boletín: la del año lectivo (rank_helper → escalaDesempeno) */
-require_once __DIR__ . '/../lib/rank_helper.php';
-
-function gradeClass($nota) {
+$escala = escalaDesempeno($anio_activo);
+function ppDes($nota): array
+{
     global $anio_activo;
     $d = desempenoNota($nota, $anio_activo);
-    if ($d === 'Superior' || $d === 'Alto') return 'high';
-    if ($d === 'Básico') return 'medium';
-    return 'low';
+    return [$d, ['Superior' => 'sup', 'Alto' => 'alto', 'Básico' => 'bas', 'Bajo' => 'bajo'][$d]];
+}
+function ppFechaLarga(?string $ts): string
+{
+    if (!$ts) return '';
+    $d = new DateTime($ts, new DateTimeZone('UTC'));
+    $d->setTimezone(new DateTimeZone('America/Bogota'));
+    $m = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    return $d->format('j') . ' de ' . $m[(int) $d->format('n') - 1];
 }
 
-function desempeno($nota) {
-    global $anio_activo;
-    return desempenoNota($nota, $anio_activo);
-}
-
+$ini = mb_strtoupper(implode('', array_map(fn($p) => mb_substr($p, 0, 1), array_slice(preg_split('/\s+/', trim($estudiante['nombre'])), 0, 2))));
 $pageTitle = $estudiante['nombre'];
-include "includes/header.php";
+$ppActivo = 'inicio';
+include 'includes/header.php';
 ?>
 
-<body>
+    <a href="dashboard.php" class="pp-volver"><i class="bi bi-arrow-left" aria-hidden="true"></i> Mis hijos</a>
 
-<header class="app-header">
-    <a href="dashboard.php" class="app-header-brand">
-        <i class="bi bi-arrow-left" style="color:var(--gold);font-size:20px;margin-right:4px;" aria-hidden="true"></i>
-        <span>Boletín</span><span class="visually-hidden"> — volver a mis hijos</span>
-    </a>
-    <div class="header-actions">
-        <button type="button" class="btn-header" id="dmToggle" aria-label="Cambiar modo oscuro" aria-pressed="false" onclick="var on=document.body.classList.toggle('dark-mode');document.documentElement.setAttribute('data-bs-theme',on?'dark':'');localStorage.setItem('gca-dark-mode',on);this.setAttribute('aria-pressed',on);this.querySelector('i').className=on?'bi bi-sun':'bi bi-moon-stars';">
-            <i class="bi bi-moon-stars" aria-hidden="true"></i>
-        </button>
-        <a href="../auth/logout.php" class="btn-header logout">
-            <i class="bi bi-box-arrow-right"></i> Salir
-        </a>
-    </div>
-</header>
-
-<main class="app-content">
-
-    <div class="student-header">
-        <div class="big-avatar">
-            <?= htmlspecialchars(mb_strtoupper(mb_substr($estudiante['nombre'], 0, 2))) ?>
+    <header class="pp-est">
+        <span class="pp-hijo-ini" aria-hidden="true"><?= htmlspecialchars($ini) ?></span>
+        <div>
+            <h1><?= htmlspecialchars($estudiante['nombre']) ?></h1>
+            <p><?= $estudiante['grado'] ? 'Curso ' . htmlspecialchars($estudiante['grado'] . ' ' . $estudiante['curso_nombre']) . ' · ' : '' ?>Año lectivo <?= $anio_activo ?></p>
         </div>
-        <h4><?= htmlspecialchars($estudiante['nombre']) ?></h4>
-        <p>
-            <i class="bi bi-book-fill" style="color:var(--gold-dark);font-size:12px;"></i>
-            Curso <?= htmlspecialchars($estudiante['grado'] . ' ' . $estudiante['curso_nombre']) ?>
-        </p>
-    </div>
+    </header>
 
-    <?php if (count($periodos) > 0): ?>
-        <nav class="period-tabs mb-4" aria-label="Períodos publicados">
-            <?php foreach ($periodos as $p): ?>
-                <a href="boletin.php?estudiante=<?= (int) $estudiante_id ?>&periodo=<?= urlencode($p) ?>"
-                   class="period-tab <?= $p === $selected_periodo ? 'active' : '' ?>"
-                   <?= $p === $selected_periodo ? 'aria-current="page"' : '' ?>>
-                    <i class="bi bi-calendar3" aria-hidden="true"></i> Período <?= htmlspecialchars($p) ?>
+    <nav class="pp-seg" aria-label="Períodos">
+        <?php foreach (['1', '2', '3', '4'] as $p):
+            if (isset($boletines_por_periodo[$p])): ?>
+                <a href="boletin.php?estudiante=<?= $estudiante_id ?>&amp;periodo=<?= $p ?>"<?= $p === $selected_periodo ? ' aria-current="page"' : '' ?>>
+                    Período <?= $p ?><small>Publicado</small>
                 </a>
-            <?php endforeach; ?>
-        </nav>
-    <?php endif; ?>
+            <?php else: ?>
+                <span aria-disabled="true">Período <?= $p ?><small><?= $p === $periodo_activo ? 'En curso' : 'Sin boletín' ?></small></span>
+            <?php endif;
+        endforeach; ?>
+    </nav>
 
     <?php if ($selected_periodo === null): ?>
-        <div class="app-card">
-            <div class="empty-state">
-                <i class="bi bi-hourglass-split" aria-hidden="true"></i>
-                <h2 class="h5">Aún no hay boletines publicados</h2>
-                <p>Cuando el colegio publique el boletín de un período, aparecerá aquí con sus calificaciones.</p>
-            </div>
+        <div class="pp-card pp-vacio">
+            <div class="ico" aria-hidden="true"><i class="bi bi-hourglass-split"></i></div>
+            <h2>Aún no hay boletines publicados</h2>
+            <p>Cuando el colegio publique el boletín de un período, aparecerá aquí con las calificaciones y el PDF oficial. Le llegará un aviso.</p>
         </div>
 
-    <?php elseif (count($notas) === 0): ?>
-        <div class="app-card">
-            <div class="empty-state">
-                <i class="bi bi-inbox" aria-hidden="true"></i>
-                <h2 class="h5">Sin notas en el período <?= htmlspecialchars($selected_periodo) ?></h2>
-                <p>El boletín está publicado, pero no tiene calificaciones registradas. Puedes verlo abajo.</p>
-            </div>
-        </div>
-
-    <?php else: ?>
-        <div class="app-card mb-4">
-            <div class="app-card-header">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-weight:600;font-size:14px;color:var(--text-primary);">
-                        <i class="bi bi-journal-text" style="color:var(--gold);margin-right:6px;"></i>
-                        Calificaciones
-                    </span>
-                    <span style="font-size:12px;color:var(--text-muted);">
-                        <?= count($notas) ?> materia(s)
-                    </span>
-                </div>
-            </div>
-            <div class="app-card-body" style="padding:0;">
-                <?php foreach ($notas as $n): ?>
-                    <div class="grade-card">
-                        <span class="subject-name"><?= htmlspecialchars($n['asignatura']) ?></span>
-                        <div class="grade-badge <?= gradeClass($n['nota']) ?>" title="Desempeño <?= desempeno($n['nota']) ?>">
-                            <?= (int) $n['nota'] ?><span class="visually-hidden"> — desempeño <?= desempeno($n['nota']) ?></span>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-
-        <?php if ($promedio !== null): ?>
-        <div class="app-card">
-            <div class="app-card-body" style="text-align:center;">
-                <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;font-weight:600;">
-                    <i class="bi bi-star-fill" style="color:var(--gold);"></i> Promedio General
-                </p>
-                <div class="avg-pill <?= gradeClass($promedio) ?>">
-                    <?= number_format((float) $promedio, 1) ?>
-                </div>
-                <p class="desempeno-msg <?= gradeClass($promedio) ?>">
-                    <?php if (gradeClass($promedio) === 'high'): ?>
-                        <i class="bi bi-emoji-smile-fill" aria-hidden="true"></i> Desempeño <?= desempeno($promedio) ?>. ¡Muy bien!
-                    <?php elseif (gradeClass($promedio) === 'medium'): ?>
-                        <i class="bi bi-emoji-neutral-fill" aria-hidden="true"></i> Desempeño Básico. Puede mejorar.
-                    <?php else: ?>
-                        <i class="bi bi-emoji-frown-fill" aria-hidden="true"></i> Desempeño Bajo. Necesita refuerzo.
-                    <?php endif; ?>
-                </p>
-                <?php if ($puesto): ?>
-                    <p style="font-size:13px;color:var(--gold-dark);margin-top:10px;margin-bottom:0;font-weight:700;">
-                        <i class="bi bi-trophy-fill" aria-hidden="true"></i> Puesto en el curso: <?= htmlspecialchars(str_replace('/', ' de ', $puesto)) ?>
-                    </p>
-                <?php endif; ?>
-                <p style="font-size:11px;color:var(--text-muted);margin-top:8px;margin-bottom:0;">
-                    Escala 0 a 100 · <?= htmlspecialchars(escalaTexto($anio_activo)) ?>
-                </p>
-            </div>
-        </div>
-        <?php endif; ?>
-    <?php endif; ?>
-
-    <?php if ($selected_periodo && isset($boletines_por_periodo[$selected_periodo])):
-        // Un solo origen para la vista previa y la descarga: boletin_descargar.php
-        // valida que el boletín sea de un hijo de este padre Y que el admin ya lo
-        // haya publicado. Si no, responde 403 y aquí no se ve nada.
-        $urlBoletin = '../boletin_descargar.php?id=' . (int) $boletines_por_periodo[$selected_periodo]['id'];
+    <?php else:
+        $bol = $boletines_por_periodo[$selected_periodo];
+        // Vista previa y descarga por boletin_descargar.php, que valida que sea un
+        // hijo de este acudiente y que el boletín esté publicado.
+        $urlBoletin = '../boletin_descargar.php?id=' . (int) $bol['id'];
     ?>
-        <div class="boletin-preview">
-            <div class="boletin-preview-head">
-                <span>
-                    <i class="bi bi-file-earmark-pdf-fill"></i>
-                    Boletín del período <?= htmlspecialchars($selected_periodo) ?>
-                </span>
-                <div class="boletin-preview-acciones">
-                    <a href="<?= $urlBoletin ?>" target="_blank" rel="noopener">
-                        <i class="bi bi-arrows-fullscreen" aria-hidden="true"></i> Ver en pantalla completa
-                    </a>
-                    <a href="<?= $urlBoletin ?>&amp;descargar=1" class="btn-gca-pdf">
-                        <i class="bi bi-download" aria-hidden="true"></i> Descargar
-                    </a>
+
+        <?php if (!$notas): ?>
+            <div class="pp-card pp-vacio">
+                <div class="ico" aria-hidden="true"><i class="bi bi-inbox"></i></div>
+                <h2>Sin calificaciones en el período <?= htmlspecialchars($selected_periodo) ?></h2>
+                <p>El boletín está publicado, pero no tiene calificaciones registradas. Puede verlo en el PDF de abajo.</p>
+            </div>
+        <?php else: ?>
+            <section aria-labelledby="tResumen">
+                <h2 id="tResumen" class="visually-hidden">Resumen del período <?= htmlspecialchars($selected_periodo) ?></h2>
+                <div class="pp-card pp-resumen">
+                    <div>
+                        <small>Promedio del período</small>
+                        <?php if ($promedio !== null): [$dNom, $dCls] = ppDes($promedio); ?>
+                            <div class="grande"><?= number_format((float) $promedio, 1) ?></div>
+                            <span class="pp-chip <?= $dCls ?>">Desempeño <?= $dNom ?></span>
+                        <?php else: ?>
+                            <div class="grande">&mdash;</div>
+                        <?php endif; ?>
+                    </div>
+                    <div>
+                        <small>Puesto en el curso</small>
+                        <div class="medio"><?= $puesto ? htmlspecialchars(explode('/', $puesto)[0]) . ' <span>de ' . htmlspecialchars(explode('/', $puesto)[1] ?? '') . '</span>' : '&mdash;' ?></div>
+                    </div>
+                    <div>
+                        <small>Asignaturas</small>
+                        <div class="medio"><?= count($notas) ?> <span>en <?= count($porArea) ?> áreas</span></div>
+                    </div>
+                </div>
+                <p class="pp-escala">Escala 0 a 100 · <?= htmlspecialchars(escalaTexto($anio_activo)) ?>. La línea dorada de cada barra marca dónde empieza Básico.</p>
+            </section>
+
+            <section class="pp-sec" aria-labelledby="tAreas">
+                <div class="pp-sec-head">
+                    <h2 id="tAreas">Por áreas</h2>
+                    <button type="button" class="enlace" id="ppAbrirTodo">Abrir todas</button>
+                </div>
+                <div class="pp-card pp-areas">
+                    <?php foreach ($porArea as $area => $asigs):
+                        $def = $definitivas[$area] ?? null;
+                        [$aNom, $aCls] = $def !== null ? ppDes($def) : ['', '']; ?>
+                        <details class="pp-area">
+                            <summary>
+                                <span class="pp-area-nom">
+                                    <strong><?= htmlspecialchars($area) ?></strong>
+                                    <?php if ($def !== null): ?>
+                                        <span class="pp-barra <?= $aCls === 'bajo' ? 'bajo' : '' ?>" aria-hidden="true">
+                                            <i style="width:<?= max(0, min(100, (float) $def)) ?>%"></i>
+                                            <b style="left:<?= (int) $escala['basico'] ?>%"></b>
+                                        </span>
+                                    <?php endif; ?>
+                                </span>
+                                <?php if ($def !== null): ?>
+                                    <span class="pp-chip <?= $aCls ?>"><?= $aNom ?></span>
+                                    <span class="pp-area-nota"><?= number_format((float) $def, 1) ?><span class="visually-hidden"> de definitiva</span></span>
+                                <?php else: ?>
+                                    <span></span><span class="pp-area-nota">&mdash;</span>
+                                <?php endif; ?>
+                            </summary>
+                            <ul class="pp-asigs">
+                                <?php foreach ($asigs as $n): [$nNom, $nCls] = ppDes($n['nota']); ?>
+                                    <li class="pp-asig">
+                                        <span class="pp-asig-nom">
+                                            <?= htmlspecialchars($n['asignatura']) ?>
+                                            <?php if ($n['examen'] !== null && $n['examen'] !== ''): ?>
+                                                <small>Examen final: <?= (int) $n['examen'] ?></small>
+                                            <?php endif; ?>
+                                        </span>
+                                        <span class="pp-asig-nota">
+                                            <span class="pp-chip <?= $nCls ?>"><?= $nNom ?></span>
+                                            <strong><?= (int) $n['nota'] ?></strong>
+                                        </span>
+                                        <?php if (trim((string) $n['logro']) !== ''): ?>
+                                            <p class="pp-logro"><?= nl2br(htmlspecialchars($n['logro'])) ?></p>
+                                        <?php endif; ?>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </details>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php endif; ?>
+
+        <section class="pp-sec">
+            <div class="pp-card pp-pdf">
+                <div class="pp-pdf-head">
+                    <div>
+                        <h2>Boletín oficial · período <?= htmlspecialchars($selected_periodo) ?></h2>
+                        <p>Documento oficial del colegio<?= $bol['publicado_en'] ? ' · publicado el ' . ppFechaLarga($bol['publicado_en']) : '' ?>.</p>
+                    </div>
+                    <div class="pp-pdf-acc">
+                        <a class="pp-btn sec" href="<?= $urlBoletin ?>" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Abrir</a>
+                        <a class="pp-btn" href="<?= $urlBoletin ?>&amp;descargar=1"><i class="bi bi-download" aria-hidden="true"></i> Descargar</a>
+                    </div>
+                </div>
+                <div class="pp-visor" id="ppVisor">
+                    <div class="pp-visor-sk" aria-hidden="true">
+                        <div class="cab"><span class="gca-sk gca-sk-circ"></span><span style="flex:1"><span class="gca-sk gca-sk-titulo"></span><span class="gca-sk gca-sk-linea m"></span></span></div>
+                        <span class="gca-sk fila"></span><span class="gca-sk fila"></span><span class="gca-sk fila"></span>
+                        <span class="gca-sk gca-sk-bloque"></span><span class="gca-sk fila"></span><span class="gca-sk fila"></span>
+                    </div>
+                    <iframe src="<?= $urlBoletin ?>#view=FitH" title="Boletín del período <?= htmlspecialchars($selected_periodo) ?> en PDF" loading="lazy"
+                            onload="this.parentNode.classList.add('listo')"></iframe>
                 </div>
             </div>
-
-            <iframe class="boletin-visor"
-                    src="<?= $urlBoletin ?>#view=FitH"
-                    title="Boletín del período <?= htmlspecialchars($selected_periodo) ?>"
-                    loading="lazy">
-            </iframe>
-
-            <!-- Algunos navegadores móviles no muestran PDF dentro de un marco -->
-            <p class="boletin-preview-nota">
-                <i class="bi bi-info-circle"></i>
-                ¿No se ve el boletín aquí? Ábrelo con
-                <a href="<?= $urlBoletin ?>" target="_blank" rel="noopener">Pantalla completa</a>.
-            </p>
-        </div>
+        </section>
     <?php endif; ?>
-
-    <div style="text-align:center;margin-top:20px;">
-        <a href="dashboard.php" style="display:inline-flex;align-items:center;gap:6px;color:var(--text-secondary);font-size:13px;text-decoration:none;padding:8px 16px;border:1px solid var(--border);border-radius:50px;transition:all.2s;">
-            <i class="bi bi-arrow-left"></i> Volver a mis hijos
-        </a>
-    </div>
-
-    <div style="text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">
-        <p style="font-size:11px;color:var(--text-muted);margin:0;">
-            <i class="bi bi-shield-check me-1"></i>
-            Gimnasio Castillo Americano &middot; Boletín Académico
-        </p>
-    </div>
-
-</main>
-
-<div id="nuevoBoletin" class="nuevo-boletin" role="status" hidden>
-    Hay cambios en los boletines publicados.
-    <button type="button" onclick="location.reload()">Actualizar</button>
-</div>
 
 <script>
 (function () {
-    // Si el admin publica u oculta un boletín se avisa, en vez de recargar
-    // la página mientras el padre está leyendo.
-    var initial = <?= json_encode(array_map('strval', array_keys($boletines_por_periodo))) ?>;
-    var pollUrl = 'boletin.php?estudiante=<?= (int) $estudiante_id ?>&poll=1';
-    var baseKey = initial.slice().sort().join('|');
-    var aviso = document.getElementById('nuevoBoletin');
+    var abrir = document.getElementById('ppAbrirTodo');
+    if (abrir) {
+        abrir.addEventListener('click', function () {
+            var areas = document.querySelectorAll('.pp-area');
+            var todas = Array.prototype.every.call(areas, function (d) { return d.open; });
+            areas.forEach(function (d) { d.open = !todas; });
+            abrir.textContent = todas ? 'Abrir todas' : 'Cerrar todas';
+        });
+    }
+    // Si el colegio publica u oculta un boletín mientras se lee, se avisa
+    // (sin recargar la página por sorpresa)
+    var base = <?= json_encode(array_map('strval', array_keys($boletines_por_periodo))) ?>.sort().join('|');
+    var url = 'boletin.php?estudiante=<?= $estudiante_id ?>&poll=1', avisado = false;
     setInterval(function () {
-        if (document.hidden || !aviso.hidden) return;
-        fetch(pollUrl, { cache: 'no-store' })
-            .then(function (r) { return r.json(); })
-            .then(function (d) {
-                var now = (d.boletines || []).map(function (b) { return String(b.periodo); }).sort().join('|');
-                if (now !== baseKey) aviso.hidden = false;
-            })
-            .catch(function () {});
+        if (document.hidden || avisado) return;
+        fetch(url, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+            var ahora = (d.boletines || []).map(function (b) { return String(b.periodo); }).sort().join('|');
+            if (ahora !== base) {
+                avisado = true;
+                GCA.toast('Hay cambios en los boletines publicados de este estudiante.', {
+                    tipo: 'aviso', titulo: 'Boletines actualizados', ms: 0,
+                    enlace: { texto: 'Actualizar', url: location.href }
+                });
+            }
+        }).catch(function () {});
     }, 15000);
 })();
 </script>
 
-<?php include "includes/footer.php"; ?>
+<?php include 'includes/footer.php'; ?>

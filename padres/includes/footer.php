@@ -1,58 +1,53 @@
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('select:not(.no-ts)').forEach(function(el) {
-                new TomSelect(el, { maxOptions: 100, placeholder: el.options[0]?.text || 'Seleccionar...', allowEmptyOption: true });
-            });
-        });
+    <p class="pp-pie">Gimnasio Castillo Americano · Cultivar para cosechar</p>
+</main>
 
-        // ── Dark Mode ──
-        (function() {
-            const isDark = localStorage.getItem('gca-dark-mode') === 'true';
-            const dmToggle = document.getElementById('dmToggle');
-            if (isDark) {
-                document.body.classList.add('dark-mode');
-                document.documentElement.setAttribute('data-bs-theme', 'dark');
-                if (dmToggle) { dmToggle.querySelector('i').className = 'bi bi-sun'; dmToggle.setAttribute('aria-pressed', 'true'); }
-            } else {
-                if (dmToggle) dmToggle.querySelector('i').className = 'bi bi-moon-stars';
-            }
-        })();
+<nav class="pp-tabs" aria-label="Secciones">
+    <a href="dashboard.php"<?= $ppCur('inicio') ?>><i class="bi bi-house" aria-hidden="true"></i>Inicio</a>
+    <a href="avisos.php"<?= $ppCur('avisos') ?>>
+        <i class="bi bi-bell" aria-hidden="true"></i>Avisos
+        <span class="n" id="ppTabN"<?= $ppNoLeidas ? '' : ' hidden' ?>><?= $ppNoLeidas > 99 ? '99+' : $ppNoLeidas ?><span class="visually-hidden"> sin leer</span></span>
+    </a>
+    <a href="../cambiar_clave.php"><i class="bi bi-person" aria-hidden="true"></i>Cuenta</a>
+</nav>
 
-        // ── Confirm Modal ──
-        function showConfirm(message, callback) {
-            const modal = document.getElementById('gcaConfirmModal');
-            if (!modal) return;
-            document.getElementById('gcaConfirmMsg').textContent = message;
-            const btn = document.getElementById('gcaConfirmBtn');
-            const handler = function() { callback(); hideConfirm(); };
-            btn.removeEventListener('click', handler);
-            btn.addEventListener('click', handler);
-            new bootstrap.Modal(modal, { backdrop: 'static', keyboard: false }).show();
-        }
-        function hideConfirm() {
-            const modal = document.getElementById('gcaConfirmModal');
-            if (modal) bootstrap.Modal.getInstance(modal)?.hide();
-        }
-    </script>
+<script src="../<?= asset('assets/js/gca-ui.js') ?>"></script>
+<script>
+(function () {
+    // Menú de la cuenta
+    var btn = document.getElementById('ppCuentaBtn'), menu = document.getElementById('ppMenu');
+    function cerrar() { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var abrir = menu.hidden;
+        menu.hidden = !abrir;
+        btn.setAttribute('aria-expanded', String(abrir));
+        if (abrir) menu.querySelector('[role="menuitem"]').focus();
+    });
+    document.addEventListener('click', function (e) { if (!menu.contains(e.target)) cerrar(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { cerrar(); btn.focus(); } });
 
-    <!-- ── Confirm Modal ── -->
-    <div class="modal fade" id="gcaConfirmModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content" style="border-radius:16px;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.15);">
-                <div class="modal-body text-center py-5 px-4">
-                    <div class="mb-3" style="font-size:48px;color:var(--gold);">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                    </div>
-                    <p id="gcaConfirmMsg" class="mb-4" style="font-size:16px;font-weight:500;color:var(--text-primary);line-height:1.5;">¿Seguro?</p>
-                    <div class="d-flex gap-2 justify-content-center">
-                        <button type="button" class="btn px-4 py-2" data-bs-dismiss="modal" style="border-radius:10px;border:1.5px solid var(--border);color:var(--text-secondary);font-weight:500;background:transparent;">Cancelar</button>
-                        <button type="button" class="btn px-4 py-2" id="gcaConfirmBtn" style="border-radius:10px;border:none;background:#dc3545;color:#fff;font-weight:600;">Sí, eliminar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    // Modo oscuro (se recuerda en este equipo)
+    var tema = document.getElementById('ppTema');
+    function pintarTema() {
+        var o = document.documentElement.classList.contains('dark-mode');
+        tema.querySelector('i').className = o ? 'bi bi-sun' : 'bi bi-moon-stars';
+        tema.querySelector('span').textContent = o ? 'Modo claro' : 'Modo oscuro';
+    }
+    tema.addEventListener('click', function () {
+        var o = document.documentElement.classList.toggle('dark-mode');
+        try { localStorage.setItem('gca-dark-mode', o); } catch (e) {}
+        pintarTema();
+    });
+    pintarTema();
+
+    // La pestaña "Avisos" del celular sigue a la campana
+    var n = document.getElementById('ppTabN');
+    document.addEventListener('gca:notificaciones', function (e) {
+        var c = e.detail.no_leidas || 0;
+        n.hidden = !c;
+        n.firstChild.nodeValue = c > 99 ? '99+' : String(c);
+    });
+})();
+</script>
+</body>
 </html>

@@ -34,11 +34,11 @@ $num_alertas_admin = $num_alertas_admin ?? 0;
     </div>
 
     <div class="tb-actions">
-        <a href="alertas.php" class="tb-icon tb-bell" aria-label="Alertas<?= $num_alertas_admin > 0 ? ': ' . $num_alertas_admin . ' sin leer' : '' ?>" title="Alertas">
+        <a href="alertas.php" class="tb-icon tb-bell" title="Notificaciones"
+           data-gca-bell data-endpoint="../notificaciones.php?desde_panel=1" data-pagina="alertas.php" data-label="Notificaciones"
+           aria-label="Notificaciones<?= $num_alertas_admin > 0 ? ': ' . $num_alertas_admin . ' sin leer' : '' ?>">
             <i class="bi bi-bell" aria-hidden="true"></i>
-            <?php if ($num_alertas_admin > 0): ?>
-                <span class="tb-dot" aria-hidden="true"><?= $num_alertas_admin > 99 ? '99+' : $num_alertas_admin ?></span>
-            <?php endif; ?>
+            <span class="tb-dot gca-bell-n" aria-hidden="true"<?= $num_alertas_admin > 0 ? '' : ' hidden' ?>><?= $num_alertas_admin > 99 ? '99+' : $num_alertas_admin ?></span>
         </a>
         <button type="button" id="darkModeToggle" class="tb-icon" aria-pressed="false" aria-label="Activar modo oscuro" title="Cambiar tema">
             <i class="bi bi-moon-stars" id="dmIcon" aria-hidden="true"></i>

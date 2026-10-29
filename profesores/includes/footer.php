@@ -81,6 +81,26 @@
     }
 </script>
 
+<script>
+    // Campana de notificaciones en la barra superior de cada página
+    (function () {
+        var tb = document.querySelector('#main .topbar');
+        if (!tb || tb.querySelector('[data-gca-bell]')) return;
+        var a = document.createElement('a');
+        a.href = 'alertas.php';
+        a.className = 'gca-bell gca-bell-topbar';
+        a.title = 'Notificaciones';
+        a.setAttribute('data-gca-bell', '');
+        a.setAttribute('data-endpoint', '../notificaciones.php?desde_panel=1');
+        a.setAttribute('data-pagina', 'alertas.php');
+        a.setAttribute('data-label', 'Notificaciones');
+        a.setAttribute('aria-label', 'Notificaciones');
+        a.innerHTML = '<i class="bi bi-bell" aria-hidden="true"></i>';
+        tb.appendChild(a);
+    })();
+</script>
+<script src="../<?= asset('assets/js/gca-ui.js') ?>"></script>
+
 <!-- ── Confirm Modal ── -->
 <div class="modal fade" id="gcaConfirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">

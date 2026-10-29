@@ -1,0 +1,15 @@
+{
+  "name": "Familia GCA · Gimnasio Castillo Americano",
+  "short_name": "Familia GCA",
+  "description": "Boletines y avisos del Gimnasio Castillo Americano para padres de familia.",
+  "lang": "es-CO",
+  "start_url": "/padres/dashboard.php",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f1e6",
+  "theme_color": "#14120e",
+  "icons": [
+    { "src": "/assets/img/favicon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/img/favicon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

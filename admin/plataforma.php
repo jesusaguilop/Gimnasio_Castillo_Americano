@@ -557,7 +557,8 @@ include "includes/header.php";
             const pregunta = isActive
                 ? '¿Activar el registro de notas para todos los profesores?'
                 : '¿Desactivar el registro de notas? Ningún profesor podrá guardar notas hasta que se vuelva a activar.';
-            if (!confirm(pregunta)) { sw.checked = !isActive; return; }
+            GCA.confirmar(pregunta, { aceptar: isActive ? 'Activar' : 'Desactivar', peligro: !isActive }).then(function (ok) {
+            if (!ok) { sw.checked = !isActive; return; }
             const formData = new FormData();
             formData.append('action', 'toggle');
             formData.append('estado', isActive);
@@ -566,9 +567,10 @@ include "includes/header.php";
                 .then(r => r.text())
                 .then(res => {
                     if (res === 'ok') location.reload();
-                    else { alert('No se pudo guardar el cambio. Intente de nuevo.'); sw.checked = !isActive; }
+                    else { GCA.toast('No se pudo guardar el cambio. Intente de nuevo.', { tipo: 'bad' }); sw.checked = !isActive; }
                 })
-                .catch(() => { alert('No se pudo conectar con el servidor.'); sw.checked = !isActive; });
+                .catch(() => { GCA.toast('No se pudo conectar con el servidor.', { tipo: 'bad' }); sw.checked = !isActive; });
+            });
         });
     </script>
 

@@ -23,6 +23,17 @@ function alertarRiesgoPublicados(PDO $conexion, array $publicados): void
     }
 }
 
+/** Al publicar: aviso al acudiente de que ya puede ver el boletín, y el de riesgo (3er período). */
+function avisarPublicados(PDO $conexion, array $publicados): void
+{
+    try {
+        alertarBoletinesPublicados($conexion, $publicados);
+    } catch (\Throwable $e) {
+        error_log("[enviar_boletin] aviso de publicación: " . $e->getMessage());
+    }
+    alertarRiesgoPublicados($conexion, $publicados);
+}
+
 $mensaje = "";
 $tipo = "";
 
@@ -106,7 +117,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 RETURNING bp.estudiante_id, bp.periodo, bp.year, e.curso_id
             ");
             $up->execute([$bid]);
-            alertarRiesgoPublicados($conexion, $up->fetchAll(PDO::FETCH_ASSOC));
+            $publicados = $up->fetchAll(PDO::FETCH_ASSOC);
+            avisarPublicados($conexion, $publicados);
             $mensaje = "Boletín publicado: ya es visible para el padre.";
             $tipo = "success";
         } elseif ($accion === "ocultar" && $bid) {
@@ -125,7 +137,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $up->execute($params);
             $publicados = $up->fetchAll(PDO::FETCH_ASSOC);
             $n = count($publicados);
-            alertarRiesgoPublicados($conexion, $publicados);
+            avisarPublicados($conexion, $publicados);
             $mensaje = $n ? "$n boletín(es) publicado(s): ya son visibles para los padres." : "No había boletines pendientes en este filtro.";
             $tipo = $n ? "success" : "warning";
         } elseif ($accion === "enviar" && $bid) {
@@ -223,7 +235,7 @@ function boletinesTbody(array $filas, array $f): string
         if (!empty($b['padre_email'])) {
             $acc .= '<form method="POST" class="d-inline-flex">' . campo_csrf() . $campos
                 . '<input type="hidden" name="accion" value="enviar"><input type="hidden" name="boletin_id" value="' . (int)$b['id'] . '">'
-                . '<button type="submit" class="btn-action" title="Enviar por correo" aria-label="Enviar por correo al padre de ' . htmlspecialchars($b['estudiante']) . '" onclick="return confirm(\'¿Enviar el boletín por correo al padre?\')"><i class="bi bi-envelope" aria-hidden="true"></i></button></form>';
+                . '<button type="submit" class="btn-action" title="Enviar por correo" aria-label="Enviar por correo al padre de ' . htmlspecialchars($b['estudiante']) . '" data-confirm="¿Enviar el boletín por correo a los acudientes?" data-confirm-ok="Enviar"><i class="bi bi-envelope" aria-hidden="true"></i></button></form>';
         }
 
         $h .= '<tr>'
