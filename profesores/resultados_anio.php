@@ -5,7 +5,7 @@ require_once "../lib/rank_helper.php";
 
 $profesor_id = userId();
 $anio_activo = (int)(getConfig('anio_activo') ?? date('Y'));
-$NOTA_MINIMA = NOTA_MINIMA_APROBACION;
+$NOTA_MINIMA = notaMinimaAprobacion($anio_activo);
 
 /* Cursos que dirige */
 $cursos = $conexion->prepare("

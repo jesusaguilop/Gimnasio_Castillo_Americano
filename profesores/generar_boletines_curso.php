@@ -132,7 +132,8 @@ include "includes/header.php";
                                         <td style="text-align:center;">
                                             <?php if ($r['ok'] && $r['promedio'] !== null):
                                                 $p = (float)$r['promedio'];
-                                                $bg = $p >= 80 ? '#1b5e20' : ($p >= 60 ? '#a33f00' : '#b71c1c'); ?>
+                                                $d = desempenoNota($p, $anio);
+                                                $bg = ($d === 'Superior' || $d === 'Alto') ? '#1b5e20' : ($d === 'Básico' ? '#a33f00' : '#b71c1c'); ?>
                                                 <span class="badge rounded-pill px-2 py-1" style="background:<?= $bg ?>;color:#fff;font-size:12px;"><?= $p ?></span>
                                             <?php else: ?><span class="text-muted">—</span><?php endif; ?>
                                         </td>

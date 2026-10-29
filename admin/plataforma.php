@@ -45,6 +45,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['guardar_config'])
     }
 }
 
+/* ── Handle: escala de desempeño del año lectivo (rank_helper → escalaDesempeno) ── */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['guardar_escala'])) {
+    if (!validar_token_csrf($_POST['_csrf_token'] ?? '')) {
+        $error = "Error de seguridad. Recargue la página e intente de nuevo.";
+    } else {
+        $anioActual = (int)(getConfig('anio_activo') ?? date('Y'));
+        $anioEscala = (int)($_POST['escala_anio'] ?? 0);
+        $escala = [
+            'superior' => trim($_POST['escala_superior'] ?? ''),
+            'alto'     => trim($_POST['escala_alto'] ?? ''),
+            'basico'   => trim($_POST['escala_basico'] ?? ''),
+        ];
+        // Solo el año activo o el siguiente: los años cerrados conservan su escala
+        if (!in_array($anioEscala, [$anioActual, $anioActual + 1], true)) {
+            $error = "Solo se puede definir la escala del año lectivo activo o del siguiente.";
+        } elseif ($msg = validarEscala($escala)) {
+            $error = $msg;
+        } else {
+            $clave = 'escala_desempeno_' . $anioEscala;
+            $valor = json_encode(array_map('intval', $escala));
+            try {
+                $up = $conexion->prepare("UPDATE configuraciones SET valor = ? WHERE clave = ?");
+                $up->execute([$valor, $clave]);
+                if ($up->rowCount() === 0) {
+                    $conexion->prepare("INSERT INTO configuraciones (clave, valor) VALUES (?, ?)")->execute([$clave, $valor]);
+                }
+                $mensaje = "Escala de desempeño del año {$anioEscala} guardada.";
+            } catch (PDOException $e) {
+                error_log("[plataforma escala] " . $e->getMessage());
+                $error = "Error al guardar la escala.";
+            }
+        }
+    }
+}
+
 /* ── Handle: reiniciar período (borra notas/logros/boletines de un período) ── */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reiniciar_periodo'])) {
     if (!validar_token_csrf($_POST['_csrf_token'] ?? '')) {
@@ -87,6 +122,14 @@ $periodo_activo = getConfig('periodo_activo') ?? '1';
 $anio_activo = (int)(getConfig('anio_activo') ?? date('Y'));
 $fecha_apertura = getConfig('fecha_apertura') ?? '';
 $fecha_cierre = getConfig('fecha_cierre') ?? '';
+
+/* ── Escala de desempeño: la del año activo y la del siguiente ── */
+$escalaActual    = escalaDesempeno($anio_activo);
+$escalaSiguiente = escalaDesempeno($anio_activo + 1);
+$notaMinima      = $escalaActual['basico'];
+$bolStmt = $conexion->prepare("SELECT COUNT(*) FROM boletines_pdf WHERE year = ?");
+$bolStmt->execute([$anio_activo]);
+$boletinesAnio = (int) $bolStmt->fetchColumn();
 
 /* ── Cursos para vista de notas ── */
 $cursos = $conexion->query("
@@ -228,6 +271,64 @@ include "includes/header.php";
                         </form>
                     </div>
 
+                    <!-- Escala de desempeño del año lectivo -->
+                    <div class="gca-card p-4 mt-4 scroll-target" id="escala">
+                        <div class="section-header">
+                            <div>
+                                <h4><i class="bi bi-bar-chart-steps" aria-hidden="true"></i> Escala de desempeño</h4>
+                                <p class="section-sub">Dónde empieza cada nivel, según el SIEE del colegio. Los nombres son los del Decreto 1290.</p>
+                            </div>
+                        </div>
+
+                        <p class="small mb-3">
+                            Vigente en <?= (int) $anio_activo ?>:
+                            <strong><?= htmlspecialchars(escalaTexto($anio_activo)) ?></strong>.
+                            Aprueba con <strong><?= (int) $notaMinima ?></strong>.
+                            <?php if ($escalaActual['desde'] === null): ?>
+                                <span class="text-muted">(escala por defecto)</span>
+                            <?php elseif ($escalaActual['desde'] !== $anio_activo): ?>
+                                <span class="text-muted">(fijada en <?= (int) $escalaActual['desde'] ?>)</span>
+                            <?php endif; ?>
+                        </p>
+
+                        <form method="POST" id="formEscala">
+                            <?= campo_csrf() ?>
+                            <div class="mb-3">
+                                <label class="form-label fw-medium" for="f_escala_anio">Año lectivo</label>
+                                <select id="f_escala_anio" name="escala_anio" class="form-select">
+                                    <option value="<?= (int) $anio_activo ?>" data-escala="<?= htmlspecialchars(json_encode($escalaActual)) ?>"><?= (int) $anio_activo ?> (año activo)</option>
+                                    <option value="<?= (int) $anio_activo + 1 ?>" data-escala="<?= htmlspecialchars(json_encode($escalaSiguiente)) ?>"><?= (int) $anio_activo + 1 ?> (próximo año)</option>
+                                </select>
+                                <div class="form-text small">Cada año lectivo conserva su escala. Si un año no tiene una propia, usa la del año anterior.</div>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-4">
+                                    <label class="form-label fw-medium small" for="f_escala_superior">Superior desde</label>
+                                    <input id="f_escala_superior" type="number" name="escala_superior" class="form-control" min="1" max="100" step="1" required value="<?= (int) $escalaActual['superior'] ?>">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label fw-medium small" for="f_escala_alto">Alto desde</label>
+                                    <input id="f_escala_alto" type="number" name="escala_alto" class="form-control" min="1" max="100" step="1" required value="<?= (int) $escalaActual['alto'] ?>">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label fw-medium small" for="f_escala_basico">Básico desde</label>
+                                    <input id="f_escala_basico" type="number" name="escala_basico" class="form-control" min="1" max="100" step="1" required value="<?= (int) $escalaActual['basico'] ?>">
+                                </div>
+                            </div>
+                            <div class="escala-preview mb-3" id="escalaPreview" aria-live="polite"></div>
+                            <?php if ($boletinesAnio > 0): ?>
+                            <div class="alert alert-warning small py-2 mb-3" id="escalaAviso" role="alert">
+                                <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                                Ya hay <?= $boletinesAnio ?> boletín(es) generados en <?= (int) $anio_activo ?>. Esos PDF conservan la escala con que se hicieron;
+                                las pantallas y los boletines nuevos usarán la nueva. Lo ideal es fijar la escala antes de empezar el año.
+                            </div>
+                            <?php endif; ?>
+                            <button type="submit" name="guardar_escala" class="btn-gca w-100" id="btnEscala">
+                                <i class="bi bi-check-lg" aria-hidden="true"></i> Guardar escala
+                            </button>
+                        </form>
+                    </div>
+
                     <!-- ── Zona de mantenimiento: reiniciar período (pruebas) ── -->
                     <div class="gca-card danger-zone p-4 mt-4">
                         <h3 class="h6 fw-bold mb-1">
@@ -353,7 +454,7 @@ include "includes/header.php";
                                                                                                 ?>
                                                                                                     <td class="text-center">
                                                                                                         <?php if ($n !== null): ?>
-                                                                                                            <span class="nota <?= $n >= 60 ? 'ok' : ($n >= 40 ? 'warn' : 'bad') ?>">
+                                                                                                            <span class="nota <?= $n >= $notaMinima ? 'ok' : ($n >= 40 ? 'warn' : 'bad') ?>">
                                                                                                                 <?= (int)$n ?>
                                                                                                             </span>
                                                                                                         <?php else: ?>
@@ -363,7 +464,7 @@ include "includes/header.php";
                                                                                                 <?php endfor; ?>
                                                                                                 <td class="text-center">
                                                                                                     <?php if ($m['promedio'] !== null): ?>
-                                                                                                        <span class="nota solid <?= $m['promedio'] >= 60 ? 'ok' : ($m['promedio'] >= 40 ? 'warn' : 'bad') ?>">
+                                                                                                        <span class="nota solid <?= $m['promedio'] >= $notaMinima ? 'ok' : ($m['promedio'] >= 40 ? 'warn' : 'bad') ?>">
                                                                                                             <?= $m['promedio'] ?>
                                                                                                         </span>
                                                                                                     <?php else: ?>
@@ -380,7 +481,7 @@ include "includes/header.php";
                                                                                             </td>
                                                                                             <td class="text-center">
                                                                                                 <?php if ($promedio_gral !== null): ?>
-                                                                                                    <span class="nota solid <?= $promedio_gral >= 60 ? 'ok' : ($promedio_gral >= 40 ? 'warn' : 'bad') ?>">
+                                                                                                    <span class="nota solid <?= $promedio_gral >= $notaMinima ? 'ok' : ($promedio_gral >= 40 ? 'warn' : 'bad') ?>">
                                                                                                         <?= $promedio_gral ?>
                                                                                                     </span>
                                                                                                 <?php else: ?>
@@ -416,6 +517,40 @@ include "includes/header.php";
     </main>
 
     <script>
+        /* Escala de desempeño: vista previa de los cuatro rangos y validación en vivo */
+        (function () {
+            const f = document.getElementById('formEscala');
+            if (!f) return;
+            const anio = document.getElementById('f_escala_anio');
+            const campos = { superior: f.escala_superior, alto: f.escala_alto, basico: f.escala_basico };
+            const prev = document.getElementById('escalaPreview');
+            const aviso = document.getElementById('escalaAviso');
+            const btn = document.getElementById('btnEscala');
+            const activo = anio.options[0].value;
+            function pinta() {
+                const s = +campos.superior.value, a = +campos.alto.value, b = +campos.basico.value;
+                const enteros = [s, a, b].every(v => Number.isInteger(v) && v >= 1 && v <= 100);
+                if (!enteros || !(s > a && a > b)) {
+                    prev.innerHTML = '<span class="escala-error"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> Superior debe empezar más arriba que Alto, y Alto más arriba que Básico (enteros de 1 a 100).</span>';
+                    btn.disabled = true;
+                } else {
+                    const r = [['Superior', s + '–100', 'sup'], ['Alto', a + '–' + (s - 1), 'alto'],
+                               ['Básico', b + '–' + (a - 1), 'bas'], ['Bajo', '0–' + (b - 1), 'bajo']];
+                    prev.innerHTML = r.map(x => '<span class="escala-nivel ' + x[2] + '"><b>' + x[0] + '</b> ' + x[1] + '</span>').join('')
+                        + '<span class="escala-aprueba">Aprueba con ' + b + '</span>';
+                    btn.disabled = false;
+                }
+                if (aviso) aviso.classList.toggle('d-none', anio.value !== activo);
+            }
+            anio.addEventListener('change', function () {
+                const e = JSON.parse(anio.selectedOptions[0].dataset.escala);
+                campos.superior.value = e.superior; campos.alto.value = e.alto; campos.basico.value = e.basico;
+                pinta();
+            });
+            Object.values(campos).forEach(c => c.addEventListener('input', pinta));
+            pinta();
+        })();
+
         document.getElementById('platformSwitch')?.addEventListener('change', function() {
             const sw = this;
             const isActive = this.checked;

@@ -76,18 +76,20 @@ if ($selected_periodo !== null) {
     }
 }
 
-/* Misma escala que el boletín: Superior ≥90, Alto 80-89, Básico 60-79, Bajo <60 */
+/* Misma escala que el boletín: la del año lectivo (rank_helper → escalaDesempeno) */
+require_once __DIR__ . '/../lib/rank_helper.php';
+
 function gradeClass($nota) {
-    if ($nota >= 80) return 'high';
-    if ($nota >= 60) return 'medium';
+    global $anio_activo;
+    $d = desempenoNota($nota, $anio_activo);
+    if ($d === 'Superior' || $d === 'Alto') return 'high';
+    if ($d === 'Básico') return 'medium';
     return 'low';
 }
 
 function desempeno($nota) {
-    if ($nota >= 90) return 'Superior';
-    if ($nota >= 80) return 'Alto';
-    if ($nota >= 60) return 'Básico';
-    return 'Bajo';
+    global $anio_activo;
+    return desempenoNota($nota, $anio_activo);
 }
 
 $pageTitle = $estudiante['nombre'];
@@ -189,9 +191,9 @@ include "includes/header.php";
                     <?= number_format((float) $promedio, 1) ?>
                 </div>
                 <p class="desempeno-msg <?= gradeClass($promedio) ?>">
-                    <?php if ($promedio >= 80): ?>
+                    <?php if (gradeClass($promedio) === 'high'): ?>
                         <i class="bi bi-emoji-smile-fill" aria-hidden="true"></i> Desempeño <?= desempeno($promedio) ?>. ¡Muy bien!
-                    <?php elseif ($promedio >= 60): ?>
+                    <?php elseif (gradeClass($promedio) === 'medium'): ?>
                         <i class="bi bi-emoji-neutral-fill" aria-hidden="true"></i> Desempeño Básico. Puede mejorar.
                     <?php else: ?>
                         <i class="bi bi-emoji-frown-fill" aria-hidden="true"></i> Desempeño Bajo. Necesita refuerzo.
@@ -203,7 +205,7 @@ include "includes/header.php";
                     </p>
                 <?php endif; ?>
                 <p style="font-size:11px;color:var(--text-muted);margin-top:8px;margin-bottom:0;">
-                    Escala 0 a 100 · Superior 90+ · Alto 80-89 · Básico 60-79 · Bajo menos de 60
+                    Escala 0 a 100 · <?= htmlspecialchars(escalaTexto($anio_activo)) ?>
                 </p>
             </div>
         </div>

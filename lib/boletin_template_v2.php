@@ -23,15 +23,19 @@
  * observación general autocompletada.
  */
 
+require_once __DIR__ . '/rank_helper.php';
+
 if (!function_exists('gcaDesempeno')) {
-    /** Devuelve [etiqueta, color] del desempeño según la nota (escala 0-100, aprueba 60). */
-    function gcaDesempeno($nota): array
+    /** Devuelve [etiqueta, color] del desempeño según la escala de ese año lectivo (rank_helper). */
+    function gcaDesempeno($nota, ?int $anio = null): array
     {
-        $n = (float) $nota;
-        if ($n >= 90) return ['SUPERIOR', '#1b5e20'];
-        if ($n >= 80) return ['ALTO', '#2e7d32'];
-        if ($n >= 60) return ['BÁSICO', '#e65100'];
-        return ['BAJO', '#b71c1c'];
+        $map = [
+            'Superior' => ['SUPERIOR', '#1b5e20'],
+            'Alto'     => ['ALTO', '#2e7d32'],
+            'Básico'   => ['BÁSICO', '#e65100'],
+            'Bajo'     => ['BAJO', '#b71c1c'],
+        ];
+        return $map[desempenoNota($nota, $anio)];
     }
 }
 
@@ -124,7 +128,7 @@ function boletinHTML_v2($estudiante, $curso, $periodo, $notas, $promedio, $prome
             $notaVal = (int) round((float) $n['nota']);
             $ih      = (int) ($n['intensidad_horaria'] ?? 0);
             $pct     = (int) round((float) ($n['porcentaje'] ?? 100));
-            [$desLabel] = gcaDesempeno($n['nota']);
+            [$desLabel] = gcaDesempeno($n['nota'], $anio ? (int) $anio : null);
 
             $logroRaw = trim((string) ($logros[$n['asignatura_id']] ?? ''));
             if ($logroRaw === '') $logroRaw = gcaLogroDefecto($desLabel);
@@ -153,7 +157,7 @@ function boletinHTML_v2($estudiante, $curso, $periodo, $notas, $promedio, $prome
     if (count($notas) === 0) {
         $obsAuto = 'No se registran calificaciones del estudiante para este período académico.';
     } else {
-        [$gLabel] = gcaDesempeno($promedio);
+        [$gLabel] = gcaDesempeno($promedio, $anio ? (int) $anio : null);
         $tail = ($gLabel === 'SUPERIOR' || $gLabel === 'ALTO')
             ? '¡Felicitaciones por su excelente rendimiento y compromiso durante el período!'
             : ($gLabel === 'BÁSICO'

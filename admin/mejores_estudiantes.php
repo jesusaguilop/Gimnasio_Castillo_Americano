@@ -119,7 +119,7 @@ include "includes/header.php";
                                             <?php $pos = 1; ?>
                                             <?php foreach ($estudiantes as $est):
                                                 $prom = (float) $est['promedio'];
-                                                if ($prom >= 60) $badgeClass = 'ok';
+                                                if ($prom >= notaMinimaAprobacion($anio_activo)) $badgeClass = 'ok';
                                                 elseif ($prom >= 40) $badgeClass = 'warn';
                                                 else $badgeClass = 'bad';
                                             ?>

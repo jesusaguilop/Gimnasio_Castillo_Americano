@@ -25,18 +25,116 @@
  *   • Redondeo: definitiva de área a 1 decimal; el promedio general es la media
  *     de esas definitivas YA redondeadas (lo que ve el padre en el boletín), y se
  *     redondea a 1 decimal (PHP round: mitad hacia arriba).
- *   • Desempeño: Superior ≥ 90, Alto 80–89, Básico 60–79, Bajo < 60.
+ *   • Desempeño: escala POR AÑO LECTIVO que define el administrador en
+ *     Plataforma (escalaDesempeno()). Por defecto Superior ≥ 90, Alto 80–89,
+ *     Básico 60–79, Bajo < 60. Aprueba quien llega a Básico.
  *   • PUESTO = ranking del curso por promedio general. Empates: mismo puesto
  *     ("1, 2, 2, 4"); el orden de desempate visual es alfabético.
  *     Solo entran al ranking los estudiantes con promedio (con alguna nota).
  *   • CONSOLIDADO ANUAL: definitiva anual de cada asignatura = promedio de sus
  *     notas en los períodos que tiene; con eso → áreas → promedio del año.
- *     Aprueba el año con promedio general ≥ NOTA_MINIMA_APROBACION.
+ *     Aprueba el año con promedio general ≥ notaMinimaAprobacion($anio).
  * ============================================================
  */
 
-if (!defined('NOTA_MINIMA_APROBACION')) {
-    define('NOTA_MINIMA_APROBACION', 60);
+/* ============================================================
+ * ESCALA DE DESEMPEÑO por año lectivo
+ * ------------------------------------------------------------
+ * Los nombres son los del Decreto 1290 (Superior, Alto, Básico, Bajo); el
+ * colegio fija en su SIEE dónde empieza cada uno. Se guarda en
+ * configuraciones con la clave "escala_desempeno_<año>" y el valor JSON
+ * {"superior":90,"alto":80,"basico":60}. Un año sin escala propia usa la del
+ * año anterior más cercano que la tenga (así rige "desde ese año"), y si no
+ * hay ninguna, la de siempre: 90 / 80 / 60. La nota mínima para aprobar es
+ * el inicio de Básico.
+ * ============================================================ */
+const ESCALA_DESEMPENO_DEFECTO = ['superior' => 90, 'alto' => 80, 'basico' => 60];
+
+/** Lee de la BD el año activo y las escalas guardadas (una consulta por request). */
+function escalasGuardadas(): array
+{
+    static $datos = null;
+    if ($datos !== null) return $datos;
+    $datos = ['anio_activo' => (int) date('Y'), 'escalas' => []];
+    try {
+        $pdo = class_exists('App\Base\Database') ? \App\Base\Database::connection() : ($GLOBALS['conexion'] ?? null);
+        if (!$pdo) return $datos;
+        $rows = $pdo->query("SELECT clave, valor FROM configuraciones
+                             WHERE clave = 'anio_activo' OR clave LIKE 'escala_desempeno_%'")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as $r) {
+            if ($r['clave'] === 'anio_activo') {
+                if ((int) $r['valor'] > 0) $datos['anio_activo'] = (int) $r['valor'];
+                continue;
+            }
+            $anio = (int) substr($r['clave'], strlen('escala_desempeno_'));
+            $e = json_decode((string) $r['valor'], true);
+            if ($anio > 0 && is_array($e) && validarEscala($e) === null) {
+                $datos['escalas'][$anio] = array_map('intval', array_intersect_key($e, ESCALA_DESEMPENO_DEFECTO));
+            }
+        }
+        krsort($datos['escalas']);
+    } catch (Throwable $e) {
+        error_log('[escala desempeño] ' . $e->getMessage());
+    }
+    return $datos;
+}
+
+/** Año lectivo activo (configuraciones.anio_activo). */
+function anioLectivoActivo(): int
+{
+    return escalasGuardadas()['anio_activo'];
+}
+
+/**
+ * Escala vigente para un año lectivo (por defecto, el activo).
+ * @return array{superior:int, alto:int, basico:int, desde:?int}  desde = año en que se fijó (null = la de siempre)
+ */
+function escalaDesempeno(?int $anio = null): array
+{
+    $anio = $anio ?: anioLectivoActivo();
+    foreach (escalasGuardadas()['escalas'] as $desde => $e) {   // de la más nueva a la más vieja
+        if ($desde <= $anio) return $e + ['desde' => $desde];
+    }
+    return ESCALA_DESEMPENO_DEFECTO + ['desde' => null];
+}
+
+/** Revisa una escala: enteros, dentro de 1..100 y en orden Superior > Alto > Básico. null = válida. */
+function validarEscala(array $e): ?string
+{
+    foreach (['superior', 'alto', 'basico'] as $k) {
+        if (!isset($e[$k]) || !is_numeric($e[$k]) || (int) $e[$k] != $e[$k]) return 'Cada nivel necesita un número entero.';
+        if ((int) $e[$k] < 1 || (int) $e[$k] > 100) return 'Los valores van de 1 a 100.';
+    }
+    if (!((int) $e['superior'] > (int) $e['alto'] && (int) $e['alto'] > (int) $e['basico'])) {
+        return 'Superior debe empezar más arriba que Alto, y Alto más arriba que Básico.';
+    }
+    return null;
+}
+
+/** Nota mínima para aprobar en ese año (= inicio de Básico). */
+function notaMinimaAprobacion(?int $anio = null): int
+{
+    return escalaDesempeno($anio)['basico'];
+}
+
+/** Los cuatro rangos para mostrar: ['Superior' => '90–100', ..., 'Bajo' => '0–59']. */
+function escalaRangos(?int $anio = null): array
+{
+    $e = escalaDesempeno($anio);
+    return [
+        'Superior' => $e['superior'] . '–100',
+        'Alto'     => $e['alto'] . '–' . ($e['superior'] - 1),
+        'Básico'   => $e['basico'] . '–' . ($e['alto'] - 1),
+        'Bajo'     => '0–' . ($e['basico'] - 1),
+    ];
+}
+
+/** "Superior 90–100 · Alto 80–89 · Básico 60–79 · Bajo 0–59" */
+function escalaTexto(?int $anio = null): string
+{
+    $partes = [];
+    foreach (escalaRangos($anio) as $nivel => $rango) $partes[] = "$nivel $rango";
+    return implode(' · ', $partes);
 }
 
 /** Áreas que se mostrarían en el boletín sin entrar al promedio ni al puesto.
@@ -51,18 +149,19 @@ function areaPromedia(string $area): bool
     return !in_array(mb_strtolower(trim($area)), AREAS_FUERA_DEL_PROMEDIO, true);
 }
 
-/** Desempeño cualitativo de una nota/promedio (escala 0-100). */
-function desempenoNota($nota): string
+/** Desempeño cualitativo de una nota/promedio según la escala del año (por defecto, el activo). */
+function desempenoNota($nota, ?int $anio = null): string
 {
     $n = (float) $nota;
-    if ($n >= 90) return 'Superior';
-    if ($n >= 80) return 'Alto';
-    if ($n >= 60) return 'Básico';
+    $e = escalaDesempeno($anio);
+    if ($n >= $e['superior']) return 'Superior';
+    if ($n >= $e['alto']) return 'Alto';
+    if ($n >= $e['basico']) return 'Básico';
     return 'Bajo';
 }
 
 /** Estilo en línea (fondo + texto) de un badge según el desempeño. */
-function desempenoEstilo($nota): string
+function desempenoEstilo($nota, ?int $anio = null): string
 {
     $map = [
         'Superior' => 'background:#1b5e20;color:#fff;',
@@ -70,7 +169,7 @@ function desempenoEstilo($nota): string
         'Básico'   => 'background:#fff3e0;color:#a33f00;',
         'Bajo'     => 'background:#ffebee;color:#b71c1c;',
     ];
-    return $map[desempenoNota($nota)];
+    return $map[desempenoNota($nota, $anio)];
 }
 
 /**
@@ -317,9 +416,10 @@ function calcularPromedioGeneralEstudiante($conexion, $estudiante_id, $periodo, 
  * Consolidado anual de VARIOS cursos en una consulta.
  * @return array [curso_id => [ ['id','nombre','promedio','aprobo','areas_perdidas','areas','periodos','puesto','total'], ... ]]
  */
-function rankingAnualCursos($conexion, array $curso_ids, $anio = null, $notaMinima = NOTA_MINIMA_APROBACION): array
+function rankingAnualCursos($conexion, array $curso_ids, $anio = null, $notaMinima = null): array
 {
     $anio = (int) ($anio ?? date('Y'));
+    $notaMinima = $notaMinima ?? notaMinimaAprobacion($anio);
     $curso_ids = array_values(array_unique(array_map('intval', $curso_ids)));
     if (!$curso_ids) return [];
     $ph = implode(',', array_fill(0, count($curso_ids), '?'));
@@ -377,7 +477,7 @@ function rankingAnualCursos($conexion, array $curso_ids, $anio = null, $notaMini
 }
 
 /** Ranking anual de un curso (ver rankingAnualCursos). */
-function rankingAnualCurso($conexion, $curso_id, $anio = null, $notaMinima = NOTA_MINIMA_APROBACION)
+function rankingAnualCurso($conexion, $curso_id, $anio = null, $notaMinima = null)
 {
     return rankingAnualCursos($conexion, [(int) $curso_id], $anio, $notaMinima)[(int) $curso_id] ?? [];
 }
@@ -386,7 +486,7 @@ function rankingAnualCurso($conexion, $curso_id, $anio = null, $notaMinima = NOT
  * Consolidado ANUAL de un estudiante (mismo cálculo que rankingAnualCursos).
  * @return array ['areas'=>[area=>def], 'general'=>float|null, 'aprobo'=>bool, 'areas_perdidas'=>int, 'periodos'=>int, 'puesto'=>?int, 'total'=>int]
  */
-function consolidadoAnualEstudiante($conexion, $estudiante_id, $anio = null, $notaMinima = NOTA_MINIMA_APROBACION)
+function consolidadoAnualEstudiante($conexion, $estudiante_id, $anio = null, $notaMinima = null)
 {
     $curso_id = obtenerCursoIdEstudiante($conexion, $estudiante_id);
     $vacio = ['areas' => [], 'general' => null, 'aprobo' => false, 'areas_perdidas' => 0, 'periodos' => 0, 'puesto' => null, 'total' => 0];

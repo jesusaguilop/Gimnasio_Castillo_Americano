@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../includes/init.php';
 checkRole('profesor');
+require_once __DIR__ . '/../lib/rank_helper.php';
 
 $profesor_id = userId();
 $nombre = $_SESSION["nombre"] ?? "Profesor";
@@ -202,7 +203,7 @@ include "includes/header.php";
                                                 <td><?= htmlspecialchars($r["grado"] . ' ' . $r["curso"]) ?></td>
                                                 <td><?= htmlspecialchars($r["periodo"]) ?></td>
                                                 <td>
-                                                    <span class="badge <?= $r["nota"] >= 60 ? 'bg-success' : 'bg-danger' ?> rounded-pill px-3 py-1">
+                                                    <span class="badge <?= $r["nota"] >= notaMinimaAprobacion($anio_activo) ? 'bg-success' : 'bg-danger' ?> rounded-pill px-3 py-1">
                                                         <?= (int) $r["nota"] ?>
                                                     </span>
                                                 </td>

@@ -126,8 +126,8 @@ function verificarRiesgoAcademico($conexion, $estudiante_id, $curso_id, $periodo
  * Riesgo = con el MISMO modelo del boletín (rank_helper.php):
  *   definitiva acumulada de cada asignatura = promedio de sus notas en los
  *   períodos 1-3 que TIENE (un período sin nota no cuenta como 0) → áreas →
- *   promedio general. Está en riesgo si el promedio general acumulado < 60 o
- *   alguna área que promedia < 60.
+ *   promedio general. Está en riesgo si el promedio general acumulado no llega
+ *   a Básico (notaMinimaAprobacion del año) o alguna área que promedia no llega.
  *
  * @return int[] ids de alertas nuevas
  */
@@ -135,6 +135,7 @@ function verificarRiesgoAcademicoCurso($conexion, array $estudiante_ids, $period
 {
     require_once __DIR__ . '/rank_helper.php';
     $anio = (int) ($anio ?? date('Y'));
+    $minima = notaMinimaAprobacion($anio);   // inicio de Básico en la escala de ese año
     $periodo = (string) $periodo;
     if ($periodo !== '3') return [];
 
@@ -166,12 +167,12 @@ function verificarRiesgoAcademicoCurso($conexion, array $estudiante_ids, $period
         $def = calcularDefinitivas($d['notas']);
         $areas = [];
         foreach ($def['areas'] as $area => $v) {
-            if ($v < NOTA_MINIMA_APROBACION && areaPromedia($area)) {
+            if ($v < $minima && areaPromedia($area)) {
                 $areas[] = $area . ' (' . number_format($v, 1) . ')';
             }
         }
         $general = $def['general'];
-        if ($general === null || ($general >= NOTA_MINIMA_APROBACION && !$areas)) continue;
+        if ($general === null || ($general >= $minima && !$areas)) continue;
         $enRiesgo[$eid] = ['info' => $d['info'], 'areas' => $areas, 'general' => $general];
     }
     if (!$enRiesgo) return [];
@@ -204,7 +205,7 @@ function verificarRiesgoAcademicoCurso($conexion, array $estudiante_ids, $period
     $alertas = [];
     foreach ($enRiesgo as $eid => $x) {
         $e = $x['info'];
-        $detalle = $x['areas'] ? implode(', ', $x['areas']) : 'promedio general por debajo de ' . NOTA_MINIMA_APROBACION;
+        $detalle = $x['areas'] ? implode(', ', $x['areas']) : 'promedio general por debajo de ' . $minima;
         $gen = number_format($x['general'], 1);
 
         $alertas[] = ['riesgo_academico', 'Estudiante en riesgo de perder el año',

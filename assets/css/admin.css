@@ -895,3 +895,13 @@ a.kpi:hover { border-color: var(--gold); box-shadow: var(--shadow); transform: t
     .dash-hero { padding: 20px; }
     .dash-hero-actions, .dash-hero-actions > * { width: 100%; }
 }
+
+/* ── Escala de desempeño (admin/plataforma.php) ── */
+.escala-preview { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
+.escala-nivel { padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.escala-nivel.sup  { background: #1b5e20; color: #fff; }
+.escala-nivel.alto { background: #e8f5e9; color: #1b5e20; }
+.escala-nivel.bas  { background: #fff3e0; color: #a33f00; }
+.escala-nivel.bajo { background: #ffebee; color: #b71c1c; }
+.escala-aprueba { margin-left: auto; font-weight: 600; color: var(--text-muted, #6c757d); }
+.escala-error { color: #b71c1c; }

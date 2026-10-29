@@ -5,18 +5,16 @@
  * institucional del Gimnasio Castillo Americano.
  */
 
+require_once __DIR__ . '/rank_helper.php';
+
 if (!function_exists('gca_desempeno_label')) {
     /**
      * Valoración cualitativa del desempeño según la nota (escala 0–100),
-     * modelo del Decreto 1290.
+     * modelo del Decreto 1290, con la escala del año lectivo activo (rank_helper).
      */
     function gca_desempeno_label($nota): string
     {
-        $n = (float) $nota;
-        if ($n >= 90) return 'SUPERIOR';
-        if ($n >= 80) return 'ALTO';
-        if ($n >= 60) return 'BÁSICO';
-        return 'BAJO';
+        return mb_strtoupper(desempenoNota($nota), 'UTF-8');
     }
 }
 
