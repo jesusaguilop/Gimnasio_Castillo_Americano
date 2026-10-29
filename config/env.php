@@ -95,6 +95,25 @@ if (!function_exists('parse_db_url')) {
 }
 
 /**
+ * Nombre de persona en formato único: "Gutierrez Medina Juan David".
+ * Mayúscula inicial en cada palabra, partículas (de, del, la…) en minúscula
+ * salvo al inicio, sin espacios dobles ni punto final. No toca tildes.
+ */
+if (!function_exists('normalizar_nombre')) {
+    function normalizar_nombre(string $nombre): string
+    {
+        $nombre = trim(preg_replace('/\s+/u', ' ', $nombre), " .,");
+        $palabras = explode(' ', mb_convert_case(mb_strtolower($nombre, 'UTF-8'), MB_CASE_TITLE, 'UTF-8'));
+        foreach ($palabras as $i => $p) {
+            if ($i > 0 && in_array(mb_strtolower($p, 'UTF-8'), ['de', 'del', 'la', 'las', 'los', 'y'], true)) {
+                $palabras[$i] = mb_strtolower($p, 'UTF-8');
+            }
+        }
+        return implode(' ', $palabras);
+    }
+}
+
+/**
  * Directorio de TODO lo que la aplicación escribe en tiempo de ejecución:
  * boletines generados, fotos de docentes e imágenes de noticias.
  *

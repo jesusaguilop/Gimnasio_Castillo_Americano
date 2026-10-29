@@ -24,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !validar_token_csrf($_POST["_csrf_t
     $tipo = "danger";
 } elseif ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-    $nombre = trim($_POST["nombre"] ?? "");
+    $nombre = normalizar_nombre($_POST["nombre"] ?? "");
     $documento = trim($_POST["documento"] ?? "");
     $fecha_nacimiento = trim($_POST["fecha_nacimiento"] ?? "");
     $curso_id = $_POST["curso_id"] ?? "";
