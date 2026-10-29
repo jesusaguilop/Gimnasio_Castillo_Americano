@@ -1,17 +1,18 @@
 /* ============================================================
    Escudo animado del GCA — "El rugido del castillo"
    ------------------------------------------------------------
-   El escudo va en 3 capas que encajan píxel a píxel
-   (assets/img/escudo/): la base sin leones y cada león aparte.
-   Así los leones pueden saltar y rugir sin mover el resto.
+   Las capas salen del ESCUDO ORIGINAL (dorado metálico) y encajan
+   píxel a píxel (assets/img/escudo/): la base sin leones y cada
+   león aparte. Juntas son el escudo original; la animación solo
+   las mueve y siempre termina con todo en su sitio.
 
-     <span class="escudo">               ← proporción 226 × 337
+     <span class="escudo">               ← proporción 398 × 680
        <img class="escudo-base"> <img class="escudo-leon izq"> <img class="escudo-leon der">
      </span>
 
-   Puntos medidos sobre el lienzo (226 × 337):
-     patas  izq 8.4% 31.8%  ·  der 91.6% 31.8%   (pivote del salto)
-     cabeza izq 15% 14.5%   ·  der 85% 14.5%     (origen del rugido)
+   Puntos medidos sobre el lienzo (398 × 680):
+     patas  izq 13% 33%     ·  der 87% 33%       (pivote del salto)
+     cabeza izq 14% 16.8%   ·  der 86% 16.8%     (origen del rugido)
    Respeta prefers-reduced-motion.
    ============================================================ */
 
@@ -19,7 +20,7 @@
     --escudo-oro: #c9a24d;
     position: relative;
     display: inline-block;
-    aspect-ratio: 226 / 337;
+    aspect-ratio: 398 / 680;
     height: 64px;
     flex: none;
     isolation: isolate;
@@ -30,9 +31,19 @@
     display: block;
     user-select: none; -webkit-user-drag: none;
 }
-.escudo-leon { will-change: transform; }
-.escudo-leon.izq { transform-origin: 8.4% 31.8%; }
-.escudo-leon.der { transform-origin: 91.6% 31.8%; }
+/* En reposo el león es un calado: se ve el color del fondo, como en el
+   escudo original. Solo aparece (en blanco) al correr, rugir o al pasar el
+   mouse, y luego se difumina. */
+.escudo-leon { will-change: transform, opacity; opacity: 0; filter: saturate(0) brightness(1.15); }
+/* En las intros el león va en partes (assets/img/escudo/leon-*-cuerpo|garra-alta|
+   garra-baja|pata|cola.png): juntas son el león original píxel a píxel */
+span.escudo-leon { position: absolute; inset: 0; }
+span.escudo-leon > img {
+    position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+    user-select: none; -webkit-user-drag: none;
+}
+.escudo-leon.izq { transform-origin: 13% 33%; }
+.escudo-leon.der { transform-origin: 87% 33%; }
 
 /* Destello dorado que recorre SOLO la silueta del escudo */
 .escudo::after {
@@ -67,20 +78,31 @@
     100% { opacity: 1; background-position: -30% 0; }
 }
 @keyframes brillo-leon {
-    0%, 100% { filter: none; }
-    45%      { filter: drop-shadow(0 0 3px rgba(255, 214, 120, .95)) brightness(1.18); }
+    0%, 100% { filter: saturate(0) brightness(1.15); }
+    45%      { filter: drop-shadow(0 0 3px rgba(255, 214, 120, .95)) saturate(0) brightness(1.3); }
+}
+/* Asoma en blanco para rugir y se vuelve a fundir con el fondo */
+@keyframes asoma {
+    0%   { opacity: 0; }
+    12%, 70% { opacity: 1; }
+    100% { opacity: 0; }
+}
+/* Tras encajar en el escudo, el blanco se difumina hasta el color del fondo */
+@keyframes se-funde {
+    from { opacity: 1; }
+    to   { opacity: 0; }
 }
 
 /* Al cargar la página (una vez) y al pasar el mouse por la marca */
 .escudo.ruge .escudo-leon.izq,
 .navbar-brand:hover .escudo .escudo-leon.izq,
 .navbar-brand:focus-visible .escudo .escudo-leon.izq {
-    animation: rugido-izq .9s cubic-bezier(.3, 1.4, .5, 1) both, brillo-leon .9s ease both;
+    animation: rugido-izq .9s cubic-bezier(.3, 1.4, .5, 1) .15s both, brillo-leon .9s ease .15s both, asoma 1.5s ease both;
 }
 .escudo.ruge .escudo-leon.der,
 .navbar-brand:hover .escudo .escudo-leon.der,
 .navbar-brand:focus-visible .escudo .escudo-leon.der {
-    animation: rugido-der .9s cubic-bezier(.3, 1.4, .5, 1) .08s both, brillo-leon .9s ease .08s both;
+    animation: rugido-der .9s cubic-bezier(.3, 1.4, .5, 1) .23s both, brillo-leon .9s ease .23s both, asoma 1.5s ease .08s both;
 }
 .escudo.ruge::after,
 .navbar-brand:hover .escudo::after,
@@ -99,8 +121,9 @@
 
 
 /* ============================================================
-   Intro de la portada: los leones saltan al escudo y rugen
-   (una vez por visita; se salta con clic o tecla)
+   Intro de la portada: los leones llegan corriendo, saltan a
+   su estandarte y rugen (una vez por visita; se salta con clic
+   o tecla)
    ============================================================ */
 .gca-intro {
     position: fixed; inset: 0; z-index: 3000;
@@ -110,24 +133,38 @@
         #12100c;
     color: #f3e6c4;
     cursor: pointer;
-    animation: intro-sale .7s cubic-bezier(.7, 0, .3, 1) 3.1s forwards;
+    overflow: hidden;
+    animation: intro-sale .7s cubic-bezier(.7, 0, .3, 1) 3.9s forwards;
 }
 .gca-intro__centro { display: grid; justify-items: center; gap: 22px; }
-.gca-intro .escudo { height: min(46vh, 320px); }
+.gca-intro .escudo { height: min(46vh, 320px); animation: aterrizaje .45s linear 2.04s both; }
 
-/* Base: aparece desde abajo */
-.gca-intro .escudo-base { animation: base-entra .8s cubic-bezier(.22, 1, .36, 1) .15s both; }
+/* Base: aparece desde abajo, con el hueco de cada león esperándolo */
+.gca-intro .escudo-base { animation: base-entra .8s cubic-bezier(.22, 1, .36, 1) .1s both; }
 
-/* Leones: saltan desde los lados en arco y aterrizan con rebote.
+/* Leones: entran corriendo desde los lados, saltan y caen en su sitio.
    El rugido va con fill "forwards" (no "both"): con "both" su primer
-   fotograma se aplicaría durante el retardo y anularía el salto. */
-.gca-intro .escudo-leon.izq { animation: salto-izq .95s cubic-bezier(.3, .7, .3, 1) .7s both,
-                                         rugido-izq .9s cubic-bezier(.3, 1.4, .5, 1) 1.75s forwards,
-                                         brillo-leon .9s ease 1.75s forwards; }
-.gca-intro .escudo-leon.der { animation: salto-der .95s cubic-bezier(.3, .7, .3, 1) .82s both,
-                                         rugido-der .9s cubic-bezier(.3, 1.4, .5, 1) 1.83s forwards,
-                                         brillo-leon .9s ease 1.83s forwards; }
-.gca-intro .escudo::after { animation: destello 1.2s ease 2.1s both; }
+   fotograma se aplicaría durante el retardo y anularía la carrera. */
+.gca-intro .escudo-leon.izq { animation: carrera-izq 1.6s linear .6s both,
+                                         rugido-izq .9s cubic-bezier(.3, 1.4, .5, 1) 2.35s forwards,
+                                         brillo-leon .9s ease 2.35s forwards,
+                                         se-funde .7s ease 3.05s forwards; }
+.gca-intro .escudo-leon.der { animation: carrera-der 1.6s linear .68s both,
+                                         rugido-der .9s cubic-bezier(.3, 1.4, .5, 1) 2.43s forwards,
+                                         brillo-leon .9s ease 2.43s forwards,
+                                         se-funde .7s ease 3.1s forwards; }
+.gca-intro .escudo::after { animation: destello 1.2s ease 2.75s both; }
+
+/* Polvo dorado donde cae cada león */
+.gca-intro__polvo {
+    position: absolute; width: 30%; aspect-ratio: 1; border-radius: 50%;
+    translate: -50% -50%; pointer-events: none; opacity: 0;
+    border: 2px solid #f3d27a;
+    box-shadow: 0 0 16px rgba(243, 210, 122, .6);
+    animation: impacto-leon .6s ease-out forwards;
+}
+.gca-intro__polvo.izq { left: 13%; top: 33%; animation-delay: 2.04s; }
+.gca-intro__polvo.der { left: 87%; top: 33%; animation-delay: 2.12s; }
 
 /* Ondas del rugido, desde la cabeza de cada león */
 .gca-intro__onda {
@@ -138,15 +175,15 @@
     opacity: 0; pointer-events: none;
     animation: onda 1.1s ease-out forwards;   /* forwards: invisibles durante el retardo */
 }
-.gca-intro__onda.izq { left: 15%; top: 14.5%; }
-.gca-intro__onda.der { left: 85%; top: 14.5%; }
-.gca-intro__onda.n1 { animation-delay: 1.95s; }
-.gca-intro__onda.n2 { animation-delay: 2.15s; }
-.gca-intro__onda.n3 { animation-delay: 2.35s; }
+.gca-intro__onda.izq { left: 14%; top: 16.8%; }
+.gca-intro__onda.der { left: 86%; top: 16.8%; }
+.gca-intro__onda.n1 { animation-delay: 2.5s; }
+.gca-intro__onda.n2 { animation-delay: 2.7s; }
+.gca-intro__onda.n3 { animation-delay: 2.9s; }
 
 .gca-intro__nombre {
     text-align: center; line-height: 1.15;
-    animation: texto-entra .8s ease 2.2s both;
+    animation: texto-entra .8s ease 2.7s both;
 }
 .gca-intro__nombre small {
     display: block; letter-spacing: .32em; font-size: .78rem; color: var(--escudo-oro);
@@ -174,17 +211,95 @@
     from { opacity: 0; transform: translateY(14%) scale(.9); }
     to   { opacity: 1; transform: none; }
 }
-@keyframes salto-izq {
-    0%   { opacity: 0; transform: translate(-260%, 70%) rotate(-35deg) scale(1.5); }
-    55%  { opacity: 1; transform: translate(-40%, -45%) rotate(-12deg) scale(1.25); }  /* cima del salto */
-    80%  { transform: translate(0, 4%) rotate(3deg) scale(.96, 1.04); }               /* aterriza */
+/* Carrera en cuatro patas: el león va tumbado hacia adelante (cuerpo casi
+   horizontal) dando trancos; se agacha, salta, se yergue en el aire y cae en
+   su estandarte ya en su postura original. Garras y patas galopan aparte
+   (galope-*). Los % de translate son del lienzo del escudo. */
+@keyframes carrera-izq {
+    0%   { opacity: 0; transform: translate(-300%, 10%) rotate(58deg); }
+    5%   { opacity: 1; }
+    10%  { transform: translate(-265%, 6%) rotate(52deg); }
+    18%  { transform: translate(-230%, 10%) rotate(62deg); }
+    26%  { transform: translate(-195%, 6%) rotate(52deg); }
+    34%  { transform: translate(-160%, 10%) rotate(62deg); }
+    42%  { transform: translate(-125%, 6%) rotate(52deg); }
+    50%  { transform: translate(-92%, 10%) rotate(62deg); }
+    58%  { transform: translate(-72%, 12%) rotate(64deg) scale(1.04, .9); }    /* se agacha */
+    76%  { transform: translate(-28%, -20%) rotate(14deg) scale(1.06); }       /* salta y se yergue */
+    90%  { opacity: 1; transform: translate(0, 2%) rotate(-3deg) scale(1.05, .93); } /* cae */
+    95%  { transform: translate(0, -1%) scale(.98, 1.03); }
     100% { opacity: 1; transform: none; }
 }
-@keyframes salto-der {
-    0%   { opacity: 0; transform: translate(260%, 70%) rotate(35deg) scale(1.5); }
-    55%  { opacity: 1; transform: translate(40%, -45%) rotate(12deg) scale(1.25); }
-    80%  { transform: translate(0, 4%) rotate(-3deg) scale(.96, 1.04); }
+@keyframes carrera-der {
+    0%   { opacity: 0; transform: translate(300%, 10%) rotate(-58deg); }
+    5%   { opacity: 1; }
+    10%  { transform: translate(265%, 6%) rotate(-52deg); }
+    18%  { transform: translate(230%, 10%) rotate(-62deg); }
+    26%  { transform: translate(195%, 6%) rotate(-52deg); }
+    34%  { transform: translate(160%, 10%) rotate(-62deg); }
+    42%  { transform: translate(125%, 6%) rotate(-52deg); }
+    50%  { transform: translate(92%, 10%) rotate(-62deg); }
+    58%  { transform: translate(72%, 12%) rotate(-64deg) scale(1.04, .9); }
+    76%  { transform: translate(28%, -20%) rotate(-14deg) scale(1.06); }
+    90%  { opacity: 1; transform: translate(0, 2%) rotate(3deg) scale(1.05, .93); }
+    95%  { transform: translate(0, -1%) scale(.98, 1.03); }
     100% { opacity: 1; transform: none; }
+}
+
+/* Galope: cada parte gira en su articulación (medidas en el lienzo) y
+   empieza y termina en su sitio. --s = 1 león izquierdo, -1 el derecho. */
+.escudo-leon.izq { --s: 1; }
+.escudo-leon.der { --s: -1; }
+/* --d: retardo de la carrera, para que el galope arranque con ella */
+.gca-intro .escudo-leon.izq { --d: .6s; }  .gca-intro .escudo-leon.der { --d: .68s; }
+.lg-intro .escudo-leon.izq { --d: 1.5s; }  .lg-intro .escudo-leon.der { --d: 1.58s; }
+.escudo-leon.izq > .garra-alta { transform-origin: 18.6% 22.1%; }
+.escudo-leon.izq > .garra-baja { transform-origin: 16.1% 25%; }
+.escudo-leon.izq > .pata, .escudo-leon.izq > .pata-lejos { transform-origin: 10.6% 27.4%; }
+.escudo-leon.izq > .cola       { transform-origin: 6.8% 23%; }
+.escudo-leon.der > .garra-alta { transform-origin: 81.4% 22.1%; }
+.escudo-leon.der > .garra-baja { transform-origin: 83.9% 25%; }
+.escudo-leon.der > .pata, .escudo-leon.der > .pata-lejos { transform-origin: 89.4% 27.4%; }
+.escudo-leon.der > .cola       { transform-origin: 93.2% 23%; }
+.corre > .garra-alta { animation: galope-mano .4s ease-in-out var(--d, 0s) 3; }
+.corre > .garra-baja { animation: galope-mano .4s ease-in-out calc(var(--d, 0s) - .2s) 3; }
+.corre > .pata       { animation: galope-pata .4s ease-in-out var(--d, 0s) 3; }
+.corre > .cola       { animation: galope-cola .4s ease-in-out var(--d, 0s) 3; }
+/* La cuarta pata: el original solo muestra una trasera, así que mientras
+   corre se suma una copia de esa misma pata, un poco atrás y en sombra, a
+   contratiempo. Al encajar en el escudo ya no está. */
+.corre > .pata-lejos { filter: brightness(.82); opacity: 0;
+                       animation: galope-pata-lejos .4s ease-in-out calc(var(--d, 0s) - .2s) 3; }
+@keyframes galope-mano {         /* las garras hacen de patas delanteras */
+    0%, 100% { transform: none; }
+    25% { transform: rotate(calc(var(--s) * -30deg)); }   /* se estira adelante (sin taparle la cara) */
+    75% { transform: rotate(calc(var(--s) * 38deg)); }    /* empuja atrás y se flexiona */
+}
+@keyframes galope-pata {
+    0%, 100% { transform: none; }
+    25% { transform: rotate(calc(var(--s) * 45deg)); }    /* empuja atrás */
+    75% { transform: rotate(calc(var(--s) * -40deg)); }   /* se recoge adelante */
+}
+@keyframes galope-pata-lejos {
+    0%, 100% { opacity: 1; transform: translate(calc(var(--s) * -2.2%), -.6%); }
+    25% { opacity: 1; transform: translate(calc(var(--s) * -2.2%), -.6%) rotate(calc(var(--s) * 45deg)); }
+    75% { opacity: 1; transform: translate(calc(var(--s) * -2.2%), -.6%) rotate(calc(var(--s) * -40deg)); }
+}
+@keyframes galope-cola {
+    0%, 100% { transform: none; }
+    50% { transform: rotate(calc(var(--s) * -22deg)); }
+}
+@keyframes impacto-leon {
+    0%   { opacity: 1; transform: scale(.25, .12); }
+    100% { opacity: 0; transform: scale(2.4, .9); border-width: 1px; }
+}
+/* El escudo acusa el golpe cuando caen los leones */
+@keyframes aterrizaje {
+    0%, 100% { transform: none; }
+    15% { transform: translateY(3px); }
+    35% { transform: translateY(-2px) rotate(-.4deg); }
+    55% { transform: translateY(2px) rotate(.4deg); }
+    75% { transform: translateY(-1px); }
 }
 @keyframes onda {
     0%   { opacity: .9; transform: scale(.3); }
@@ -203,6 +318,8 @@
     .escudo .escudo-leon, .escudo::after,
     .navbar-brand .escudo { animation: none !important; transition: none !important; }
     .gca-intro { display: none !important; }
+    span.escudo-leon > img { animation: none !important; }
+    .escudo-leon { opacity: 0 !important; }
 }
 
 /* Mientras dura la intro no se desplaza la página de fondo */

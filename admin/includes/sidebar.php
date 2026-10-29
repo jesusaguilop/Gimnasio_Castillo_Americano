@@ -23,7 +23,7 @@ try {
 <nav id="sidebar" aria-label="Menú del panel">
     <div class="sb-brand">
         <a href="dashboard.php" class="sb-brand-link" aria-label="Ir al resumen del panel">
-            <img src="../assets/img/logo_gca.png" alt="" class="sb-logo" onerror="this.style.display='none'">
+            <img src="../assets/img/escudo/escudo.png" alt="" class="sb-logo" onerror="this.style.display='none'">
             <span class="sb-brand-text">
                 <strong>Castillo Americano</strong>
                 <small>Administración</small>

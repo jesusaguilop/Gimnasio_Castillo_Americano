@@ -14,7 +14,7 @@ $isActive = fn($file) => $currentFile === $file ? 'active' : '';
 
 <aside id="sidebar">
     <div class="sidebar-logo">
-        <img src="../assets/img/logo_gca.png" alt="GCA">
+        <img src="../assets/img/escudo/escudo.png" alt="GCA">
         <div class="sidebar-logo-text">
             <span>Docente GCA</span>
             <small>Panel del Profesor</small>

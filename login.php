@@ -19,7 +19,9 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
     <title>Acceso | Gimnasio Castillo Americano</title>
     <meta name="description" content="Ingreso al sistema académico del Gimnasio Castillo Americano para administradores, profesores y padres de familia.">
     <meta name="robots" content="noindex">
-    <link rel="icon" type="image/png" href="assets/img/escudo-gca.png">
+    <link rel="icon" href="assets/img/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32.png">
+    <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
@@ -36,21 +38,37 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
         <a href="index.php" class="lg-volver"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al sitio</a>
 
         <div class="lg-marca__centro">
-            <!-- Escudo oficial en piezas (assets/img/escudo/): la intro solo las mueve
-                 hasta su sitio; al terminar queda idéntico al escudo oficial. -->
+            <!-- Escudo original en piezas (assets/img/escudo/): la intro solo las mueve
+                 hasta su sitio; al terminar queda idéntico al escudo original. -->
             <span class="escudo lg-escudo lg-intro" aria-hidden="true">
-                <img class="escudo-pieza escudo-bajo" src="assets/img/escudo/pieza-escudo-bajo.png" alt="" width="226" height="337">
-                <img class="escudo-pieza chevrones" src="assets/img/escudo/pieza-chevrones.png" alt="" width="226" height="337">
-                <img class="escudo-pieza estandartes" src="assets/img/escudo/pieza-estandartes.png" alt="" width="226" height="337">
-                <img class="escudo-pieza torre" src="assets/img/escudo/pieza-torre.png" alt="" width="226" height="337">
-                <img class="escudo-pieza almenas" src="assets/img/escudo/pieza-almenas.png" alt="" width="226" height="337">
-                <img class="escudo-pieza hojas" src="assets/img/escudo/pieza-hojas.png" alt="" width="226" height="337">
-                <img class="escudo-letra g" src="assets/img/escudo/letra-g.png" alt="" width="226" height="337">
-                <img class="escudo-letra a" src="assets/img/escudo/letra-a.png" alt="" width="226" height="337">
-                <img class="escudo-letra c" src="assets/img/escudo/letra-c.png" alt="" width="226" height="337">
-                <img class="escudo-leon izq" src="assets/img/escudo/leon-izq.png" alt="" width="226" height="337">
-                <img class="escudo-leon der" src="assets/img/escudo/leon-der.png" alt="" width="226" height="337">
+                <img class="escudo-pieza escudo-bajo" src="assets/img/escudo/pieza-escudo-bajo.png" alt="" width="398" height="680">
+                <img class="escudo-pieza chevrones" src="assets/img/escudo/pieza-chevrones.png" alt="" width="398" height="680">
+                <img class="escudo-pieza estandartes" src="assets/img/escudo/pieza-estandartes.png" alt="" width="398" height="680">
+                <img class="escudo-pieza torre" src="assets/img/escudo/pieza-torre.png" alt="" width="398" height="680">
+                <img class="escudo-pieza almenas" src="assets/img/escudo/pieza-almenas.png" alt="" width="398" height="680">
+                <img class="escudo-pieza hojas" src="assets/img/escudo/pieza-hojas.png" alt="" width="398" height="680">
+                <img class="escudo-letra g" src="assets/img/escudo/letra-g.png" alt="" width="398" height="680">
+                <img class="escudo-letra a" src="assets/img/escudo/letra-a.png" alt="" width="398" height="680">
+                <img class="escudo-letra c" src="assets/img/escudo/letra-c.png" alt="" width="398" height="680">
+                <!-- Cada león en partes para que corra; juntas son el león del escudo -->
+                <span class="escudo-leon izq corre">
+                    <img class="cola" src="assets/img/escudo/leon-izq-cola.png" alt="" width="398" height="680">
+                    <img class="pata-lejos" src="assets/img/escudo/leon-izq-pata.png" alt="" width="398" height="680">
+                    <img class="pata" src="assets/img/escudo/leon-izq-pata.png" alt="" width="398" height="680">
+                    <img class="cuerpo" src="assets/img/escudo/leon-izq-cuerpo.png" alt="" width="398" height="680">
+                    <img class="garra-baja" src="assets/img/escudo/leon-izq-garra-baja.png" alt="" width="398" height="680">
+                    <img class="garra-alta" src="assets/img/escudo/leon-izq-garra-alta.png" alt="" width="398" height="680">
+                </span>
+                <span class="escudo-leon der corre">
+                    <img class="cola" src="assets/img/escudo/leon-der-cola.png" alt="" width="398" height="680">
+                    <img class="pata-lejos" src="assets/img/escudo/leon-der-pata.png" alt="" width="398" height="680">
+                    <img class="pata" src="assets/img/escudo/leon-der-pata.png" alt="" width="398" height="680">
+                    <img class="cuerpo" src="assets/img/escudo/leon-der-cuerpo.png" alt="" width="398" height="680">
+                    <img class="garra-baja" src="assets/img/escudo/leon-der-garra-baja.png" alt="" width="398" height="680">
+                    <img class="garra-alta" src="assets/img/escudo/leon-der-garra-alta.png" alt="" width="398" height="680">
+                </span>
                 <span class="lg-impacto g"></span><span class="lg-impacto a"></span><span class="lg-impacto c"></span>
+                <span class="lg-polvo izq"></span><span class="lg-polvo der"></span>
                 <span class="lg-onda izq n1"></span><span class="lg-onda izq n2"></span><span class="lg-onda izq n3"></span>
                 <span class="lg-onda der n1"></span><span class="lg-onda der n2"></span><span class="lg-onda der n3"></span>
             </span>

@@ -16,7 +16,7 @@
             var fin = function () { e.classList.remove('ruge'); };
             if (der) der.addEventListener('animationend', fin, { once: true });
             setTimeout(fin, 1600);   // por si el evento no llega
-        }, document.querySelector('.gca-intro') ? 3900 : 700);
+        }, document.querySelector('.gca-intro') ? 4700 : 700);
     }
 
     /* ── Intro de la portada: se cierra sola, o con clic / tecla / el botón ── */
@@ -37,7 +37,7 @@
         intro.addEventListener('animationend', function (ev) {
             if (ev.target === intro) quitar();
         });
-        setTimeout(quitar, 4600);   // red de seguridad: nunca se queda tapando el sitio
+        setTimeout(quitar, 5400);   // red de seguridad: nunca se queda tapando el sitio
     }
 
     if (document.readyState === 'loading') {

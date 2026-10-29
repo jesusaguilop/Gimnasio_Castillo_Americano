@@ -11,7 +11,7 @@
             <div class="row align-items-center g-5">
                 <div class="col-lg-6" data-aos="fade-up">
                     <span class="hm-eyebrow">
-                        <img src="assets/img/escudo-gca.png" alt="">
+                        <img src="assets/img/escudo/escudo.png" alt="">
                         Gimnasio Castillo Americano
                     </span>
                     <h1 class="hm-title">Bienvenidos a<br><span class="hm-title-grad">nuestro Castillo</span></h1>
@@ -27,7 +27,7 @@
                             <img src="assets/img/colegio.png" alt="Gimnasio Castillo Americano">
                         </div>
                         <div class="hm-float-card">
-                            <img src="assets/img/escudo-gca.png" alt="">
+                            <img src="assets/img/escudo/escudo.png" alt="">
                             <div><strong>Cultivar</strong><span>para cosechar</span></div>
                         </div>
                     </div>

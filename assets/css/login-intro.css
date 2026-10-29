@@ -1,29 +1,30 @@
 /* ============================================================
    Intro del escudo en el login (~4 s, cada vez que se entra)
    ------------------------------------------------------------
-   El escudo OFICIAL va repartido en capas (assets/img/escudo/):
+   El escudo ORIGINAL va repartido en capas (assets/img/escudo/):
    aquí solo se MUEVEN hasta su sitio. Al terminar todas las
    transformaciones quedan en "none" y el escudo es idéntico al
-   oficial (comprobado píxel a píxel al generar las capas).
+   original (comprobado píxel a píxel al generar las capas).
 
    Orden: G (izq) → A (der) → C (centro), con golpe y onda de
    impacto · escudo inferior · chevrones · torre · almenas ·
-   estandartes · hojas · leones que aparecen y rugen · destello.
+   estandartes · hojas · los leones llegan corriendo desde los
+   lados, saltan a su estandarte y rugen · destello.
 
-   Centros medidos en el lienzo 226×337:
-     G 27% 61.6% · C 50% 60% · A 73% 61.7%
-     cabeza león izq 15% 14.5% · der 85% 14.5%
+   Centros medidos en el lienzo 398×680:
+     G 27.3% 62.4% · C 49.1% 62.5% · A 72% 62.3%
+     cabeza león izq 14% 16.8% · der 86% 16.8% · patas 13%/87% 33%
    ============================================================ */
 
 .lg-intro {
-    animation: temblor-golpes 2.4s linear both, temblor-rugido .7s linear 2.85s both;
+    animation: temblor-golpes 2.4s linear both, aterrizaje .45s linear 2.94s forwards, temblor-rugido .7s linear 3.2s forwards;
 }
 .lg-intro > img { will-change: transform, opacity; }
 
 /* ── 1-3. Letras ── */
-.lg-intro .escudo-letra.g { transform-origin: 27% 61.6%; animation: letra-g .45s cubic-bezier(.55, 0, .7, .2) 0s both,   aplasta .3s ease-out .45s; }
-.lg-intro .escudo-letra.a { transform-origin: 73% 61.7%; animation: letra-a .45s cubic-bezier(.55, 0, .7, .2) .3s both,  aplasta .3s ease-out .75s; }
-.lg-intro .escudo-letra.c { transform-origin: 50% 60%;   animation: letra-c .45s cubic-bezier(.6, 0, .8, .15) .6s both,  aplasta .35s ease-out 1.05s; }
+.lg-intro .escudo-letra.g { transform-origin: 27.3% 62.4%; animation: letra-g .45s cubic-bezier(.55, 0, .7, .2) 0s both,   aplasta .3s ease-out .45s; }
+.lg-intro .escudo-letra.a { transform-origin: 72% 62.3%; animation: letra-a .45s cubic-bezier(.55, 0, .7, .2) .3s both,  aplasta .3s ease-out .75s; }
+.lg-intro .escudo-letra.c { transform-origin: 49.1% 62.5%; animation: letra-c .45s cubic-bezier(.6, 0, .8, .15) .6s both,  aplasta .35s ease-out 1.05s; }
 
 .lg-impacto {
     position: absolute; width: 34%; aspect-ratio: 1; border-radius: 50%;
@@ -32,25 +33,37 @@
     box-shadow: 0 0 18px rgba(243, 210, 122, .7), inset 0 0 12px rgba(243, 210, 122, .5);
     animation: impacto .55s ease-out forwards;
 }
-.lg-impacto.g { left: 27%; top: 61.6%; animation-delay: .43s; }
-.lg-impacto.a { left: 73%; top: 61.7%; animation-delay: .73s; }
-.lg-impacto.c { left: 50%; top: 60%;   animation-delay: 1.03s; width: 46%; }
+.lg-impacto.g { left: 27.3%; top: 62.4%; animation-delay: .43s; }
+.lg-impacto.a { left: 72%; top: 62.3%; animation-delay: .73s; }
+.lg-impacto.c { left: 49.1%; top: 62.5%; animation-delay: 1.03s; width: 46%; }
 
 /* ── 4. Se arma el castillo ── */
 .lg-intro .escudo-pieza.escudo-bajo { animation: sube-abajo .5s cubic-bezier(.3, 1.4, .5, 1) 1.1s both; }
 .lg-intro .escudo-pieza.chevrones   { animation: cae-golpe .4s cubic-bezier(.55, 0, .7, .2) 1.3s both; }
 .lg-intro .escudo-pieza.torre       { animation: torre-sube .55s cubic-bezier(.22, 1, .36, 1) 1.6s both; }
 .lg-intro .escudo-pieza.almenas     { animation: almenas-caen .32s cubic-bezier(.55, 0, .7, .2) 1.95s both; }
-.lg-intro .escudo-pieza.estandartes { transform-origin: 50% 38%; animation: despliega .45s cubic-bezier(.3, 1.4, .5, 1) 2.05s both; }
-.lg-intro .escudo-pieza.hojas       { transform-origin: 50% 66%; animation: brotan .45s cubic-bezier(.3, 1.6, .5, 1) 2.25s both; }
+.lg-intro .escudo-pieza.estandartes { transform-origin: 50% 34%; animation: despliega .45s cubic-bezier(.3, 1.4, .5, 1) 2.05s both; }
+.lg-intro .escudo-pieza.hojas       { transform-origin: 50% 70%; animation: brotan .45s cubic-bezier(.3, 1.6, .5, 1) 2.25s both; }
 
-/* ── 5. Leones: aparecen sobre los estandartes y rugen ── */
-.lg-intro .escudo-leon.izq { animation: leon-aparece .4s cubic-bezier(.3, 1.6, .5, 1) 2.45s both,
-                                        rugido-izq .9s cubic-bezier(.3, 1.4, .5, 1) 2.85s forwards,
-                                        brillo-leon .9s ease 2.85s forwards; }
-.lg-intro .escudo-leon.der { animation: leon-aparece .4s cubic-bezier(.3, 1.6, .5, 1) 2.55s both,
-                                        rugido-der .9s cubic-bezier(.3, 1.4, .5, 1) 2.9s forwards,
-                                        brillo-leon .9s ease 2.9s forwards; }
+/* ── 5. Leones: llegan corriendo mientras se arma el castillo, saltan
+       a su estandarte y rugen (carrera-* está en escudo.css) ── */
+.lg-intro .escudo-leon.izq { animation: carrera-izq 1.6s linear 1.5s both,
+                                        rugido-izq .9s cubic-bezier(.3, 1.4, .5, 1) 3.2s forwards,
+                                        brillo-leon .9s ease 3.2s forwards,
+                                        se-funde .8s ease 3.95s forwards; }
+.lg-intro .escudo-leon.der { animation: carrera-der 1.6s linear 1.58s both,
+                                        rugido-der .9s cubic-bezier(.3, 1.4, .5, 1) 3.28s forwards,
+                                        brillo-leon .9s ease 3.28s forwards,
+                                        se-funde .8s ease 4s forwards; }
+.lg-polvo {
+    position: absolute; width: 30%; aspect-ratio: 1; border-radius: 50%;
+    translate: -50% -50%; pointer-events: none; opacity: 0;
+    border: 2px solid #f3d27a;
+    box-shadow: 0 0 16px rgba(243, 210, 122, .6);
+    animation: impacto-leon .6s ease-out forwards;
+}
+.lg-polvo.izq { left: 13%; top: 33%; animation-delay: 2.94s; }
+.lg-polvo.der { left: 87%; top: 33%; animation-delay: 3.02s; }
 .lg-onda {
     position: absolute; width: 30%; aspect-ratio: 1; border-radius: 50%;
     translate: -50% -50%; pointer-events: none; opacity: 0;
@@ -58,18 +71,18 @@
     box-shadow: 0 0 14px rgba(243, 210, 122, .55);
     animation: onda-rugido 1.15s cubic-bezier(.2, .7, .3, 1) forwards;
 }
-.lg-onda.izq { left: 15%; top: 14.5%; }
-.lg-onda.der { left: 85%; top: 14.5%; }
-.lg-onda.n1 { animation-delay: 3.0s; }
-.lg-onda.n2 { animation-delay: 3.18s; }
-.lg-onda.n3 { animation-delay: 3.36s; }
+.lg-onda.izq { left: 14%; top: 16.8%; }
+.lg-onda.der { left: 86%; top: 16.8%; }
+.lg-onda.n1 { animation-delay: 3.35s; }
+.lg-onda.n2 { animation-delay: 3.53s; }
+.lg-onda.n3 { animation-delay: 3.71s; }
 
 /* ── 6. Destello final y el texto de la marca ── */
-.lg-intro::after { animation: destello 1.1s ease 3.6s both; }
-.lg-marca__kicker, .lg-marca__nombre, .lg-marca__lema { animation-delay: 3.2s !important; }
-.lg-perfiles li:nth-child(1) { animation-delay: 3.4s !important; }
-.lg-perfiles li:nth-child(2) { animation-delay: 3.5s !important; }
-.lg-perfiles li:nth-child(3) { animation-delay: 3.6s !important; }
+.lg-intro::after { animation: destello 1.1s ease 3.9s both; }
+.lg-marca__kicker, .lg-marca__nombre, .lg-marca__lema { animation-delay: 3.4s !important; }
+.lg-perfiles li:nth-child(1) { animation-delay: 3.6s !important; }
+.lg-perfiles li:nth-child(2) { animation-delay: 3.7s !important; }
+.lg-perfiles li:nth-child(3) { animation-delay: 3.8s !important; }
 
 /* ── Fotogramas ── */
 @keyframes letra-g {
@@ -122,10 +135,6 @@
     0%   { opacity: 0; transform: scale(.3) rotate(-25deg); }
     100% { opacity: 1; transform: none; }
 }
-@keyframes leon-aparece {
-    0%   { opacity: 0; transform: scale(0) rotate(-20deg); }
-    100% { opacity: 1; transform: none; }
-}
 @keyframes onda-rugido {
     0%   { opacity: .95; transform: scale(.25); }
     100% { opacity: 0;   transform: scale(3.4); border-width: 1px; }
@@ -155,5 +164,5 @@
 /* Sin intro si la persona desactivó las animaciones: escudo quieto y completo */
 @media (prefers-reduced-motion: reduce) {
     .lg-intro, .lg-intro > img, .lg-intro::after { animation: none !important; }
-    .lg-impacto, .lg-onda { display: none; }
+    .lg-impacto, .lg-onda, .lg-polvo { display: none; }
 }

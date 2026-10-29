@@ -71,7 +71,7 @@ include "includes/header.php";
 
 <header class="app-header">
     <a href="dashboard.php" class="app-header-brand">
-        <img src="../assets/img/logo_gca.png" alt="">
+        <img src="../assets/img/escudo/escudo.png" alt="">
         <div>
             <span>Familia GCA</span>
             <small>Panel de Padres</small>

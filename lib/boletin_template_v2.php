@@ -195,7 +195,7 @@ function boletinHTML_v2($estudiante, $curso, $periodo, $notas, $promedio, $prome
     #encabezado { position: fixed; top: -146.7pt; left: 0; width: 560.1pt; }
     .head td { height: 117.5pt; padding: 0; }
     .head .escudo { width: 78pt; text-align: center; vertical-align: middle; }
-    .head .escudo img { width: 60pt; height: 81.5pt; }
+    .head .escudo img { width: 47.7pt; height: 81.5pt; }   /* proporción del escudo original 398×680 */
     .head .inst { text-align: center; padding: 1.8pt 26pt 0 0; }
     .head .inst .wm { width: 171.7pt; height: 42.8pt; }
     .head .inst .l1 { font-weight: bold; font-size: 9pt; line-height: 0.91; margin-top: 10pt; }

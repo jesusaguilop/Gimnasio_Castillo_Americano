@@ -12,7 +12,9 @@ $__gcaVer = (int) @filemtime($__gcaCss) . '-' . (int) @filemtime($__gcaJs);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
     <title><?= htmlspecialchars($pageTitle ?? 'Panel') ?> | GCA Admin</title>
-    <link rel="icon" href="../assets/img/logo_gca.png">
+    <link rel="icon" href="../assets/img/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="../assets/img/favicon-32.png">
+    <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
     <script>
         /* Tema y estado del menú antes de pintar (evita el parpadeo).
            Sin preferencia guardada se sigue la del sistema operativo. */

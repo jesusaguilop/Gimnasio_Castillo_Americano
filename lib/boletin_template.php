@@ -34,7 +34,7 @@ function boletinHTML($estudiante, $curso, $periodo, $notas, $promedio, $promedio
 {
     // ─── Escudo institucional embebido (base64) ───
     $escudoData = '';
-    $escudoPath = __DIR__ . '/../assets/img/escudo-gca.png';
+    $escudoPath = __DIR__ . '/../assets/img/escudo/escudo.png';
     if (is_file($escudoPath)) {
         $escudoData = 'data:image/png;base64,' . base64_encode(file_get_contents($escudoPath));
     }
