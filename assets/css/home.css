@@ -277,3 +277,74 @@
 }
 .hm-dm-email[hidden],.hm-dm-spec[hidden],#dmDescWrap[hidden]{ display:none !important; }
 .hm-teacher-body h2{ color:var(--hm-ink); }
+
+/* ════════════ Himno (institucion.php) ════════════ */
+.hm-himno{
+    position:relative; padding:96px 0; color:#efe6cf;
+    background:
+        radial-gradient(ellipse 50% 60% at 15% 20%, rgba(201,162,77,.16), transparent 70%),
+        linear-gradient(180deg,#15130f 0%,#1d1a14 100%);
+}
+.hm-himno-grid{ display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:56px; align-items:start; }
+.hm-himno-lado{ position:sticky; top:110px; }
+.hm-himno-escudo{ height:96px; width:auto; display:block; margin-bottom:22px; filter:drop-shadow(0 10px 24px rgba(0,0,0,.45)); }
+.hm-himno-titulo{ font-family:'Playfair Display',Georgia,serif !important; font-weight:700; font-size:clamp(1.9rem,3.4vw,2.6rem); line-height:1.15; color:#f6efdc; margin:0 0 10px; letter-spacing:-.01em !important; }
+
+.hm-player{
+    display:flex; align-items:center; gap:16px; padding:14px 18px 14px 14px;
+    border:1px solid rgba(201,162,77,.3); border-radius:18px; background:rgba(255,255,255,.04);
+}
+.hm-player-btn{
+    width:56px; height:56px; flex:none; border-radius:50%; border:0; cursor:pointer;
+    background:var(--hm-gold); color:#1a1400; font-size:28px; display:grid; place-items:center;
+    transition:transform .15s, background .15s; padding-left:3px;
+}
+.hm-player.sonando .hm-player-btn{ padding-left:0; }
+.hm-player-btn:hover{ background:var(--hm-gold2); transform:scale(1.04); }
+.hm-player-btn:focus-visible{ outline:2px solid #f6efdc; outline-offset:3px; }
+.hm-player-info{ flex:1; min-width:0; }
+.hm-player-info strong{ display:block; font-family:'Poppins',sans-serif; font-size:.95rem; font-weight:600; color:#f6efdc; margin-bottom:8px; }
+.hm-player input[type=range]{
+    -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:2px; margin:0; cursor:pointer;
+    background:linear-gradient(90deg,var(--hm-gold) var(--p,0%),rgba(239,230,207,.18) var(--p,0%));
+}
+.hm-player input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:#f6efdc; border:0; }
+.hm-player input[type=range]::-moz-range-thumb{ width:14px; height:14px; border-radius:50%; background:#f6efdc; border:0; }
+.hm-player input[type=range]:focus-visible{ outline:2px solid var(--hm-gold); outline-offset:4px; }
+.hm-player-t{ display:flex; justify-content:space-between; margin-top:7px; font-size:.78rem; color:rgba(239,230,207,.6); font-variant-numeric:tabular-nums; }
+.hm-himno-links{ display:flex; flex-wrap:wrap; gap:18px; margin:16px 4px 30px; }
+.hm-himno-links a{ color:var(--hm-gold2); font-size:.9rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+.hm-himno-links a:hover{ text-decoration:underline; }
+
+.hm-coro{ margin:0; padding:22px 24px; border-radius:16px; background:rgba(201,162,77,.1); border-left:3px solid var(--hm-gold); }
+.hm-coro figcaption{ font-family:'Poppins',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:2px; font-size:.78rem; color:var(--hm-gold2); margin-bottom:12px; }
+.hm-coro figcaption small{ text-transform:none; letter-spacing:0; font-weight:500; color:rgba(239,230,207,.6); margin-left:6px; font-size:.82rem; }
+.hm-coro p{ font-family:'Playfair Display',Georgia,serif; font-style:italic; font-size:1.08rem; line-height:1.7; color:#f6efdc; margin:0; }
+.hm-coro p + p{ margin-top:12px; }
+
+.hm-estrofas{ list-style:none; margin:0; padding:0; display:grid; gap:18px; }
+.hm-estrofas li{
+    position:relative; padding:26px 28px 22px 84px; border-radius:18px;
+    background:rgba(255,255,255,.035); border:1px solid rgba(239,230,207,.1);
+}
+.hm-estrofa-n{
+    position:absolute; left:24px; top:22px; width:40px; text-align:center;
+    font-family:'Playfair Display',Georgia,serif; font-weight:700; font-size:1.7rem; color:var(--hm-gold); line-height:1;
+}
+.hm-estrofas p{ font-family:'Playfair Display',Georgia,serif; font-size:1.2rem; line-height:1.75; color:#f6efdc; margin:0; }
+.hm-estrofa-coro{
+    display:inline-flex; align-items:center; gap:6px; margin-top:12px;
+    font-size:.78rem; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:rgba(239,230,207,.55);
+}
+.hm-estrofa-coro::before{ content:'\21BB'; color:var(--hm-gold); font-size:.95rem; }
+
+@media (max-width:991px){
+    .hm-himno{ padding:72px 0; }
+    .hm-himno-grid{ grid-template-columns:1fr; gap:36px; }
+    .hm-himno-lado{ position:static; }
+}
+@media (max-width:576px){
+    .hm-estrofas li{ padding:22px 20px 18px 64px; }
+    .hm-estrofa-n{ left:14px; width:36px; font-size:1.45rem; }
+    .hm-estrofas p{ font-size:1.08rem; }
+}

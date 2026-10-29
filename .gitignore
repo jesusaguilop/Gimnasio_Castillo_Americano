@@ -38,3 +38,7 @@ padres_vinculos*.csv
 /lib/lib/fonts/*.afm.json
 /lib/lib/fonts/carlito_*
 /lib/lib/fonts/installed-fonts.json
+
+# Archivos originales del himno (en la web van assets/audio/himno-gca.mp3)
+/WhatsApp Audio*.mp3
+/HIMNO*.pdf
