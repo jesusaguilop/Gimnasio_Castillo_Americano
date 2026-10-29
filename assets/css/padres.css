@@ -273,6 +273,10 @@ a.pp-per:hover { outline: 2px solid var(--pp-gold); outline-offset: 1px; }
     text-decoration: none; cursor: pointer; transition: background .15s, transform .1s;
 }
 .pp-btn:hover { background: #2a251b; color: #f6efdc; }
+/* ".pp a { color: inherit }" pesa más que .pp-btn: el color del botón-enlace se fija aquí */
+.pp a.pp-btn, .pp a.pp-btn:hover { color: #f6efdc; }
+.dark-mode .pp a.pp-btn, .dark-mode .pp a.pp-btn:hover { color: #1a1400; }
+.pp a.pp-btn.sec, .pp a.pp-btn.sec:hover { color: var(--pp-ink); }
 .pp-btn:active { transform: translateY(1px); }
 .dark-mode .pp-btn { background: var(--pp-gold); border-color: var(--pp-gold); color: #1a1400; }
 .dark-mode .pp-btn:hover { background: #d8b45f; color: #1a1400; }
