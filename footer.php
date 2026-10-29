@@ -60,6 +60,8 @@
         font-size:12.5px; color:#8f8f8f;
     }
     .ft-bottom .ft-heart { color:var(--gca-gold, #c9a24d); }
+    .ft-bottom .ft-legal { color:#bdbdbd; text-decoration:underline; text-underline-offset:3px; }
+    .ft-bottom .ft-legal:hover, .ft-bottom .ft-legal:focus-visible { color:var(--gca-gold, #c9a24d); }
 
     @media (max-width: 768px) {
         .site-footer .ft-main { padding:30px 0 16px; }
@@ -130,7 +132,7 @@
         </div>
 
         <div class="ft-bottom">
-            <span>© <?php echo date("Y"); ?> Gimnasio Castillo Americano · Todos los derechos reservados</span>
+            <span>© <?php echo date("Y"); ?> Gimnasio Castillo Americano · Todos los derechos reservados · <a href="privacidad.php" class="ft-legal">Política de privacidad</a></span>
             <span>Hecho con <span class="ft-heart" aria-hidden="true">♥</span><span class="visually-hidden">amor</span> en Valledupar</span>
         </div>
     </div>

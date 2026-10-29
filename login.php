@@ -157,6 +157,10 @@ $oldEmail = htmlspecialchars($_GET['email'] ?? '', ENT_QUOTES, 'UTF-8');
                 ¿Primera vez? Entra con la clave que te dio el colegio, o usa
                 <a href="forgot_password.php">«¿La olvidaste?»</a> con tu correo para crear la tuya.
             </p>
+            <p class="lg-ayuda lg-legal">
+                Al ingresar se usa una cookie para mantener tu sesión. Mira cómo cuidamos tus datos en la
+                <a href="privacidad.php">política de privacidad</a>.
+            </p>
         </div>
     </section>
 </main>

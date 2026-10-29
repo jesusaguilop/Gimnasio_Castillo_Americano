@@ -195,6 +195,7 @@ include "header.php";
                                     <textarea name="mensaje" id="c-mensaje" class="hm-input" rows="5" placeholder="Escribe tu mensaje aquí..." required><?= $valor('mensaje') ?></textarea>
                                 </div>
                                 <div class="col-12">
+                                    <p class="hm-p" style="font-size:.88rem;margin-bottom:14px;">Usaremos tus datos solo para responderte. Más información en la <a href="privacidad.php">política de privacidad</a>.</p>
                                     <button type="submit" name="enviar" class="hm-btn hm-btn-primary"><i class="bi bi-send-fill" style="font-size:1rem;" aria-hidden="true"></i> Enviar mensaje</button>
                                 </div>
                             </div>

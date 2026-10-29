@@ -186,3 +186,5 @@ body.lg-body {
     .lg-alerta.err { animation: none !important; }
     .lg-boton, .lg-boton::after { transition: none; }
 }
+.lg-legal { margin-top: 12px; padding: 0 4px; background: none; font-size: .78rem; }
+.lg-legal a { font-size: inherit; }

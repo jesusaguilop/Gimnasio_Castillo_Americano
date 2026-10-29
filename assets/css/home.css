@@ -348,3 +348,31 @@
     .hm-estrofa-n{ left:14px; width:36px; font-size:1.45rem; }
     .hm-estrofas p{ font-size:1.08rem; }
 }
+
+/* ───── POLÍTICA DE PRIVACIDAD (privacidad.php) ───── */
+/* overflow:hidden de .hm-wrap anula el sticky del índice; clip recorta igual sin crear contenedor de scroll */
+.hm-wrap:has(.hm-legal){ overflow:clip; }
+.hm-legal{ display:grid; grid-template-columns:240px minmax(0,1fr); gap:48px; align-items:start; max-width:1080px; margin:0 auto; }
+.hm-legal-indice{ position:sticky; top:96px; background:var(--hm-cream); border:1px solid #efe7d5; border-radius:18px; padding:20px 20px 14px; }
+.hm-legal-indice ol{ margin:12px 0 0; padding-left:20px; font-size:.9rem; line-height:1.5; }
+.hm-legal-indice li{ margin-bottom:8px; color:var(--hm-muted); }
+.hm-legal-indice a{ color:var(--hm-ink2); text-decoration:none; }
+.hm-legal-indice a:hover, .hm-legal-indice a:focus-visible{ color:var(--hm-gold-text); text-decoration:underline; }
+.hm-legal-cuerpo{ color:var(--hm-ink2); font-size:1rem; line-height:1.75; }
+.hm-legal-cuerpo h2{ font-family:'Playfair Display',Georgia,serif; font-size:1.45rem; font-weight:700; color:var(--hm-ink); margin:40px 0 12px; scroll-margin-top:96px; }
+.hm-legal-cuerpo h2:first-of-type{ margin-top:28px; }
+.hm-legal-cuerpo ul{ padding-left:20px; margin-bottom:14px; }
+.hm-legal-cuerpo li{ margin-bottom:6px; }
+.hm-legal-cuerpo li::marker{ color:var(--hm-gold); }
+.hm-legal-cuerpo a{ color:var(--hm-gold-text); }
+.hm-legal-intro{ font-size:1.08rem; color:var(--hm-ink); padding-left:18px; border-left:3px solid var(--hm-gold); }
+.hm-legal-datos{ list-style:none; padding:18px 22px !important; background:var(--hm-cream); border-radius:14px; }
+.hm-legal-tabla{ width:100%; border-collapse:collapse; font-size:.92rem; margin:6px 0 16px; }
+.hm-legal-tabla th{ text-align:left; font-size:.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--hm-muted); border-bottom:2px solid #efe7d5; padding:10px 12px; }
+.hm-legal-tabla td{ border-bottom:1px solid #efe7d5; padding:12px; vertical-align:top; }
+.hm-legal-tabla code{ color:var(--hm-ink); background:var(--hm-cream); padding:2px 6px; border-radius:6px; }
+.hm-legal-fecha{ margin-top:28px; font-size:.88rem; color:var(--hm-muted); }
+@media (max-width:900px){
+    .hm-legal{ grid-template-columns:1fr; gap:28px; }
+    .hm-legal-indice{ position:static; }
+}
