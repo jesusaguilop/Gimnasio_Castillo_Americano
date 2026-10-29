@@ -5,6 +5,10 @@
 <FilesMatch "^(Dockerfile|railway\.json|vercel\.json|composer\.json|\.gitignore|\.dockerignore|\.htaccess)$">
     Require all denied
 </FilesMatch>
+# Ningún archivo oculto (.env, .git, .user.ini…) ni copias de editor
+<FilesMatch "(^\.|~$|\.(swp|orig|old)$)">
+    Require all denied
+</FilesMatch>
 
 # Proteger directorios internos
 RedirectMatch 403 ^/src/.*$
@@ -25,6 +29,11 @@ RedirectMatch 403 ^/vendor/.*$
 # Desactivar listado de directorios
 Options -Indexes
 
+# Páginas de error propias (con el escudo y salida al inicio o al panel)
+ErrorDocument 404 /error.php?c=404
+ErrorDocument 403 /error.php?c=403
+ErrorDocument 500 /error.php?c=500
+
 # Seguridad de sesión. "secure" lo decide Session::start() según si la
 # petición llegó por HTTPS (también detrás del proxy de Vercel).
 <IfModule php_module>
@@ -44,7 +53,9 @@ Options -Indexes
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
-    Header always set Strict-Transport-Security "max-age=31536000"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Header always set Cross-Origin-Opener-Policy "same-origin"
+    Header always set X-Permitted-Cross-Domain-Policies "none"
     Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; media-src 'self' https:; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.google.com; connect-src 'self' https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     Header always unset X-Powered-By
 </IfModule>

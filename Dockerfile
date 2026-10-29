@@ -15,7 +15,9 @@ FROM php:8.3-apache
 
 # Extensiones que usa el proyecto: PostgreSQL (Neon), GD y zip para
 # los PDF de dompdf, intl/mbstring para el texto con acentos.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# apt-get upgrade: parches de seguridad del sistema en cada build
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
         libpq-dev libzip-dev libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
     && docker-php-ext-configure gd --with-jpeg --with-freetype \
     && docker-php-ext-install -j"$(nproc)" pdo_pgsql pgsql gd zip calendar \
@@ -46,16 +48,16 @@ WORKDIR /var/www/html
 # Primero solo los manifiestos, para que el caché de capas no reinstale
 # las dependencias cada vez que cambia un .php
 COPY composer.json composer.lock ./
-COPY lib/composer.json lib/composer.lock ./lib/
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# dompdf (boletines) y PHPMailer vienen de aquí. "composer audit" deja en el
+# log del build si alguna dependencia tiene una vulnerabilidad publicada.
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction \
-    && composer install -d lib --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
+    && (composer audit --no-dev --locked --no-interaction || echo "AVISO DE SEGURIDAD: revisar dependencias (composer audit)")
 
 COPY . .
 
 RUN composer dump-autoload --no-dev --optimize \
-    && composer dump-autoload -d lib --no-dev --optimize \
     && chown -R www-data:www-data /var/www/html \
     && mkdir -p assets/uploads/boletines assets/uploads/docentes assets/uploads/noticias \
     && chown -R www-data:www-data assets/uploads
@@ -67,6 +69,9 @@ RUN printf '%s\n' \
     '    AllowOverride All' \
     '    Require all granted' \
     '</Directory>' \
+    'ServerTokens Prod' \
+    'ServerSignature Off' \
+    'TraceEnable Off' \
     > /etc/apache2/conf-available/gca.conf \
     && a2enconf gca
 

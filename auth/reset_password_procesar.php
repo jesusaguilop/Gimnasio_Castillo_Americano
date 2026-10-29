@@ -21,6 +21,12 @@ if ($token === "") {
     header("Location: ../forgot_password.php");
     exit;
 }
+// Límite por IP: 20 intentos por hora con enlaces de recuperación
+require_once __DIR__ . "/../lib/limite_helper.php";
+if (limiteSuperado('nueva-clave', '', 20, 60)) {
+    header("Location: ../reset_password.php?token=" . urlencode($token));
+    exit;
+}
 if (mb_strlen($passwordPlano) < 8) {
     volverAlFormulario($token, "corta");
 }

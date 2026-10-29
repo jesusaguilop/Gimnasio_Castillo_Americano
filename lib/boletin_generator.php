@@ -7,7 +7,8 @@
  *
  * NO valida permisos: el archivo que llama debe verificar acceso.
  */
-require_once __DIR__ . '/vendor/autoload.php';
+// dompdf 3.1.6+ (vulnerabilidades de la 2.x corregidas), instalado con Composer en vendor/
+require_once __DIR__ . '/../vendor/autoload.php';
 // Para ruta_subidas()/url_subidas(): no depender de que el archivo que llama
 // haya cargado ya la configuración.
 require_once __DIR__ . '/../config/env.php';
@@ -83,7 +84,6 @@ function generarBoletinEstudiante(PDO $conexion, int $estudiante_id, string $per
     // (Carlito, métrica de Calibri) se lee del disco dentro del chroot.
     $options->set('isRemoteEnabled', false);
     $options->setChroot([__DIR__, realpath(__DIR__ . '/../assets/img/boletin')]);
-    $options->set('isHtml5ParserEnabled', true);
     $dompdf = new Dompdf($options);
     $dompdf->loadHtml($html);
     $dompdf->setPaper('A4', 'portrait');

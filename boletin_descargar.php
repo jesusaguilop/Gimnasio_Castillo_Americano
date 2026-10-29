@@ -38,6 +38,12 @@ function negar(int $codigo, string $mensaje): never
 if (!$rol || !$uid) {
     negar(403, 'Necesitas iniciar sesión para ver un boletín.');
 }
+
+// Límite: 60 boletines cada 10 minutos por cuenta (nadie normal llega ahí)
+require_once __DIR__ . '/lib/limite_helper.php';
+if (limiteSuperado('pdf', 'u' . $uid, 60, 10)) {
+    negar(429, 'Demasiadas descargas seguidas. Espera unos minutos e intenta de nuevo.');
+}
 if ($id <= 0) {
     negar(400, 'Falta el identificador del boletín.');
 }
